@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
 import { NotificationProvider } from './components/notification';
+import DashboardShell from './components/dashboard-shell';
 
 export const metadata: Metadata = {
   title: 'HR & Payroll Management System',
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <NotificationProvider>{children}</NotificationProvider>
+        <NotificationProvider>
+          <DashboardShell>{children}</DashboardShell>
+        </NotificationProvider>
       </body>
     </html>
   );
