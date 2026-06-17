@@ -1,0 +1,42 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hr_admin
+      POSTGRES_PASSWORD: hr_pass
+      POSTGRES_DB: hrpayroll
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://hr_admin:hr_pass@postgres:5432/hrpayroll
+      JWT_SECRET: supersecretjwtkey
+      PORT: 4000
+    ports:
+      - '4000:4000'
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
