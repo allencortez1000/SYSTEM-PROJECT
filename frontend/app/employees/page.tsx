@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useNotification } from '../components/notification';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useNotification } from "../components/notification";
 
 type Employee = {
   id: number;
@@ -19,51 +19,93 @@ export default function EmployeesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('http://localhost:4000/api/employees');
-        if (!res.ok) throw new Error('Failed to fetch');
+        const res = await fetch("http://localhost:4000/api/employees");
+        if (!res.ok) throw new Error("Failed to fetch employees");
         const data = await res.json();
         setEmployees(data.employees || []);
-        notify('Employees loaded');
+        notify("Employees loaded");
       } catch (err) {
         setError((err as Error).message);
       } finally {
         setLoading(false);
       }
     }
+
     load();
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Employees</h1>
-          <Link href="/employees/new" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Add Employee</Link>
+    <div className="page-shell">
+      <section className="hero-panel">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="eyebrow">Employee directory</p>
+            <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">Manage your workforce</h2>
+            <p className="mt-3 max-w-2xl text-slate-600">
+              View employee profiles, roles, departments, and compensation information from one clean workspace.
+            </p>
+          </div>
+          <Link href="/employees/new" className="primary-button">Add employee</Link>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          ["Active staff", employees?.length ?? 0],
+          ["Departments", 8],
+          ["Open updates", 12],
+        ].map(([label, value]) => (
+          <div key={label} className="metric-card">
+            <p className="text-sm font-bold text-slate-500">{label}</p>
+            <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="section-card">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="eyebrow">People</p>
+            <h3 className="mt-2 text-2xl font-black text-slate-950">Employee records</h3>
+          </div>
+          <Link href="/" className="secondary-button">Dashboard</Link>
         </div>
 
-        {loading && <p className="text-slate-600">Loading employees...</p>}
-        {error && <p className="text-red-600">Error: {error}</p>}
+        {loading && <p className="mt-6 text-slate-600">Loading employees...</p>}
+        {error && <p className="mt-6 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">Error: {error}</p>}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {employees?.map((e) => (
-            <Link key={e.id} href={`/employees/${e.id}`} className="block rounded-2xl bg-white p-4 shadow-sm hover:shadow-md transition">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-rose-400 to-purple-500 flex items-center justify-center text-white font-semibold">{e.fullName.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{e.fullName}</p>
-                  <p className="text-sm text-slate-500">{e.position}</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {employees?.map((employee) => {
+            const initials = employee.fullName
+              .split(" ")
+              .map((name) => name[0])
+              .slice(0, 2)
+              .join("");
+
+            return (
+              <Link
+                key={employee.id}
+                href={`/employees/${employee.id}`}
+                className="group rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 font-black text-white">
+                    {initials}
+                  </div>
+                  <div>
+                    <p className="font-black text-slate-950 group-hover:text-blue-700">{employee.fullName}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{employee.position}</p>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+                <div className="mt-5 flex items-center justify-between text-sm">
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-700">Active</span>
+                  <span className="font-bold text-slate-400">View profile →</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
-
-        <div className="mt-6 flex items-center justify-between">
-          <Link href="/" className="text-sm text-slate-600">← Back to dashboard</Link>
-          <Link href="/employees/new" className="text-sm text-brand-600 font-semibold">+ Add new employee</Link>
-        </div>
-      </div>
-      {/* notifications shown by NotificationProvider */}
+      </section>
     </div>
   );
 }

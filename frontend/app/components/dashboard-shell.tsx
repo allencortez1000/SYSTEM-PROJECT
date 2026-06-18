@@ -1,65 +1,159 @@
-"use client";
+﻿"use client";
 
-import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type DashboardShellProps = {
   children: ReactNode;
 };
 
+const navigation = [
+  { href: "/", label: "Dashboard", icon: "◈" },
+  { href: "/employees", label: "Employees", icon: "👥" },
+  { href: "/attendance", label: "Attendance", icon: "⏱" },
+  { href: "/payroll", label: "Payroll", icon: "💳" },
+  { href: "/leave", label: "Leave", icon: "🌴" },
+  { href: "/recruitment", label: "Recruitment", icon: "🎯" },
+  { href: "/reports", label: "Reports", icon: "📊" },
+  { href: "/compliance", label: "Compliance", icon: "🛡" },
+];
+
 export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
-  const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/');
+
+  const isActive = (path: string) => {
+    if (path === "/") return pathname === "/";
+    return pathname === path || pathname?.startsWith(path + "/");
+  };
+
+  function handleLogout() {
+    localStorage.removeItem("hr_token");
+    localStorage.removeItem("hr_user");
+    window.location.href = "/";
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="grid min-h-screen grid-cols-1 gap-6 xl:grid-cols-[280px_1fr]">
-        <aside className="rounded-[32px] bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.15),_transparent_35%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] p-6 text-slate-100 shadow-[0_30px_60px_rgba(15,23,42,0.18)] xl:sticky xl:top-0 xl:min-h-screen">
-          <div className="mb-8">
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">HR & Payroll</p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white">Enterprise Suite</h2>
-            <p className="mt-1 text-sm text-slate-400">HR · Payroll · Reports</p>
-          </div>
+    <div className="min-h-screen text-slate-950">
+      <div className="grid min-h-screen xl:grid-cols-[300px_1fr]">
+        <aside className="relative hidden min-h-screen overflow-hidden border-r border-white/40 bg-slate-950 px-5 py-6 text-white xl:block">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.35),_transparent_34%),radial-gradient(circle_at_70%_30%,_rgba(14,165,233,0.18),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#111827_100%)]" />
 
-          <nav className="space-y-2 text-sm">
-            <Link href="/" className={"block rounded-2xl px-4 py-3 font-semibold " + (isActive('/') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Dashboard</Link>
-            <Link href="/employees" className={"block rounded-2xl px-4 py-3 " + (isActive('/employees') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Employees</Link>
-            <Link href="/attendance" className={"block rounded-2xl px-4 py-3 " + (isActive('/attendance') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Attendance</Link>
-            <Link href="/payroll" className={"block rounded-2xl px-4 py-3 " + (isActive('/payroll') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Payroll</Link>
-            <Link href="/leave" className={"block rounded-2xl px-4 py-3 " + (isActive('/leave') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Leave</Link>
-            <Link href="/recruitment" className={"block rounded-2xl px-4 py-3 " + (isActive('/recruitment') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Recruitment</Link>
-            <Link href="/reports" className={"block rounded-2xl px-4 py-3 " + (isActive('/reports') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Reports</Link>
-            <Link href="/compliance" className={"block rounded-2xl px-4 py-3 " + (isActive('/compliance') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800')}>Compliance</Link>
-          </nav>
+          <div className="relative z-10 flex min-h-[calc(100vh-3rem)] flex-col">
+            <Link href="/" className="group rounded-[1.75rem] border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur">
+              <p className="text-xs font-bold uppercase tracking-[0.32em] text-sky-200">PeopleOps</p>
+              <h2 className="mt-3 text-2xl font-black tracking-tight">HR Command Center</h2>
+              <p className="mt-2 text-sm text-slate-300">Payroll, talent, attendance, and compliance in one place.</p>
+            </Link>
 
-          <div className="mt-8 pt-4 border-t border-slate-800 text-sm text-slate-400">
-            <p>Version 0.1.0</p>
-            <p className="mt-2">Ready · <span className="text-emerald-400">Online</span></p>
+            <nav className="mt-7 space-y-1.5">
+              {navigation.map((item) => {
+                const active = isActive(item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={
+                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition " +
+                      (active
+                        ? "bg-white text-slate-950 shadow-xl shadow-black/20"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white")
+                    }
+                  >
+                    <span className={active ? "text-blue-600" : "text-slate-400"}>{item.icon}</span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-black text-red-100 transition hover:bg-red-400/20"
+            >
+              Logout
+            </button>
+
+            <div className="mt-auto rounded-[1.75rem] border border-emerald-400/20 bg-emerald-400/10 p-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.9)]" />
+                <p className="text-sm font-bold text-emerald-100">System online</p>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">Version 0.1.0 is ready for HR operations.</p>
+            </div>
           </div>
         </aside>
 
-        <main className="min-h-screen"> 
-          <header className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+        <main className="min-w-0">
+          <header className="sticky top-0 z-30 border-b border-white/60 bg-white/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-col gap-2">
-                <span className="text-xs uppercase tracking-[0.35em] text-slate-500">Welcome back</span>
-                <h1 className="text-xl font-semibold text-slate-900">HR Dashboard</h1>
+              <div className="min-w-0">
+                <p className="eyebrow">Welcome back</p>
+                <h1 className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950">
+                  HR & Payroll Workspace
+                </h1>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative">
-                  <input placeholder="Search employees, payroll, reports..." className="w-full min-w-[260px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
-                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">🔎</span>
+                <div className="relative min-w-0">
+                  <input
+                    placeholder="Search people, payroll, reports..."
+                    className="w-full min-w-0 rounded-full border border-slate-200 bg-white/90 px-5 py-3 pr-11 text-sm text-slate-700 shadow-sm sm:min-w-[280px]"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">⌕</span>
                 </div>
-                <button aria-label="Notifications" className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 transition hover:bg-slate-200">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118.5 14.5V11a6.5 6.5 0 10-13 0v3.5c0 .53-.21 1.04-.595 1.414L3 17h5m4 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
+
+                <button
+                  type="button"
+                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:text-blue-700"
+                  aria-label="Notifications"
+                >
+                  🔔
                 </button>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-400 to-purple-500 text-sm font-semibold text-white shadow-sm">
-                  AH
+
+                <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white py-1.5 pl-2 pr-4 shadow-sm">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 text-xs font-black text-white">
+                    AD
+                  </div>
+                  <div className="hidden sm:block">
+                    <p className="text-xs font-bold text-slate-950">Admin</p>
+                    <p className="text-[11px] text-slate-500">Super Admin</p>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center justify-center rounded-full border border-red-100 bg-red-50 px-5 py-3 text-sm font-black text-red-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-red-100"
+                >
+                  Logout
+                </button>
               </div>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto px-4 pb-4 sm:px-6 lg:px-8 xl:hidden">
+              {navigation.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={
+                    "shrink-0 rounded-full px-4 py-2 text-sm font-bold " +
+                    (isActive(item.href) ? "bg-slate-950 text-white" : "bg-white text-slate-600")
+                  }
+                >
+                  {item.icon} {item.label}
+                </Link>
+              ))}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="shrink-0 rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700"
+              >
+                Logout
+              </button>
             </div>
           </header>
 
