@@ -1,21 +1,66 @@
-﻿import Link from "next/link";
+﻿"use client";
 
-const metrics = [
-  { label: "Total employees", value: "1,248", detail: "+5.2% this month" },
-  { label: "New hires", value: "46", detail: "Across 7 departments" },
-  { label: "Exits", value: "11", detail: "Voluntary and involuntary" },
-  { label: "Transfers", value: "18", detail: "Internal movement" },
-];
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-const movementRows = [
-  { department: "Operations", start: 302, hired: 21, exited: 3, ending: 320 },
-  { department: "Sales", start: 271, hired: 18, exited: 3, ending: 286 },
-  { department: "Engineering", start: 207, hired: 9, exited: 2, ending: 214 },
-  { department: "Finance", start: 94, hired: 3, exited: 1, ending: 96 },
-  { department: "HR", start: 48, hired: 2, exited: 0, ending: 50 },
-];
+const API_BASE = "http://localhost:4000/api";
+
+type HeadcountResponse = {
+  metrics?: {
+    totalEmployees?: number;
+    activeEmployees?: number;
+    newHires?: number;
+    exits?: number;
+    departments?: number;
+  };
+  departments?: Array<{
+    department: string;
+    start: number;
+    hired: number;
+    exited: number;
+    ending: number;
+  }>;
+  error?: string | null;
+};
 
 export default function HeadcountMovementReportPage() {
+  const [data, setData] = useState<HeadcountResponse>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`${API_BASE}/data/reports/headcount-movement`, { cache: "no-store" });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload?.message || "Failed to load headcount report from Supabase");
+        setData(payload);
+        if (payload?.error) setError(payload.error);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
+
+  const metrics = useMemo(() => {
+    const values = data.metrics || {};
+    return [
+      { label: "Total employees", value: String(values.totalEmployees || 0), detail: `${values.activeEmployees || 0} active employees` },
+      { label: "New hires", value: String(values.newHires || 0), detail: "Created or hired this month" },
+      { label: "Exits", value: String(values.exits || 0), detail: "Terminated or exited this month" },
+      { label: "Departments", value: String(values.departments || 0), detail: "Departments with employees" },
+    ];
+  }, [data.metrics]);
+
+  const movementRows = data.departments || [];
+
   return (
     <div className="page-shell">
       <section className="hero-panel">
@@ -26,7 +71,7 @@ export default function HeadcountMovementReportPage() {
               Headcount movement
             </h2>
             <p className="mt-3 max-w-2xl text-slate-600">
-              Track hiring, exits, transfers, and department-level workforce growth.
+              Track hiring, exits, and department-level workforce growth from Supabase employee records.
             </p>
           </div>
 
@@ -40,6 +85,9 @@ export default function HeadcountMovementReportPage() {
           </div>
         </div>
       </section>
+
+      {loading && <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Loading headcount movement from Supabase...</p>}
+      {error && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</p>}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -57,30 +105,36 @@ export default function HeadcountMovementReportPage() {
           <h3 className="mt-2 text-2xl font-black text-slate-950">Department movement</h3>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
-          <table className="soft-table">
-            <thead>
-              <tr>
-                <th>Department</th>
-                <th>Start</th>
-                <th>Hired</th>
-                <th>Exited</th>
-                <th>Ending</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {movementRows.map((row) => (
-                <tr key={row.department} className="hover:bg-slate-50">
-                  <td className="font-black text-slate-950">{row.department}</td>
-                  <td className="text-slate-600">{row.start}</td>
-                  <td className="font-bold text-emerald-700">+{row.hired}</td>
-                  <td className="font-bold text-red-600">-{row.exited}</td>
-                  <td className="font-black text-slate-950">{row.ending}</td>
+        {!loading && movementRows.length === 0 && (
+          <p className="mt-6 text-sm text-slate-500">No employee records found in Supabase yet.</p>
+        )}
+
+        {movementRows.length > 0 && (
+          <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
+            <table className="soft-table">
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Start</th>
+                  <th>Hired</th>
+                  <th>Exited</th>
+                  <th>Ending</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white">
+                {movementRows.map((row) => (
+                  <tr key={row.department} className="hover:bg-slate-50">
+                    <td className="font-black text-slate-950">{row.department}</td>
+                    <td className="text-slate-600">{row.start}</td>
+                    <td className="font-bold text-emerald-700">+{row.hired}</td>
+                    <td className="font-bold text-red-600">-{row.exited}</td>
+                    <td className="font-black text-slate-950">{row.ending}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

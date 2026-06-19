@@ -12,11 +12,9 @@ type AuthGateProps = {
 export default function AuthGate({ children }: AuthGateProps) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const mode: "signin" = "signin";
 
-  const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("admin");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("admin");
 
   const [error, setError] = useState("");
@@ -36,29 +34,17 @@ export default function AuthGate({ children }: AuthGateProps) {
     setLoading(true);
 
     try {
-      const endpoint =
-        mode === "signin"
-          ? "http://localhost:4000/api/auth/login"
-          : "http://localhost:4000/api/auth/signup";
+      const endpoint = "http://localhost:4000/api/auth/login";
 
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(
-          mode === "signin"
-            ? {
-                username,
-                password,
-              }
-            : {
-                fullName,
-                username,
-                email,
-                password,
-              },
-        ),
+        body: JSON.stringify({
+          username,
+          password,
+        }),
       });
 
       const data = await response.json();
@@ -78,17 +64,10 @@ export default function AuthGate({ children }: AuthGateProps) {
     }
   }
 
-  function switchMode(nextMode: "signin" | "signup") {
-    setMode(nextMode);
+  function resetSigninDefaults() {
     setError("");
-
-    if (nextMode === "signin") {
-      setUsername("admin");
-      setPassword("admin");
-    } else {
-      setUsername("");
-      setPassword("");
-    }
+    setUsername("admin");
+    setPassword("admin");
   }
 
   if (checkingAuth) {
@@ -111,14 +90,14 @@ export default function AuthGate({ children }: AuthGateProps) {
           <div className="hidden min-h-[620px] bg-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-300">
-                HR & Payroll
+                Rabino Home Builders Corporation
               </p>
               <h1 className="mt-6 max-w-xl text-5xl font-black tracking-tight">
                 Secure access to your Philippine payroll system.
               </h1>
               <p className="mt-5 max-w-lg text-base leading-7 text-slate-300">
-                Sign in or create an account to manage employees, attendance,
-                payroll, recruitment, reports, and compliance.
+                Sign in to manage employees, attendance, payroll, recruitment,
+                reports, and compliance.
               </p>
             </div>
 
@@ -132,8 +111,8 @@ export default function AuthGate({ children }: AuthGateProps) {
                 <p className="mt-2 text-xs font-bold text-slate-300">Deductions</p>
               </div>
               <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-2xl font-black">HR</p>
-                <p className="mt-2 text-xs font-bold text-slate-300">Workspace</p>
+                <p className="text-2xl font-black">RHBC</p>
+                <p className="mt-2 text-xs font-bold text-slate-300">Corporate Portal</p>
               </div>
             </div>
           </div>
@@ -162,56 +141,18 @@ export default function AuthGate({ children }: AuthGateProps) {
                 </div>
               )}
 
-              <div className="mt-6 grid grid-cols-2 gap-2 rounded-full bg-slate-100 p-1">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">
+                Public signup is disabled. Only the super admin can create department-head admins.
                 <button
                   type="button"
-                  onClick={() => switchMode("signin")}
-                  className={
-                    "rounded-full px-4 py-2 text-sm font-black transition " +
-                    (mode === "signin" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500")
-                  }
+                  onClick={resetSigninDefaults}
+                  className="ml-2 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-black text-slate-700"
                 >
-                  Sign in
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchMode("signup")}
-                  className={
-                    "rounded-full px-4 py-2 text-sm font-black transition " +
-                    (mode === "signup" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500")
-                  }
-                >
-                  Sign up
+                  Reset admin defaults
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-                {mode === "signup" && (
-                  <>
-                    <label className="block">
-                      <span className="text-sm font-bold text-slate-600">Full name</span>
-                      <input
-                        value={fullName}
-                        onChange={(event) => setFullName(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                        placeholder="Juan Dela Cruz"
-                        required
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-bold text-slate-600">Email</span>
-                      <input
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        type="email"
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                        placeholder="you@example.com"
-                        required
-                      />
-                    </label>
-                  </>
-                )}
 
                 <label className="block">
                   <span className="text-sm font-bold text-slate-600">Username</span>
@@ -243,13 +184,7 @@ export default function AuthGate({ children }: AuthGateProps) {
                 )}
 
                 <button type="submit" disabled={loading} className="primary-button w-full">
-                  {loading
-                    ? mode === "signin"
-                      ? "Signing in..."
-                      : "Creating account..."
-                    : mode === "signin"
-                      ? "Sign in"
-                      : "Create account"}
+                  {loading ? "Signing in..." : "Sign in"}
                 </button>
               </form>
             </div>

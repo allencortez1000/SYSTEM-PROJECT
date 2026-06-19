@@ -1,22 +1,76 @@
-﻿import Link from "next/link";
+﻿"use client";
 
-const payrollRows = [
-  { label: "Gross payroll", value: "₱24,750,000", detail: "Total earnings before deductions" },
-  { label: "Net payout", value: "₱20,420,200", detail: "Final employee payout" },
-  { label: "SSS total", value: "₱1,123,500", detail: "Employee statutory contributions" },
-  { label: "Pag-IBIG total", value: "₱249,600", detail: "Pag-IBIG deductions" },
-  { label: "PhilHealth total", value: "₱942,300", detail: "PhilHealth deductions" },
-  { label: "Other deductions", value: "₱485,000", detail: "Loans and adjustments" },
-];
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-const departments = [
-  { name: "Operations", amount: "₱6,450,000", employees: 320 },
-  { name: "Sales", amount: "₱5,980,000", employees: 286 },
-  { name: "Engineering", amount: "₱7,200,000", employees: 214 },
-  { name: "Finance", amount: "₱2,840,000", employees: 96 },
-];
+const API_BASE = "http://localhost:4000/api";
+
+type PayrollSummaryResponse = {
+  metrics?: {
+    grossPayroll?: number;
+    netPayout?: number;
+    sssTotal?: number;
+    pagIbigTotal?: number;
+    philHealthTotal?: number;
+    otherDeductions?: number;
+    payrollRuns?: number;
+  };
+  departments?: Array<{
+    name: string;
+    employees: number;
+    amount: number;
+  }>;
+  error?: string | null;
+};
+
+function pesos(value: number) {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
 
 export default function PayrollSummaryReportPage() {
+  const [data, setData] = useState<PayrollSummaryResponse>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`${API_BASE}/data/reports/payroll-summary`, { cache: "no-store" });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload?.message || "Failed to load payroll summary from Supabase");
+        setData(payload);
+        if (payload?.error) setError(payload.error);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
+
+  const metrics = useMemo(() => {
+    const values = data.metrics || {};
+    return [
+      { label: "Gross payroll", value: pesos(values.grossPayroll || 0), detail: "Total earnings before deductions" },
+      { label: "Net payout", value: pesos(values.netPayout || 0), detail: "Final employee payout" },
+      { label: "SSS total", value: pesos(values.sssTotal || 0), detail: "Employee statutory contributions" },
+      { label: "Pag-IBIG total", value: pesos(values.pagIbigTotal || 0), detail: "Pag-IBIG deductions" },
+      { label: "PhilHealth total", value: pesos(values.philHealthTotal || 0), detail: "PhilHealth deductions" },
+      { label: "Other deductions", value: pesos(values.otherDeductions || 0), detail: "Loans and adjustments" },
+    ];
+  }, [data.metrics]);
+
+  const departments = data.departments || [];
+
   return (
     <div className="page-shell">
       <section className="hero-panel">
@@ -27,7 +81,7 @@ export default function PayrollSummaryReportPage() {
               Payroll summary
             </h2>
             <p className="mt-3 max-w-2xl text-slate-600">
-              Monthly payroll totals, net payout, statutory deductions, and department-level payroll cost.
+              Live payroll totals, net payout, statutory deductions, and department-level payroll cost from Supabase.
             </p>
           </div>
 
@@ -42,8 +96,11 @@ export default function PayrollSummaryReportPage() {
         </div>
       </section>
 
+      {loading && <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Loading payroll summary from Supabase...</p>}
+      {error && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</p>}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {payrollRows.map((row) => (
+        {metrics.map((row) => (
           <article key={row.label} className="metric-card">
             <p className="text-sm font-bold text-slate-500">{row.label}</p>
             <p className="mt-3 break-words text-2xl font-black text-slate-950 sm:text-3xl">{row.value}</p>
@@ -58,32 +115,38 @@ export default function PayrollSummaryReportPage() {
           <h3 className="mt-2 text-2xl font-black text-slate-950">Payroll by department</h3>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
-          <table className="soft-table">
-            <thead>
-              <tr>
-                <th>Department</th>
-                <th>Employees</th>
-                <th>Payroll amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {departments.map((department) => (
-                <tr key={department.name} className="hover:bg-slate-50">
-                  <td className="font-black text-slate-950">{department.name}</td>
-                  <td className="text-slate-600">{department.employees}</td>
-                  <td className="font-bold text-slate-700">{department.amount}</td>
-                  <td>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
-                      Ready
-                    </span>
-                  </td>
+        {!loading && departments.length === 0 && (
+          <p className="mt-6 text-sm text-slate-500">No department payroll data found in Supabase yet.</p>
+        )}
+
+        {departments.length > 0 && (
+          <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
+            <table className="soft-table">
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Employees</th>
+                  <th>Payroll amount</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white">
+                {departments.map((department) => (
+                  <tr key={department.name} className="hover:bg-slate-50">
+                    <td className="font-black text-slate-950">{department.name}</td>
+                    <td className="text-slate-600">{department.employees}</td>
+                    <td className="font-bold text-slate-700">{pesos(department.amount)}</td>
+                    <td>
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                        Live
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

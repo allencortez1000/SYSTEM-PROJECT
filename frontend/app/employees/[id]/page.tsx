@@ -35,9 +35,12 @@ export default function EmployeeDetail() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`http://localhost:4000/api/employees/${id}`);
-        if (!res.ok) throw new Error("Employee not found");
-        const data = await res.json();
+        const token = localStorage.getItem("hr_token");
+        const res = await fetch(`http://localhost:4000/api/employees/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || data?.message || "Employee not found");
         setEmployee(data.employee || null);
       } catch (err) {
         setError((err as Error).message);

@@ -3,12 +3,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type DashboardShellProps = {
   children: ReactNode;
 };
 
-const navigation = [
+const baseNavigation = [
   { href: "/", label: "Dashboard", icon: "◈" },
   { href: "/employees", label: "Employees", icon: "👥" },
   { href: "/attendance", label: "Attendance", icon: "⏱" },
@@ -19,8 +20,36 @@ const navigation = [
   { href: "/compliance", label: "Compliance", icon: "🛡" },
 ];
 
+type SessionUser = {
+  name?: string;
+  role?: string;
+};
+
+function labelFromRole(role?: string) {
+  if (role === "super-admin") return "Super Admin";
+  if (role === "department-head-admin") return "Department Head Admin";
+  return "User";
+}
+
 export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("hr_user");
+    if (!raw) return;
+
+    try {
+      setSessionUser(JSON.parse(raw));
+    } catch {
+      setSessionUser(null);
+    }
+  }, []);
+
+  const navigation =
+    sessionUser?.role === "super-admin"
+      ? [...baseNavigation, { href: "/admin-users", label: "Admin Access", icon: "🧩" }]
+      : baseNavigation;
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
@@ -92,7 +121,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               <div className="min-w-0">
                 <p className="eyebrow">Welcome back</p>
                 <h1 className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950">
-                  HR & Payroll Workspace
+                  Rabino Home Builders Corporation
                 </h1>
               </div>
 
@@ -118,8 +147,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                     AD
                   </div>
                   <div className="hidden sm:block">
-                    <p className="text-xs font-bold text-slate-950">Admin</p>
-                    <p className="text-[11px] text-slate-500">Super Admin</p>
+                    <p className="text-xs font-bold text-slate-950">{sessionUser?.name || "User"}</p>
+                    <p className="text-[11px] text-slate-500">{labelFromRole(sessionUser?.role)}</p>
                   </div>
                 </div>
 

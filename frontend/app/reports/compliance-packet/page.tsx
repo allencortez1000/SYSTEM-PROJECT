@@ -1,20 +1,70 @@
-﻿import Link from "next/link";
+﻿"use client";
 
-const metrics = [
-  { label: "Labor filings", value: "Ready", detail: "Prepared for review", tone: "bg-emerald-50 text-emerald-700" },
-  { label: "Policy acknowledgements", value: "92%", detail: "Employees completed", tone: "bg-blue-50 text-blue-700" },
-  { label: "Payroll evidence", value: "Updated", detail: "Latest run archived", tone: "bg-violet-50 text-violet-700" },
-  { label: "Open risks", value: "3", detail: "Require HR review", tone: "bg-amber-50 text-amber-700" },
-];
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-const checklist = [
-  { item: "Monthly payroll report archived", owner: "Payroll", status: "Complete" },
-  { item: "SSS, Pag-IBIG, PhilHealth summary reviewed", owner: "Finance", status: "Review" },
-  { item: "Labor standards filing packet prepared", owner: "Compliance", status: "Ready" },
-  { item: "Employee policy acknowledgements exported", owner: "HR", status: "In progress" },
-];
+const API_BASE = "http://localhost:4000/api";
+
+type CompliancePacketResponse = {
+  metrics?: {
+    laborFilings?: string;
+    policyAcknowledgements?: string;
+    payrollEvidence?: string;
+    openRisks?: number;
+  };
+  checklist?: Array<{
+    item: string;
+    owner: string;
+    status: string;
+  }>;
+  error?: string | null;
+};
+
+function statusTone(status: string) {
+  const normalized = status.toLowerCase();
+  if (["complete", "ready", "updated"].some((value) => normalized.includes(value))) return "bg-emerald-50 text-emerald-700";
+  if (["review", "progress"].some((value) => normalized.includes(value))) return "bg-blue-50 text-blue-700";
+  return "bg-amber-50 text-amber-700";
+}
 
 export default function CompliancePacketReportPage() {
+  const [data, setData] = useState<CompliancePacketResponse>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`${API_BASE}/data/reports/compliance-packet`, { cache: "no-store" });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload?.message || "Failed to load compliance packet from Supabase");
+        setData(payload);
+        if (payload?.error) setError(payload.error);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
+  }, []);
+
+  const metrics = useMemo(() => {
+    const values = data.metrics || {};
+    return [
+      { label: "Labor filings", value: values.laborFilings || "Pending", detail: "From compliance requirements" },
+      { label: "Policy acknowledgements", value: values.policyAcknowledgements || "0 active", detail: "Active Supabase requirements" },
+      { label: "Payroll evidence", value: values.payrollEvidence || "Missing", detail: "Based on saved payroll runs" },
+      { label: "Open risks", value: String(values.openRisks || 0), detail: "Active compliance items" },
+    ];
+  }, [data.metrics]);
+
+  const checklist = data.checklist || [];
+
   return (
     <div className="page-shell">
       <section className="hero-panel">
@@ -25,7 +75,7 @@ export default function CompliancePacketReportPage() {
               Compliance packet
             </h2>
             <p className="mt-3 max-w-2xl text-slate-600">
-              Audit-ready labor reports, statutory contribution summaries, and payroll evidence.
+              Audit-ready labor reports, statutory contribution summaries, and payroll evidence from Supabase.
             </p>
           </div>
 
@@ -40,11 +90,14 @@ export default function CompliancePacketReportPage() {
         </div>
       </section>
 
+      {loading && <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Loading compliance packet from Supabase...</p>}
+      {error && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</p>}
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <article key={metric.label} className="metric-card">
             <p className="text-sm font-bold text-slate-500">{metric.label}</p>
-            <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-sm font-black ${metric.tone}`}>
+            <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-sm font-black ${statusTone(metric.value)}`}>
               {metric.value}
             </span>
             <p className="mt-3 text-sm font-semibold text-slate-500">{metric.detail}</p>
@@ -58,30 +111,36 @@ export default function CompliancePacketReportPage() {
           <h3 className="mt-2 text-2xl font-black text-slate-950">Compliance packet contents</h3>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
-          <table className="soft-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Owner</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {checklist.map((row) => (
-                <tr key={row.item} className="hover:bg-slate-50">
-                  <td className="font-black text-slate-950">{row.item}</td>
-                  <td className="text-slate-600">{row.owner}</td>
-                  <td>
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
-                      {row.status}
-                    </span>
-                  </td>
+        {!loading && checklist.length === 0 && (
+          <p className="mt-6 text-sm text-slate-500">No compliance requirements found in Supabase yet.</p>
+        )}
+
+        {checklist.length > 0 && (
+          <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
+            <table className="soft-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Owner</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white">
+                {checklist.map((row) => (
+                  <tr key={`${row.owner}-${row.item}`} className="hover:bg-slate-50">
+                    <td className="font-black text-slate-950">{row.item}</td>
+                    <td className="text-slate-600">{row.owner}</td>
+                    <td>
+                      <span className={`rounded-full px-3 py-1 text-xs font-black ${statusTone(row.status)}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -4,7 +4,7 @@ import "./globals.css";
 import AuthGate from "./components/auth-gate";
 
 export const metadata: Metadata = {
-  title: "HR & Payroll Management System",
+  title: "Rabino Home Builders Corporation",
   description: "Enterprise-grade HR, payroll, attendance, and compliance management platform.",
 };
 

@@ -33,6 +33,7 @@ async function getDefaultOrganizationId() {
     .from('organizations')
     .select('id')
     .eq('name', 'Demo Company')
+    .order('created_at', { ascending: true })
     .limit(1);
 
   if (existingOrgError) {
@@ -194,99 +195,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/signup', async (req, res) => {
-  try {
-    const { fullName, username, email, password } = req.body;
-
-    const cleanedFullName = String(fullName || '').trim();
-    const cleanedUsername = String(username || '').trim();
-    const cleanedEmail = String(email || '').trim().toLowerCase();
-    const cleanedPassword = String(password || '');
-
-    if (!cleanedFullName || !cleanedUsername || !cleanedEmail || !cleanedPassword) {
-      return res.status(400).json({
-        message: 'Full name, username, email, and password are required',
-      });
-    }
-
-    if (cleanedPassword.length < 4) {
-      return res.status(400).json({
-        message: 'Password must be at least 4 characters',
-      });
-    }
-
-    const { data: existingUsername, error: usernameError } = await supabase
-      .from('app_users')
-      .select('id')
-      .eq('username', cleanedUsername)
-      .limit(1);
-
-    if (usernameError) {
-      throw usernameError;
-    }
-
-    if (existingUsername && existingUsername.length > 0) {
-      return res.status(409).json({
-        message: 'Username already exists',
-      });
-    }
-
-    const { data: existingEmail, error: emailError } = await supabase
-      .from('app_users')
-      .select('id')
-      .eq('email', cleanedEmail)
-      .limit(1);
-
-    if (emailError) {
-      throw emailError;
-    }
-
-    if (existingEmail && existingEmail.length > 0) {
-      return res.status(409).json({
-        message: 'Email already exists',
-      });
-    }
-
-    const organizationId = await getDefaultOrganizationId();
-    const passwordHash = bcrypt.hashSync(cleanedPassword, 10);
-
-    const { data: createdUser, error: createError } = await supabase
-      .from('app_users')
-      .insert({
-        organization_id: organizationId,
-        full_name: cleanedFullName,
-        email: cleanedEmail,
-        username: cleanedUsername,
-        password_hash: passwordHash,
-        role: 'hr-admin',
-        is_active: true,
-      })
-      .select('id, username, email, password_hash, role, full_name, is_active')
-      .single();
-
-    if (createError) {
-      throw createError;
-    }
-
-    const typedUser = createdUser as AppUser;
-    const token = createToken(typedUser);
-
-    res.status(201).json({
-      token,
-      user: {
-        id: typedUser.id,
-        username: typedUser.username,
-        email: typedUser.email,
-        role: typedUser.role,
-        name: typedUser.full_name,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Sign up failed',
-      error: (error as Error).message,
-    });
-  }
+router.post('/signup', async (_, res) => {
+  res.status(403).json({
+    message: 'Public signup is disabled. Contact your system super admin.',
+  });
 });
 
 export default router;

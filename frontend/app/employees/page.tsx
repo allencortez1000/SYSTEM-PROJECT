@@ -1,13 +1,18 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNotification } from "../components/notification";
 
 type Employee = {
-  id: number;
+  id: string;
+  employeeId: string;
   fullName: string;
+  email?: string | null;
+  department: string;
   position: string;
+  status: string;
+  salary: number;
 };
 
 export default function EmployeesPage() {
@@ -16,13 +21,33 @@ export default function EmployeesPage() {
   const [error, setError] = useState<string | null>(null);
   const { notify } = useNotification();
 
+  const employeeList = employees ?? [];
+  const stats = useMemo(() => {
+    const activeStaff = employeeList.filter((employee) => employee.status.toLowerCase() === "active").length;
+    const departments = new Set(employeeList.map((employee) => employee.department).filter(Boolean)).size;
+
+    return {
+      activeStaff,
+      departments,
+      totalRecords: employeeList.length,
+    };
+  }, [employeeList]);
+
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("http://localhost:4000/api/employees");
-        if (!res.ok) throw new Error("Failed to fetch employees");
-        const data = await res.json();
+        const token = localStorage.getItem("hr_token");
+        const res = await fetch("http://localhost:4000/api/employees", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data?.error || data?.message || "Failed to fetch employees");
+        }
+
         setEmployees(data.employees || []);
+        setError(null);
         notify("Employees loaded");
       } catch (err) {
         setError((err as Error).message);
@@ -32,7 +57,7 @@ export default function EmployeesPage() {
     }
 
     load();
-  }, []);
+  }, [notify]);
 
   return (
     <div className="page-shell">
@@ -51,9 +76,9 @@ export default function EmployeesPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          ["Active staff", employees?.length ?? 0],
-          ["Departments", 8],
-          ["Open updates", 12],
+          ["Active staff", stats.activeStaff],
+          ["Departments", stats.departments],
+          ["Records loaded", stats.totalRecords],
         ].map(([label, value]) => (
           <div key={label} className="metric-card">
             <p className="text-sm font-bold text-slate-500">{label}</p>
@@ -81,6 +106,7 @@ export default function EmployeesPage() {
               .map((name) => name[0])
               .slice(0, 2)
               .join("");
+            const isActive = employee.status.toLowerCase() === "active";
 
             return (
               <Link
@@ -95,10 +121,13 @@ export default function EmployeesPage() {
                   <div>
                     <p className="font-black text-slate-950 group-hover:text-blue-700">{employee.fullName}</p>
                     <p className="mt-1 text-sm font-semibold text-slate-500">{employee.position}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{employee.department}</p>
                   </div>
                 </div>
                 <div className="mt-5 flex items-center justify-between text-sm">
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-700">Active</span>
+                  <span className={`rounded-full px-3 py-1 font-bold ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                    {employee.status}
+                  </span>
                   <span className="font-bold text-slate-400">View profile →</span>
                 </div>
               </Link>

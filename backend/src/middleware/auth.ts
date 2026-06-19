@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 export interface AuthPayload {
-  userId: number;
+  userId: string;
   role: string;
   name: string;
 }
@@ -40,4 +40,16 @@ export function requireRole(roles: string[]) {
 
     next();
   };
+}
+
+export function requireSuperAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'User not authenticated' });
+  }
+
+  if (req.user.role !== 'super-admin') {
+    return res.status(403).json({ message: 'Only super admin can perform this action' });
+  }
+
+  next();
 }
