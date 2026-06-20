@@ -21,11 +21,40 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("hr_token");
-    const user = localStorage.getItem("hr_user");
+    async function validateSavedSession() {
+      const token = localStorage.getItem("hr_token");
+      const user = localStorage.getItem("hr_user");
 
-    setIsAuthenticated(Boolean(token && user));
-    setCheckingAuth(false);
+      if (!token || !user) {
+        localStorage.removeItem("hr_token");
+        localStorage.removeItem("hr_user");
+        setIsAuthenticated(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          localStorage.removeItem("hr_token");
+          localStorage.removeItem("hr_user");
+          setIsAuthenticated(false);
+          return;
+        }
+
+        setIsAuthenticated(true);
+      } catch {
+        setError("Cannot connect to the backend. Make sure npm run dev is running.");
+        setIsAuthenticated(false);
+      } finally {
+        setCheckingAuth(false);
+      }
+    }
+
+    validateSavedSession();
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -34,7 +63,7 @@ export default function AuthGate({ children }: AuthGateProps) {
     setLoading(true);
 
     try {
-      const endpoint = "http://localhost:4000/api/auth/login";
+      const endpoint = "/api/auth/login";
 
       const response = await fetch(endpoint, {
         method: "POST",

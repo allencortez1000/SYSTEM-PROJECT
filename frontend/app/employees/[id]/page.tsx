@@ -36,7 +36,7 @@ export default function EmployeeDetail() {
     async function load() {
       try {
         const token = localStorage.getItem("hr_token");
-        const res = await fetch(`http://localhost:4000/api/employees/${id}`, {
+        const res = await fetch(`/api/employees/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const data = await res.json().catch(() => ({}));

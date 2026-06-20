@@ -49,7 +49,7 @@ export default function AttendancePage() {
     async function load() {
       setLoading(true);
       try {
-        const res = await fetch("http://localhost:4000/api/attendance");
+        const res = await fetch("/api/attendance");
         if (!res.ok) throw new Error("Failed to load attendance");
         const data = await res.json();
         setRecords(data.attendance || []);
@@ -72,7 +72,7 @@ export default function AttendancePage() {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:4000/api/attendance", {
+      const res = await fetch("/api/attendance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

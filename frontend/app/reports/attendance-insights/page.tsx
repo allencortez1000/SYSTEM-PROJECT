@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "/api";
 
 type AttendanceInsightsResponse = {
   metrics?: {

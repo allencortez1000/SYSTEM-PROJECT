@@ -33,7 +33,7 @@ export default function NewEmployeePage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("hr_token");
-      const res = await fetch("http://localhost:4000/api/employees", {
+      const res = await fetch("/api/employees", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

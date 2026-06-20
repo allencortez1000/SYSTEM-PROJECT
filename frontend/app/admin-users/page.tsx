@@ -22,7 +22,7 @@ type AdminUser = {
   departments: string[];
 };
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "/api";
 
 function roleLabel(role: string) {
   if (role === "super-admin") return "Super Admin";

@@ -2,6 +2,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../lib/supabase';
+import { AuthRequest, verifyToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -193,6 +194,10 @@ router.post('/login', async (req, res) => {
       error: (error as Error).message,
     });
   }
+});
+
+router.get('/me', verifyToken, (req: AuthRequest, res) => {
+  res.json({ user: req.user });
 });
 
 router.post('/signup', async (_, res) => {

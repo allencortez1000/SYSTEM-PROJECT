@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "/api";
 
 type Row = Record<string, unknown>;
 
@@ -36,9 +36,14 @@ export default function PayrollIndex() {
     async function load() {
       setLoading(true);
       try {
+        const token = localStorage.getItem("hr_token");
+        const fetchOptions = token
+          ? ({ headers: { Authorization: `Bearer ${token}` } } as const)
+          : undefined;
+
         const [runsRes, empRes] = await Promise.all([
-          fetch(`${API_BASE}/data/payroll-runs`),
-          fetch(`${API_BASE}/employees`),
+          fetch(`${API_BASE}/data/payroll-runs`, fetchOptions),
+          fetch(`${API_BASE}/employees`, fetchOptions),
         ]);
         if (runsRes.ok) {
           const runsData = await runsRes.json();

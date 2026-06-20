@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "/api";
 
 type Employee = {
   id: string;
@@ -61,7 +61,16 @@ export default function Home() {
           fetch(`${API_BASE}/attendance`, fetchOptions),
         ]);
 
-        if (!empRes.ok) throw new Error("Failed to load employees from Supabase");
+        if (!empRes.ok) {
+          const details = await empRes.json().catch(() => null);
+          if (empRes.status === 401) {
+            localStorage.removeItem("hr_token");
+            localStorage.removeItem("hr_user");
+            window.location.reload();
+            return;
+          }
+          throw new Error(details?.error || details?.message || "Failed to load employees from Supabase");
+        }
 
         const empData = await empRes.json();
         setEmployees(empData.employees || []);
@@ -169,7 +178,7 @@ export default function Home() {
       )}
       {error && (
         <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
-          {error}. Make sure the backend (npm run dev) is running on port 4000.
+          {error}
         </p>
       )}
 
