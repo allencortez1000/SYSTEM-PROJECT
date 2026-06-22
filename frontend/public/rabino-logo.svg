@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Rabino Home Builders Corporation logo</title>
+  <desc id="desc">Stylized houses with a green leaf and Rabino Home Builders Corporation text.</desc>
+  <rect width="1200" height="700" fill="white"/>
+  <g transform="translate(70,70)">
+    <path d="M40 220 L140 120 L420 160 L300 310 L180 310 Z" fill="#78d600"/>
+    <path d="M250 120 L365 0 L520 0 L610 90 L480 125 L420 160 Z" fill="#17106f"/>
+    <path d="M245 430 L475 170 L700 80 L915 260 L815 155 L265 430 Z" fill="#e6341b"/>
+    <rect x="792" y="145" width="48" height="122" fill="#e6341b"/>
+
+    <g fill="#e6341b">
+      <path d="M120 210 a26 26 0 0 1 52 0 v34 h-52z"/>
+      <rect x="120" y="244" width="24" height="24"/>
+      <rect x="148" y="244" width="24" height="24"/>
+      <rect x="144" y="210" width="4" height="58" fill="white"/>
+      <rect x="120" y="234" width="52" height="4" fill="white"/>
+    </g>
+
+    <g fill="#e6341b" transform="translate(250,-95) scale(0.8)">
+      <path d="M120 210 a26 26 0 0 1 52 0 v34 h-52z"/>
+      <rect x="120" y="244" width="24" height="24"/>
+      <rect x="148" y="244" width="24" height="24"/>
+      <rect x="144" y="210" width="4" height="58" fill="white"/>
+      <rect x="120" y="234" width="52" height="4" fill="white"/>
+    </g>
+
+    <g transform="translate(560,190)">
+      <path d="M100 0 a92 92 0 0 1 92 92 h-92z" fill="#17106f"/>
+      <path d="M100 0 a92 92 0 0 0 -92 92 h92z" fill="#17106f"/>
+      <rect x="12" y="100" width="82" height="82" fill="#17106f"/>
+      <rect x="106" y="100" width="82" height="82" fill="#17106f"/>
+      <rect x="96" y="0" width="8" height="182" fill="white"/>
+      <rect x="8" y="92" width="184" height="8" fill="white"/>
+    </g>
+
+    <path d="M1000 90 C1120 170 1170 260 1140 420 C1124 506 1084 560 982 590 C1064 590 1128 564 1162 504 C1216 412 1208 278 1136 184 C1098 134 1050 102 1000 90 Z" fill="#8bff00"/>
+    <path d="M1048 204 C1096 252 1128 318 1140 382 C1122 320 1088 258 1042 212 Z" fill="white"/>
+
+    <text x="210" y="560" font-family="Arial, Helvetica, sans-serif" font-size="120" letter-spacing="24" fill="#17106f">RABINO</text>
+    <text x="210" y="606" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="18" fill="#17106f">HOME BUILDERS CORPORATION</text>
+    <text x="205" y="662" font-family="Brush Script MT, Segoe Script, cursive" font-size="58" fill="#78d600">Turning Dreams into Possibilities.</text>
+  </g>
+</svg>

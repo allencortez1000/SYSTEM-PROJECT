@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "predev": "node -e \"const fs=require('fs'); for (const p of ['.next','node_modules/.cache','tsconfig.tsbuildinfo']) fs.rmSync(p,{recursive:true,force:true}); console.log('Frontend cache cleaned');\"",
     "dev": "next dev",
+    "prebuild": "node -e \"const fs=require('fs'); for (const p of ['.next','node_modules/.cache','tsconfig.tsbuildinfo']) fs.rmSync(p,{recursive:true,force:true}); console.log('Frontend build cache cleaned');\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

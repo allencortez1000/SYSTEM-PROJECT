@@ -14,18 +14,23 @@ router.post('/calculate', (req, res) => {
 });
 
 type AttendanceSummary = {
+  employeeId?: string;
   employeeName: string;
   startDate: string;
   endDate: string;
+  projectSite?: string;
   presentDays: number;
   remoteDays: number;
   leaveDays: number;
   absentDays: number;
   lateDays: number;
   paidDays: number;
+  basePaidDays?: number;
   regularHours: number;
   overtimeHours: number;
+  baseOvertimeHours?: number;
   totalRecords: number;
+  overrideApplied?: boolean;
 };
 
 type AttendanceRecord = {
@@ -34,13 +39,59 @@ type AttendanceRecord = {
   status: string | null;
   check_in?: string | null;
   check_out?: string | null;
+  worked_hours?: number | string | null;
+  overtime_hours?: number | string | null;
+  project_site?: string | null;
 };
+
+type PayrollOverrideRow = {
+  employee_id: string;
+  project_site: string;
+  period_start: string;
+  period_end: string;
+  paid_days_override?: number | string | null;
+  overtime_hours_override?: number | string | null;
+  remarks?: string | null;
+};
+
+function roundCurrency(value: number) {
+  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
+function workedHoursFromRecord(record: AttendanceRecord) {
+  if (record.worked_hours !== null && record.worked_hours !== undefined) {
+    const worked = Number(record.worked_hours);
+    return Number.isFinite(worked) ? worked : 0;
+  }
+
+  const parseTime = (value?: string | null) => {
+    if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
+    const [hours, minutes] = value.split(':').map(Number);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+
+  const checkIn = parseTime(record.check_in);
+  const checkOut = parseTime(record.check_out);
+  if (checkIn === null || checkOut === null || checkOut <= checkIn) return 0;
+  return roundCurrency((checkOut - checkIn) / 60);
+}
+
+function overtimeHoursFromRecord(record: AttendanceRecord) {
+  if (record.overtime_hours !== null && record.overtime_hours !== undefined) {
+    const overtime = Number(record.overtime_hours);
+    return Number.isFinite(overtime) ? overtime : 0;
+  }
+
+  return Math.max(0, roundCurrency(workedHoursFromRecord(record) - 8));
+}
 
 router.get('/attendance-summary', async (req, res) => {
   try {
     const employeeName = String(req.query.employeeName || '').trim();
     const startDate = String(req.query.startDate || '').trim();
     const endDate = String(req.query.endDate || '').trim();
+    const projectSite = String(req.query.projectSite || '').trim();
 
     if (!employeeName || !startDate || !endDate) {
       return res.status(400).json({
@@ -60,13 +111,19 @@ router.get('/attendance-summary', async (req, res) => {
     }
 
     const employee = employees[0] as { id: string; full_name?: string | null };
-    const { data: records, error: attendanceError } = await supabase
+    let attendanceQuery = supabase
       .from('attendance_records')
-      .select('id, attendance_date, status, check_in, check_out')
+      .select('id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
       .eq('employee_id', employee.id)
       .gte('attendance_date', startDate)
       .lte('attendance_date', endDate)
       .order('attendance_date', { ascending: true });
+
+    if (projectSite) {
+      attendanceQuery = attendanceQuery.eq('project_site', projectSite);
+    }
+
+    const { data: records, error: attendanceError } = await attendanceQuery;
 
     if (attendanceError) throw attendanceError;
 
@@ -75,12 +132,157 @@ router.get('/attendance-summary', async (req, res) => {
       employee.full_name || employeeName,
       startDate,
       endDate,
+      employee.id,
+      projectSite || undefined,
     );
 
-    res.json({ summary });
+    const { data: overrideRows, error: overrideError } = await supabase
+      .from('payroll_attendance_overrides')
+      .select('employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, remarks')
+      .eq('employee_id', employee.id)
+      .eq('project_site', projectSite || summary.projectSite || '')
+      .eq('period_start', startDate)
+      .eq('period_end', endDate)
+      .limit(1);
+
+    if (overrideError) throw overrideError;
+
+    const override = (overrideRows?.[0] || null) as PayrollOverrideRow | null;
+    const finalSummary = applyAttendanceOverride(summary, override);
+
+    res.json({ summary: finalSummary, override });
   } catch (error) {
     res.status(500).json({
       message: 'Failed to load attendance summary from Supabase',
+      error: (error as Error).message,
+    });
+  }
+});
+
+router.get('/project-sync', async (req, res) => {
+  try {
+    const projectSite = String(req.query.projectSite || '').trim();
+    const startDate = String(req.query.startDate || '').trim();
+    const endDate = String(req.query.endDate || '').trim();
+
+    if (!projectSite || !startDate || !endDate) {
+      return res.status(400).json({ message: 'projectSite, startDate, and endDate are required' });
+    }
+
+    const { data: assignments, error: assignmentsError } = await supabase
+      .from('employee_project_deployments')
+      .select('employee_id, project_sites!inner(name)')
+      .eq('is_active', true)
+      .eq('project_sites.name', projectSite);
+
+    if (assignmentsError) throw assignmentsError;
+
+    const employeeIds = Array.from(new Set((assignments || []).map((row: any) => String(row.employee_id)).filter(Boolean)));
+    if (employeeIds.length === 0) {
+      return res.json({ workers: [] });
+    }
+
+    const [employeesResult, positionsResult, attendanceResult, overridesResult] = await Promise.all([
+      supabase.from('employees').select('id, full_name, salary, position_id').in('id', employeeIds),
+      supabase.from('job_positions').select('id, title'),
+      supabase
+        .from('attendance_records')
+        .select('id, employee_id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
+        .in('employee_id', employeeIds)
+        .eq('project_site', projectSite)
+        .gte('attendance_date', startDate)
+        .lte('attendance_date', endDate)
+        .order('attendance_date', { ascending: true }),
+      supabase
+        .from('payroll_attendance_overrides')
+        .select('employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, remarks')
+        .in('employee_id', employeeIds)
+        .eq('project_site', projectSite)
+        .eq('period_start', startDate)
+        .eq('period_end', endDate),
+    ]);
+
+    if (employeesResult.error) throw employeesResult.error;
+    if (positionsResult.error) throw positionsResult.error;
+    if (attendanceResult.error) throw attendanceResult.error;
+    if (overridesResult.error) throw overridesResult.error;
+
+    const positionMap = new Map((positionsResult.data || []).map((row) => [String(row.id), String(row.title || 'Employee')]));
+    const attendanceByEmployee = new Map<string, AttendanceRecord[]>();
+    for (const record of (attendanceResult.data || []) as any[]) {
+      const employeeId = String(record.employee_id);
+      const current = attendanceByEmployee.get(employeeId) || [];
+      current.push(record as AttendanceRecord);
+      attendanceByEmployee.set(employeeId, current);
+    }
+
+    const overrideMap = new Map<string, PayrollOverrideRow>();
+    for (const row of (overridesResult.data || []) as PayrollOverrideRow[]) {
+      overrideMap.set(String(row.employee_id), row);
+    }
+
+    const workers = ((employeesResult.data || []) as any[])
+      .map((employee) => {
+        const baseSummary = summarizeAttendance(
+          attendanceByEmployee.get(String(employee.id)) || [],
+          String(employee.full_name || 'Unknown employee'),
+          startDate,
+          endDate,
+          String(employee.id),
+          projectSite,
+        );
+        const finalSummary = applyAttendanceOverride(baseSummary, overrideMap.get(String(employee.id)) || null);
+        const dailyRate = employee.salary ? roundCurrency(Number(employee.salary) / 26) : 600;
+        return {
+          employeeId: String(employee.id),
+          employeeName: String(employee.full_name || ''),
+          position: positionMap.get(String(employee.position_id || '')) || 'Employee',
+          dailyRate,
+          attendance: finalSummary,
+          remarks: overrideMap.get(String(employee.id))?.remarks || buildAttendanceRemarks(finalSummary) || '',
+        };
+      })
+      .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+
+    res.json({ workers });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to sync payroll workers from attendance',
+      error: (error as Error).message,
+    });
+  }
+});
+
+router.post('/attendance-overrides', async (req, res) => {
+  try {
+    const { employeeId, projectSite, startDate, endDate, paidDaysOverride, overtimeHoursOverride, remarks } = req.body;
+
+    if (!employeeId || !projectSite || !startDate || !endDate) {
+      return res.status(400).json({ message: 'employeeId, projectSite, startDate, and endDate are required' });
+    }
+
+    const { data, error } = await supabase
+      .from('payroll_attendance_overrides')
+      .upsert({
+        employee_id: employeeId,
+        project_site: projectSite,
+        period_start: startDate,
+        period_end: endDate,
+        paid_days_override: paidDaysOverride ?? null,
+        overtime_hours_override: overtimeHoursOverride ?? null,
+        remarks: remarks || null,
+      }, {
+        onConflict: 'employee_id,project_site,period_start,period_end',
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json({ override: data });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to save payroll attendance override',
       error: (error as Error).message,
     });
   }
@@ -239,11 +441,15 @@ function summarizeAttendance(
   employeeName: string,
   startDate: string,
   endDate: string,
+  employeeId?: string,
+  projectSite?: string,
 ): AttendanceSummary {
   const summary: AttendanceSummary = {
+    employeeId,
     employeeName,
     startDate,
     endDate,
+    projectSite,
     presentDays: 0,
     remoteDays: 0,
     leaveDays: 0,
@@ -263,14 +469,37 @@ function summarizeAttendance(
     if (status === 'leave') summary.leaveDays += 1;
     if (status === 'absent') summary.absentDays += 1;
     if (status === 'late') summary.lateDays += 1;
+    summary.overtimeHours += overtimeHoursFromRecord(record);
   }
 
-  // Payroll rule for now: present, remote, leave, and late days are paid days.
-  // Absent days are tracked but not counted as paid days.
   summary.paidDays = summary.presentDays + summary.remoteDays + summary.leaveDays + summary.lateDays;
-  summary.regularHours = summary.paidDays * 8;
+  summary.basePaidDays = summary.paidDays;
+  summary.baseOvertimeHours = roundCurrency(summary.overtimeHours);
+  summary.overtimeHours = roundCurrency(summary.overtimeHours);
+  summary.regularHours = roundCurrency(summary.paidDays * 8);
 
   return summary;
+}
+
+function applyAttendanceOverride(summary: AttendanceSummary, override: PayrollOverrideRow | null) {
+  if (!override) {
+    return summary;
+  }
+
+  const paidDays = override.paid_days_override === null || override.paid_days_override === undefined
+    ? summary.paidDays
+    : Number(override.paid_days_override);
+  const overtimeHours = override.overtime_hours_override === null || override.overtime_hours_override === undefined
+    ? summary.overtimeHours
+    : Number(override.overtime_hours_override);
+
+  return {
+    ...summary,
+    paidDays: Number.isFinite(paidDays) ? paidDays : summary.paidDays,
+    overtimeHours: Number.isFinite(overtimeHours) ? roundCurrency(overtimeHours) : summary.overtimeHours,
+    regularHours: roundCurrency((Number.isFinite(paidDays) ? paidDays : summary.paidDays) * 8),
+    overrideApplied: true,
+  };
 }
 
 function buildAttendanceRemarks(summary: unknown) {
@@ -294,10 +523,6 @@ function buildPayrollNotes(
   return [`Pay basis: ${payBasis}. Release schedule: ${schedule}.`, attendanceRemarks]
     .filter(Boolean)
     .join(' ');
-}
-
-function roundCurrency(value: number) {
-  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 }
 
 export default router;

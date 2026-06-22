@@ -1,13 +1,14 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNotification } from "../../components/notification";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
 
 type WorkerRow = {
   id: string;
+  employeeId?: string;
   supervisor: string;
   name: string;
   position: string;
@@ -18,6 +19,7 @@ type WorkerRow = {
   tax: number;
   additionalDeduction: number;
   remarks: string;
+  syncedFromAttendance?: boolean;
 };
 
 type Employee = {
@@ -25,6 +27,21 @@ type Employee = {
   fullName: string;
   position?: string;
   salary?: number;
+};
+
+type ProjectWorkerSync = {
+  employeeId: string;
+  employeeName: string;
+  position: string;
+  dailyRate: number;
+  attendance: {
+    paidDays: number;
+    overtimeHours: number;
+    startDate: string;
+    endDate: string;
+    overrideApplied?: boolean;
+  };
+  remarks?: string;
 };
 
 const API_BASE = "/api";
@@ -115,40 +132,66 @@ function todayLabel() {
   });
 }
 
-function currentWeekRange() {
+function currentWeekDates() {
   const now = new Date();
   const day = now.getDay();
   const monday = new Date(now);
   monday.setDate(now.getDate() - ((day + 6) % 7));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
+  return {
+    startDate: monday.toISOString().slice(0, 10),
+    endDate: sunday.toISOString().slice(0, 10),
+  };
+}
 
-  const format = (date: Date) =>
-    date.toLocaleDateString("en-PH", { month: "long", day: "2-digit", year: "numeric" });
+function currentWeekRange() {
+  const { startDate, endDate } = currentWeekDates();
+  const format = (value: string) =>
+    new Date(`${value}T00:00:00`).toLocaleDateString("en-PH", { month: "long", day: "2-digit", year: "numeric" });
 
-  return `${format(monday)} - ${format(sunday)}`;
+  return `${format(startDate)} - ${format(endDate)}`;
+}
+
+function formatCoveredPeriod(startDate: string, endDate: string) {
+  const format = (value: string) =>
+    new Date(`${value}T00:00:00`).toLocaleDateString("en-PH", { month: "long", day: "2-digit", year: "numeric" });
+  return `${format(startDate)} - ${format(endDate)}`;
 }
 
 const inputClass =
-  "relative z-0 w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:z-50 focus:min-w-[240px] focus:border-blue-400 focus:shadow-xl focus:ring-2 focus:ring-blue-100";
+  "relative z-0 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:z-50 focus:border-blue-400 focus:shadow-lg focus:ring-2 focus:ring-blue-100";
 
-const numberInputClass = `${inputClass} text-right tabular-nums focus:min-w-[120px]`;
+const numberInputClass = `${inputClass} text-right tabular-nums`;
 const readonlyMoneyClass = "px-2 py-2 text-right text-xs font-black tabular-nums text-slate-700";
+const toolButtonClass = "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700";
 
 export default function NewPayrollPage() {
-  const [isWorksheetOpen, setIsWorksheetOpen] = useState(true);
+  const defaultWeek = currentWeekDates();
+  const [isWorksheetOpen, setIsWorksheetOpen] = useState(false);
   const [payFrequency, setPayFrequency] = useState<PayFrequency>("weekly");
+  const [periodStart, setPeriodStart] = useState(defaultWeek.startDate);
+  const [periodEnd, setPeriodEnd] = useState(defaultWeek.endDate);
   const [coveredPeriod, setCoveredPeriod] = useState(currentWeekRange());
   const [payrollDate, setPayrollDate] = useState(todayLabel());
   const [projectName, setProjectName] = useState("Rabino Home Builders Corporation - Weekly Payroll");
+  const [selectedProject, setSelectedProject] = useState("Daan Pari");
+  const [projects, setProjects] = useState<string[]>(["Daan Pari", "Bagac", "Orion"]);
+  const tableSectionRef = useRef<HTMLDivElement | null>(null);
   const [preparedBy, setPreparedBy] = useState("Aubrey Rose N. Gomez");
   const [notedBy, setNotedBy] = useState("Juniffer Tagupa");
   const [approvedBy, setApprovedBy] = useState("Karla Cepeda");
   const [rows, setRows] = useState<WorkerRow[]>(() => [blankRow(), blankRow(), blankRow()]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [syncingAttendance, setSyncingAttendance] = useState(false);
+  const [savingOverrides, setSavingOverrides] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { notify } = useNotification();
+
+  useEffect(() => {
+    setCoveredPeriod(formatCoveredPeriod(periodStart, periodEnd));
+  }, [periodStart, periodEnd]);
 
   useEffect(() => {
     async function loadEmployees() {
@@ -157,13 +200,25 @@ export default function NewPayrollPage() {
 
       try {
         const token = localStorage.getItem("hr_token");
-        const response = await fetch(`${API_BASE}/employees`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const data = await response.json().catch(() => null);
+        const [employeesResponse, projectsResponse] = await Promise.all([
+          fetch(`${API_BASE}/employees`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
+          fetch(`${API_BASE}/attendance/projects`),
+        ]);
+        const data = await employeesResponse.json().catch(() => null);
+        const projectsData = await projectsResponse.json().catch(() => null);
 
-        if (!response.ok) {
+        if (!employeesResponse.ok) {
           throw new Error(data?.error || data?.message || "Failed to load employees");
+        }
+
+        if (projectsResponse.ok && Array.isArray(projectsData?.projects)) {
+          const loadedProjects = projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean);
+          if (loadedProjects.length > 0) {
+            setProjects(loadedProjects);
+            setSelectedProject((current) => (loadedProjects.includes(current) ? current : loadedProjects[0]));
+          }
         }
 
         setEmployees(data?.employees || []);
@@ -195,11 +250,15 @@ export default function NewPayrollPage() {
     );
   }, [payFrequency, rows]);
 
+  const filledRows = rows.filter((row) => row.name.trim()).length;
+  const syncedRows = rows.filter((row) => row.syncedFromAttendance).length;
+  const previewRows = rows.filter((row) => row.name.trim()).slice(0, 3);
+
   const stats = [
-    { label: "Workers", value: rows.filter((row) => row.name.trim()).length || rows.length, detail: "Rows in this payroll", tone: "bg-blue-50 text-blue-700" },
+    { label: "Workers", value: filledRows || rows.length, detail: "Rows in this payroll", tone: "bg-blue-50 text-blue-700" },
+    { label: "Attendance-linked", value: syncedRows, detail: "Rows synced from attendance", tone: "bg-cyan-50 text-cyan-700" },
     { label: "Gross salary", value: money(totals.totalSalary), detail: "Days + overtime pay", tone: "bg-emerald-50 text-emerald-700" },
-    { label: "Gov deductions", value: money(totals.sss + totals.pagIbig + totals.philHealth), detail: "SSS, Pag-IBIG, PhilHealth", tone: "bg-amber-50 text-amber-700" },
-    { label: "Net release", value: money(totals.netSalary), detail: "Total payable", tone: "bg-violet-50 text-violet-700" },
+    { label: "Net release", value: money(totals.netSalary), detail: "Total payable after deductions", tone: "bg-violet-50 text-violet-700" },
   ];
 
   function updateRow(id: string, patch: Partial<WorkerRow>) {
@@ -211,10 +270,101 @@ export default function NewPayrollPage() {
     const estimatedDailyRate = employee?.salary ? Math.round(Number(employee.salary) / 26) : undefined;
 
     updateRow(rowId, {
+      employeeId: employee?.id,
       name: employeeName,
       position: employee?.position || "Labor",
+      syncedFromAttendance: false,
       ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
     });
+  }
+
+  async function syncPayrollFromAttendance() {
+    setSyncingAttendance(true);
+    setError(null);
+
+    try {
+      const query = new URLSearchParams({
+        projectSite: selectedProject,
+        startDate: periodStart,
+        endDate: periodEnd,
+      });
+      const response = await fetch(`${API_BASE}/payroll/project-sync?${query.toString()}`);
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to sync payroll workers from attendance");
+      }
+
+      const workers = Array.isArray(data?.workers) ? (data.workers as ProjectWorkerSync[]) : [];
+      if (workers.length === 0) {
+        setRows([blankRow()]);
+        notify("No workers with active deployment found for this project and period");
+        return;
+      }
+
+      setRows(
+        workers.map((worker) => ({
+          id: crypto.randomUUID(),
+          employeeId: worker.employeeId,
+          supervisor: "",
+          name: worker.employeeName,
+          position: worker.position || "Labor",
+          dailyRate: worker.dailyRate || 600,
+          days: worker.attendance.paidDays || 0,
+          otHours: worker.attendance.overtimeHours || 0,
+          cashAdvance: 0,
+          tax: 0,
+          additionalDeduction: 0,
+          remarks: worker.remarks || "Synced from attendance",
+          syncedFromAttendance: true,
+        })),
+      );
+      setProjectName(`${selectedProject} Payroll`);
+      notify("Payroll rows synced from attendance");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSyncingAttendance(false);
+    }
+  }
+
+  async function applyPayrollEditsToAttendance() {
+    const syncedRows = rows.filter((row) => row.employeeId && row.name.trim());
+    if (syncedRows.length === 0) {
+      notify("No synced payroll rows to apply");
+      return;
+    }
+
+    setSavingOverrides(true);
+    setError(null);
+
+    try {
+      for (const row of syncedRows) {
+        const response = await fetch(`${API_BASE}/payroll/attendance-overrides`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: row.employeeId,
+            projectSite: selectedProject,
+            startDate: periodStart,
+            endDate: periodEnd,
+            paidDaysOverride: row.days,
+            overtimeHoursOverride: row.otHours,
+            remarks: row.remarks,
+          }),
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.message || `Failed to apply payroll override for ${row.name}`);
+        }
+      }
+
+      notify("Payroll edits synced back to attendance-linked overrides");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingOverrides(false);
+    }
   }
 
   function addRow() {
@@ -236,6 +386,10 @@ export default function NewPayrollPage() {
 
   function handlePrint() {
     window.print();
+  }
+
+  function jumpToTable() {
+    tableSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function exportExcel() {
@@ -366,14 +520,41 @@ export default function NewPayrollPage() {
 
   const worksheet = (
     <section className="payroll-print-sheet flex h-full min-h-0 flex-col bg-white print:block">
-      <div className="shrink-0 border-b border-slate-200 bg-white/95 p-2 backdrop-blur print:border-0 print:p-0">
-        <div className="grid gap-2 xl:grid-cols-[1fr_500px] xl:items-end">
-          <div className="grid min-w-0 gap-2 md:grid-cols-[1fr_1fr]">
+      <div className="shrink-0 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-3 backdrop-blur print:border-0 print:bg-white print:p-0">
+        <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_560px] 2xl:items-start">
+          <div className="space-y-3">
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/90 p-4 shadow-sm">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <p className="eyebrow">Payroll sheet</p>
+                  <h3 className="mt-2 break-words text-2xl font-black text-slate-950">{selectedProject} payroll workspace</h3>
+                  <p className="mt-2 max-w-3xl text-sm text-slate-500">
+                    Review project workers, payroll dates, and attendance-linked values before editing the table below.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Covered period</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{coveredPeriod}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Rows ready</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{filledRows || rows.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Attendance sync</p>
+                    <p className="mt-1 text-sm font-black text-slate-950">{syncedRows} linked</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid min-w-0 gap-3 md:grid-cols-[1fr_1fr]">
             <label className="min-w-0">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 print:text-slate-700">Payroll covered</span>
               <input
                 value={coveredPeriod}
-                onChange={(event) => setCoveredPeriod(event.target.value)}
+                readOnly
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-black tracking-tight text-slate-950 print:border-0 print:px-0"
               />
             </label>
@@ -385,10 +566,23 @@ export default function NewPayrollPage() {
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-slate-600 print:border-0 print:bg-white print:px-0"
               />
             </label>
+            </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="block rounded-lg border border-slate-100 bg-slate-50 p-2">
+          <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project location</span>
+              <select
+                value={selectedProject}
+                onChange={(event) => setSelectedProject(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
+              >
+                {projects.map((project) => (
+                  <option key={project} value={project}>{project}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Payroll date</span>
               <input
                 value={payrollDate}
@@ -396,7 +590,7 @@ export default function NewPayrollPage() {
                 className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
               />
             </label>
-            <label className="block rounded-lg border border-slate-100 bg-slate-50 p-2">
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Deduction schedule</span>
               <select
                 value={payFrequency}
@@ -408,19 +602,157 @@ export default function NewPayrollPage() {
                 ))}
               </select>
             </label>
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Period start</span>
+              <input
+                type="date"
+                value={periodStart}
+                onChange={(event) => setPeriodStart(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
+              />
+            </label>
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Period end</span>
+              <input
+                type="date"
+                value={periodEnd}
+                onChange={(event) => setPeriodEnd(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
+              />
+            </label>
+            <div className="flex items-end">
+              <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncingAttendance}>
+                {syncingAttendance ? "Syncing..." : "Sync from attendance"}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-black text-slate-600 print:hidden">
-          <span>Workers: {rows.filter((row) => row.name.trim()).length || rows.length}</span>
-          <span>Gross: {money(totals.totalSalary)}</span>
-          <span>Gov deductions: {money(totals.sss + totals.pagIbig + totals.philHealth)}</span>
-          <span className="text-emerald-700">Net release: {money(totals.netSalary)}</span>
-          <span className="font-semibold text-slate-400">{frequencyConfig[payFrequency].description}</span>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 print:hidden">
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{selectedProject}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Current payroll location</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Workers</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{filledRows || rows.length}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Editable payroll rows</p>
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Gov deductions</p>
+            <p className="mt-1 text-sm font-black text-slate-950">{money(totals.sss + totals.pagIbig + totals.philHealth)}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{frequencyConfig[payFrequency].description}</p>
+          </div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net release</p>
+            <p className="mt-1 text-sm font-black text-emerald-700">{money(totals.netSalary)}</p>
+            <p className="mt-1 text-xs font-semibold text-emerald-600">Ready for payroll release</p>
+          </div>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto print:overflow-visible">
+      <div ref={tableSectionRef} className="min-h-0 flex-1 overflow-auto print:overflow-visible">
+          <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Payroll table</p>
+              <p className="mt-1 text-sm font-semibold text-slate-600">This is the full editable payroll table. Scroll sideways if needed for all columns.</p>
+            </div>
+            <button onClick={addRow} type="button" className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100">Add row</button>
+          </div>
+
+          <div className="space-y-4 print:hidden xl:hidden">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="font-black">Mobile payroll editor</p>
+              <p className="mt-1">Use these worker cards to edit payroll on smaller screens. Open the wide table on a larger screen if you need the spreadsheet view.</p>
+            </div>
+
+            {rows.map((row, index) => {
+              const computed = computeRow(row, payFrequency);
+              return (
+                <article key={row.id} className={`rounded-[1.5rem] border p-4 shadow-sm ${row.syncedFromAttendance ? "border-cyan-100 bg-cyan-50/40" : "border-slate-100 bg-white"}`}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
+                        {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                      </div>
+                      <p className="mt-2 text-lg font-black text-slate-950">{row.name || "New worker row"}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => duplicateRow(row)} className={toolButtonClass}>Copy</button>
+                      <button type="button" onClick={() => removeRow(row.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100">Remove</button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Supervisor / lead</span>
+                      <input value={row.supervisor} onChange={(event) => updateRow(row.id, { supervisor: event.target.value })} className={`${inputClass} mt-1`} placeholder="Lead person" />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Worker name</span>
+                      <input list="employee-options" value={row.name} onChange={(event) => selectEmployee(row.id, event.target.value)} className={`${inputClass} mt-1`} placeholder="Worker name" />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Position</span>
+                      <input value={row.position} onChange={(event) => updateRow(row.id, { position: event.target.value })} className={`${inputClass} mt-1`} />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Daily rate</span>
+                      <input type="number" value={row.dailyRate} onChange={(event) => updateRow(row.id, { dailyRate: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">No. of days</span>
+                      <input type="number" step="0.1" value={row.days} onChange={(event) => updateRow(row.id, { days: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
+                      <input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cash advance</span>
+                      <input type="number" value={row.cashAdvance} onChange={(event) => updateRow(row.id, { cashAdvance: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Tax</span>
+                      <input type="number" value={row.tax} onChange={(event) => updateRow(row.id, { tax: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Additional deduction</span>
+                      <input type="number" value={row.additionalDeduction} onChange={(event) => updateRow(row.id, { additionalDeduction: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block sm:col-span-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Remarks</span>
+                      <input value={row.remarks} onChange={(event) => updateRow(row.id, { remarks: event.target.value })} className={`${inputClass} mt-1`} placeholder="Notes / balance" />
+                    </label>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{money(computed.amount)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{money(computed.otPay)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p>
+                      <p className="mt-1 text-sm font-black text-rose-700">{money(computed.totalDeduction)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
+                      <p className="mt-1 text-sm font-black text-emerald-700">{money(computed.netSalary)}</p>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden xl:block">
           <table className="payroll-print-table min-w-[1680px] border-collapse text-left text-sm print:min-w-0 print:text-[7px]">
             <thead className="sticky top-0 z-30 print:static">
               <tr className="bg-slate-950 text-white">
@@ -451,11 +783,14 @@ export default function NewPayrollPage() {
               {rows.map((row, index) => {
                 const computed = computeRow(row, payFrequency);
                 return (
-                  <tr key={row.id} className="border-b border-slate-100 align-top hover:bg-slate-50/80">
+                  <tr key={row.id} className={`border-b border-slate-100 align-top hover:bg-slate-50/80 ${row.syncedFromAttendance ? "bg-cyan-50/30" : "bg-white"}`}>
                     <td className="sticky left-0 z-20 bg-white px-2 py-2 text-center text-xs font-black text-slate-400">{index + 1}</td>
                     <td className="px-2 py-2"><input value={row.supervisor} onChange={(event) => updateRow(row.id, { supervisor: event.target.value })} className={inputClass} placeholder="Lead person" /></td>
-                    <td className="sticky left-12 z-20 bg-white px-2 py-2">
-                      <input list="employee-options" value={row.name} onChange={(event) => selectEmployee(row.id, event.target.value)} className={inputClass} placeholder="Worker name" />
+                    <td className={`sticky left-12 z-20 px-2 py-2 ${row.syncedFromAttendance ? "bg-cyan-50/30" : "bg-white"}`}>
+                      <div className="space-y-1">
+                        <input list="employee-options" value={row.name} onChange={(event) => selectEmployee(row.id, event.target.value)} className={inputClass} placeholder="Worker name" />
+                        {row.syncedFromAttendance && <span className="inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                      </div>
                     </td>
                     <td className="px-2 py-2"><input value={row.position} onChange={(event) => updateRow(row.id, { position: event.target.value })} className={inputClass} /></td>
                     <td className="px-2 py-2"><input type="number" value={row.dailyRate} onChange={(event) => updateRow(row.id, { dailyRate: numberValue(event.target.value) })} className={numberInputClass} /></td>
@@ -475,9 +810,9 @@ export default function NewPayrollPage() {
                     <td className="px-2 py-2"><div className="h-8 rounded-lg border border-dashed border-slate-300 bg-slate-50" /></td>
                     <td className="px-2 py-2"><input value={row.remarks} onChange={(event) => updateRow(row.id, { remarks: event.target.value })} className={inputClass} placeholder="Notes / balance" /></td>
                     <td className="px-2 py-2 print:hidden">
-                      <div className="flex gap-1">
-                        <button type="button" onClick={() => duplicateRow(row)} className="rounded-lg bg-slate-100 px-2 py-1.5 text-[11px] font-black text-slate-700">Copy</button>
-                        <button type="button" onClick={() => removeRow(row.id)} className="rounded-lg bg-red-50 px-2 py-1.5 text-[11px] font-black text-red-700">Remove</button>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button type="button" onClick={() => duplicateRow(row)} className={toolButtonClass}>Copy</button>
+                        <button type="button" onClick={() => removeRow(row.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100">Remove</button>
                       </div>
                     </td>
                   </tr>
@@ -503,6 +838,7 @@ export default function NewPayrollPage() {
               </tr>
             </tfoot>
           </table>
+          </div>
       </div>
 
       <datalist id="employee-options">
@@ -534,7 +870,7 @@ export default function NewPayrollPage() {
   return (
     <div className="page-shell print:bg-white">
       <section className="hero-panel print:hidden">
-        <div className="grid min-w-0 gap-8 xl:grid-cols-[1.25fr_0.75fr] xl:items-center">
+        <div className="grid min-w-0 gap-8 2xl:grid-cols-[1.25fr_0.75fr] 2xl:items-center">
           <div className="min-w-0">
             <p className="eyebrow">Payroll calculation</p>
             <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -544,28 +880,40 @@ export default function NewPayrollPage() {
               SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Open payroll worksheet</button>
+              <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
+              <button onClick={syncPayrollFromAttendance} className="secondary-button" type="button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+              <button onClick={applyPayrollEditsToAttendance} className="secondary-button" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
               <button onClick={addRow} className="secondary-button" type="button">Add worker row</button>
               <Link href="/payroll" className="secondary-button">Back to payroll center</Link>
             </div>
           </div>
 
-          <div className="min-w-0 rounded-[1.75rem] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-900/20">
+          <div className="min-w-0 rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white shadow-2xl shadow-slate-900/20">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-bold text-slate-300">Net salary for release</p>
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">Live</span>
             </div>
             <p className="mt-5 break-words text-4xl font-black sm:text-5xl">{money(totals.netSalary)}</p>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Deduction schedule: {frequencyConfig[payFrequency].label}. Employee records loaded: {loadingEmployees ? "..." : employees.length}.
+              Project: {selectedProject}. Deduction schedule: {frequencyConfig[payFrequency].label}. Employee records loaded: {loadingEmployees ? "..." : employees.length}.
             </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Attendance sync</p>
+                <p className="mt-1 text-lg font-black text-white">{syncedRows} linked rows</p>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Gross payroll</p>
+                <p className="mt-1 text-lg font-black text-white">{money(totals.totalSalary)}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {error && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700 print:hidden">{error}</p>}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 print:hidden">
+      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4 print:hidden">
         {stats.map((stat) => (
           <article key={stat.label} className="metric-card">
             <div className="flex min-w-0 items-start justify-between gap-4">
@@ -581,17 +929,70 @@ export default function NewPayrollPage() {
       </section>
 
       <section className="section-card print:hidden">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <div>
             <p className="eyebrow">Worksheet ready</p>
-            <h3 className="mt-2 text-2xl font-black text-slate-950">Open the table workspace to edit payroll</h3>
+            <h3 className="mt-2 break-words text-2xl font-black text-slate-950">Review the payroll first, then open the editor</h3>
             <p className="mt-2 text-sm text-slate-500">
-              The table is separated into a popup-style workspace so the wide Excel columns are easier to navigate.
+              Keep the page clean for review, then open the popup workspace when you need to edit the full payroll table.
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Open table</button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap 2xl:justify-end">
+            <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Edit table</button>
+            <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+            <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
             <button onClick={exportExcel} type="button" className="secondary-button">Export Excel</button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+          <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50/80 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-950">Payroll row preview</p>
+                <p className="mt-1 text-sm text-slate-500">A quick view of the current payroll before opening the full editor.</p>
+              </div>
+              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{filledRows || rows.length} row(s)</span>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {previewRows.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-500">
+                  No named payroll rows yet. Sync from attendance or add worker rows, then open the editor.
+                </div>
+              ) : (
+                previewRows.map((row) => {
+                  const computed = computeRow(row, payFrequency);
+                  return (
+                    <div key={row.id} className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-base font-black text-slate-950">{row.name}</p>
+                            {row.syncedFromAttendance && <span className="inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                          </div>
+                          <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"} · {row.days} day(s) · {row.otHours} OT hour(s)</p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Net salary</p>
+                          <p className="mt-1 text-lg font-black text-emerald-700">{money(computed.netSalary)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <p className="text-sm font-black text-slate-950">Editor actions</p>
+            <p className="mt-1 text-sm text-slate-500">Open the table popup when you need full row-by-row editing.</p>
+            <div className="mt-4 grid gap-3">
+              <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button w-full">Edit payroll table</button>
+              <button onClick={addRow} type="button" className="secondary-button w-full">Add worker row</button>
+              <button onClick={handlePrint} type="button" className="secondary-button w-full">Print payroll</button>
+            </div>
           </div>
         </div>
       </section>
@@ -667,12 +1068,15 @@ export default function NewPayrollPage() {
             <div className="flex shrink-0 flex-col gap-2 border-b border-slate-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between print:hidden">
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Payroll worksheet</p>
-                <h3 className="truncate text-base font-black text-slate-950">Excel-like table editor</h3>
+                <h3 className="break-words pr-2 text-base font-black text-slate-950">Excel-like table editor</h3>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <button onClick={addRow} type="button" className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-black text-white">Add row</button>
-                <button onClick={exportExcel} type="button" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">Export Excel</button>
-                <button onClick={handlePrint} type="button" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">Print</button>
+                <button onClick={jumpToTable} type="button" className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700">Go to table</button>
+                <button onClick={syncPayrollFromAttendance} type="button" className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm">{syncingAttendance ? "Syncing..." : "Sync attendance"}</button>
+                <button onClick={applyPayrollEditsToAttendance} type="button" className={toolButtonClass}>{savingOverrides ? "Applying..." : "Apply to attendance"}</button>
+                <button onClick={addRow} type="button" className={toolButtonClass}>Add row</button>
+                <button onClick={exportExcel} type="button" className={toolButtonClass}>Export Excel</button>
+                <button onClick={handlePrint} type="button" className={toolButtonClass}>Print</button>
                 <button onClick={clearPayroll} type="button" className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-black text-red-700">Reset</button>
                 <button onClick={() => setIsWorksheetOpen(false)} type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700">Close</button>
               </div>

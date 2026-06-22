@@ -118,9 +118,21 @@ export default function AuthGate({ children }: AuthGateProps) {
         <section className="relative z-10 grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 shadow-[0_30px_100px_rgba(15,23,42,0.16)] backdrop-blur-xl lg:grid-cols-[1fr_0.9fr]">
           <div className="hidden min-h-[620px] bg-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-300">
-                Rabino Home Builders Corporation
-              </p>
+              <div className="flex items-center gap-4">
+                <img
+                  src="/rabino-logo.svg"
+                  alt="Rabino Home Builders Corporation logo"
+                  className="h-20 w-20 rounded-[1.5rem] bg-white object-contain p-2 shadow-2xl shadow-black/30"
+                />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-sky-300">
+                    Rabino Home Builders Corporation
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-300">
+                    Turning dreams into possibilities.
+                  </p>
+                </div>
+              </div>
               <h1 className="mt-6 max-w-xl text-5xl font-black tracking-tight">
                 Secure access to your Philippine payroll system.
               </h1>

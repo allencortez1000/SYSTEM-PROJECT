@@ -9,7 +9,7 @@
   "scripts": {
     "predev": "npm run clean:dev",
     "dev": "concurrently \"npm --workspace frontend run dev\" \"npm --workspace backend run dev\"",
-    "clean:dev": "node -e \"const fs=require('fs'); for (const p of ['frontend/.next','frontend/node_modules/.cache']) fs.rmSync(p,{recursive:true,force:true}); console.log('Next.js dev cache cleaned');\"",
+    "clean:dev": "node -e \"const fs=require('fs'); for (const p of ['frontend/.next','frontend/node_modules/.cache','frontend/tsconfig.tsbuildinfo']) fs.rmSync(p,{recursive:true,force:true}); console.log('Next.js dev cache cleaned');\"",
     "predev:frontend": "npm run clean:dev",
     "dev:frontend": "npm --workspace frontend run dev",
     "dev:backend": "npm --workspace backend run dev",

@@ -6,6 +6,11 @@ import AuthGate from "./components/auth-gate";
 export const metadata: Metadata = {
   title: "Rabino Home Builders Corporation",
   description: "Enterprise-grade HR, payroll, attendance, and compliance management platform.",
+  icons: {
+    icon: "/rabino-logo.svg",
+    shortcut: "/rabino-logo.svg",
+    apple: "/rabino-logo.svg",
+  },
 };
 
 export default function RootLayout({

@@ -70,9 +70,18 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
           <div className="relative z-10 flex min-h-[calc(100vh-3rem)] flex-col">
             <Link href="/" className="group rounded-[1.75rem] border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur">
-              <p className="text-xs font-bold uppercase tracking-[0.32em] text-sky-200">PeopleOps</p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight">HR Command Center</h2>
-              <p className="mt-2 text-sm text-slate-300">Payroll, talent, attendance, and compliance in one place.</p>
+              <div className="flex items-center gap-3">
+                <img
+                  src="/rabino-logo.svg"
+                  alt="Rabino Home Builders Corporation logo"
+                  className="h-14 w-14 rounded-2xl bg-white object-contain p-1.5 shadow-lg"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.32em] text-sky-200">Rabino Home Builders</p>
+                  <h2 className="mt-1 text-xl font-black tracking-tight">HR Command Center</h2>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-slate-300">Payroll, talent, attendance, and compliance in one place.</p>
             </Link>
 
             <nav className="mt-7 space-y-1.5">
@@ -118,37 +127,44 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         <main className="min-w-0">
           <header className="sticky top-0 z-30 border-b border-white/60 bg-white/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <p className="eyebrow">Welcome back</p>
-                <h1 className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950">
-                  Rabino Home Builders Corporation
-                </h1>
+              <div className="flex min-w-0 items-center gap-3">
+                <img
+                  src="/rabino-logo.svg"
+                  alt="Rabino Home Builders Corporation logo"
+                  className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
+                />
+                <div className="min-w-0">
+                  <p className="eyebrow">Welcome back</p>
+                  <h1 className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950">
+                    Rabino Home Builders Corporation
+                  </h1>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative min-w-0">
+              <div className="grid w-full gap-3 lg:w-auto lg:grid-cols-[minmax(320px,420px)_auto_auto_auto] lg:items-center">
+                <div className="relative min-w-0 lg:min-w-[320px] xl:min-w-[380px]">
                   <input
                     placeholder="Search people, payroll, reports..."
-                    className="w-full min-w-0 rounded-full border border-slate-200 bg-white/90 px-5 py-3 pr-11 text-sm text-slate-700 shadow-sm sm:min-w-[280px]"
+                    className="w-full rounded-full border border-slate-200 bg-white/90 px-5 py-3 pr-11 text-sm text-slate-700 shadow-sm"
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">⌕</span>
                 </div>
 
                 <button
                   type="button"
-                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:text-blue-700"
+                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center self-start rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:text-blue-700 lg:self-auto"
                   aria-label="Notifications"
                 >
                   🔔
                 </button>
 
-                <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white py-1.5 pl-2 pr-4 shadow-sm">
+                <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-white py-1.5 pl-2 pr-4 shadow-sm">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 text-xs font-black text-white">
                     AD
                   </div>
-                  <div className="hidden sm:block">
-                    <p className="text-xs font-bold text-slate-950">{sessionUser?.name || "User"}</p>
-                    <p className="text-[11px] text-slate-500">{labelFromRole(sessionUser?.role)}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-slate-950">{sessionUser?.name || "User"}</p>
+                    <p className="truncate text-[11px] text-slate-500">{labelFromRole(sessionUser?.role)}</p>
                   </div>
                 </div>
 
