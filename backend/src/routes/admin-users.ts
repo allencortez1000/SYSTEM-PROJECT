@@ -5,7 +5,25 @@ import { verifyToken, requireSuperAdmin } from '../middleware/auth';
 
 const router = Router();
 
-router.use(verifyToken, requireSuperAdmin);
+// All admin-user routes require authentication. Fine-grained authorization is applied per-route.
+router.use(verifyToken);
+
+async function userHasAdminViewAccess(req: any) {
+  // super-admins always have view access
+  if (!req.user) return false;
+  if (req.user.role === 'super-admin') return true;
+
+  // sub-admins may have admin view permission stored in app_users.permissions
+  if (req.user.role === 'sub-admin') {
+    const { data, error } = await supabase.from('app_users').select('permissions').eq('id', req.user.userId).limit(1);
+    if (error) return false;
+    const row = data && data[0];
+    const permissions = Array.isArray(row?.permissions) ? row.permissions.map((p: unknown) => String(p)) : [];
+    return permissions.includes('admin_access');
+  }
+
+  return false;
+}
 
 type AppUserRow = {
   id: string;
@@ -50,8 +68,12 @@ async function getDefaultOrganizationId() {
   return newOrg.id as string;
 }
 
-router.get('/departments', async (_, res) => {
+router.get('/departments', async (req, res) => {
   try {
+    // allow if user can view admin lists
+    const allowed = await userHasAdminViewAccess(req);
+    if (!allowed) return res.status(403).json({ message: 'Insufficient permissions' });
+
     const { data, error } = await supabase
       .from('departments')
       .select('id, name')
@@ -68,8 +90,11 @@ router.get('/departments', async (_, res) => {
   }
 });
 
-router.get('/', async (_, res) => {
+router.get('/', async (req, res) => {
   try {
+    const allowed = await userHasAdminViewAccess(req);
+    if (!allowed) return res.status(403).json({ message: 'Insufficient permissions' });
+
     const [usersResult, linksResult, departmentsResult] = await Promise.all([
       supabase
         .from('app_users')
@@ -118,7 +143,7 @@ router.get('/', async (_, res) => {
   }
 });
 
-router.post('/department-head', async (req, res) => {
+router.post('/department-head', requireSuperAdmin, async (req, res) => {
   try {
     const { fullName, username, email, password, departmentId, departmentIds } = req.body;
 
@@ -217,7 +242,85 @@ router.post('/department-head', async (req, res) => {
   }
 });
 
-router.patch('/:id/departments', async (req, res) => {
+router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
+  try {
+    const { fullName, username, email, password, permissions } = req.body;
+
+    const cleanedFullName = String(fullName || '').trim();
+    const cleanedUsername = String(username || '').trim();
+    const cleanedEmail = String(email || '').trim().toLowerCase();
+    const cleanedPassword = String(password || '');
+
+    const cleanedPermissions = Array.isArray(permissions)
+      ? permissions.map((value: unknown) => String(value).trim()).filter(Boolean)
+      : [];
+
+    if (!cleanedFullName || !cleanedUsername || !cleanedEmail || !cleanedPassword || cleanedPermissions.length === 0) {
+      return res.status(400).json({
+        message: 'fullName, username, email, password, and at least one permission are required',
+      });
+    }
+
+    if (cleanedPassword.length < 4) {
+      return res.status(400).json({ message: 'Password must be at least 4 characters' });
+    }
+
+    const [existingUsername, existingEmail] = await Promise.all([
+      supabase.from('app_users').select('id').eq('username', cleanedUsername).limit(1),
+      supabase.from('app_users').select('id').eq('email', cleanedEmail).limit(1),
+    ]);
+
+    if (existingUsername.error) throw existingUsername.error;
+    if (existingEmail.error) throw existingEmail.error;
+
+    if ((existingUsername.data || []).length > 0) {
+      return res.status(409).json({ message: 'Username already exists' });
+    }
+
+    if ((existingEmail.data || []).length > 0) {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+
+    const organizationId = await getDefaultOrganizationId();
+    const passwordHash = bcrypt.hashSync(cleanedPassword, 10);
+
+    const { data: createdUser, error: createUserError } = await supabase
+      .from('app_users')
+      .insert({
+        organization_id: organizationId,
+        full_name: cleanedFullName,
+        email: cleanedEmail,
+        username: cleanedUsername,
+        password_hash: passwordHash,
+        role: 'sub-admin',
+        is_active: true,
+        permissions: cleanedPermissions,
+      })
+      .select('id, username, email, role, full_name, is_active')
+      .single();
+
+    if (createUserError) throw createUserError;
+
+    res.status(201).json({
+      user: {
+        id: (createdUser as AppUserRow).id,
+        username: (createdUser as AppUserRow).username,
+        email: (createdUser as AppUserRow).email,
+        role: (createdUser as AppUserRow).role,
+        fullName: (createdUser as AppUserRow).full_name,
+        isActive: (createdUser as AppUserRow).is_active,
+        permissions: cleanedPermissions,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to create sub-admin',
+      error: (error as Error).message,
+    });
+  }
+});
+
+router.patch('/:id/departments', requireSuperAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
     const departmentIds = Array.isArray(req.body?.departmentIds)
@@ -274,7 +377,7 @@ router.patch('/:id/departments', async (req, res) => {
   }
 });
 
-router.patch('/:id/active', async (req, res) => {
+router.patch('/:id/active', requireSuperAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
     const isActive = Boolean(req.body?.isActive);
