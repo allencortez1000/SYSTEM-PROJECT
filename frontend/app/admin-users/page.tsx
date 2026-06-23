@@ -36,6 +36,10 @@ type Employee = {
   hasSss?: boolean;
   hasPagIbig?: boolean;
   hasPhilHealth?: boolean;
+  sssAmount?: number | null;
+  pagIbigAmount?: number | null;
+  philHealthAmount?: number | null;
+  sssLoanAmount?: number | null;
 };
 
 type ProjectSite = {
@@ -91,6 +95,10 @@ export default function AdminUsersPage() {
   const [workerHasSss, setWorkerHasSss] = useState(true);
   const [workerHasPagIbig, setWorkerHasPagIbig] = useState(true);
   const [workerHasPhilHealth, setWorkerHasPhilHealth] = useState(true);
+  const [workerSssAmount, setWorkerSssAmount] = useState("");
+  const [workerPagIbigAmount, setWorkerPagIbigAmount] = useState("");
+  const [workerPhilHealthAmount, setWorkerPhilHealthAmount] = useState("");
+  const [workerSssLoanAmount, setWorkerSssLoanAmount] = useState("");
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
 
   // Department assignment state
@@ -254,6 +262,10 @@ export default function AdminUsersPage() {
         hasSss: workerHasSss,
         hasPagIbig: workerHasPagIbig,
         hasPhilHealth: workerHasPhilHealth,
+        sssAmount: workerSssAmount === "" ? null : Number(workerSssAmount),
+        pagIbigAmount: workerPagIbigAmount === "" ? null : Number(workerPagIbigAmount),
+        philHealthAmount: workerPhilHealthAmount === "" ? null : Number(workerPhilHealthAmount),
+        sssLoanAmount: workerSssLoanAmount === "" ? null : Number(workerSssLoanAmount),
       };
 
       const response = editingEmployeeId
@@ -310,6 +322,10 @@ export default function AdminUsersPage() {
       setWorkerHasSss(true);
       setWorkerHasPagIbig(true);
       setWorkerHasPhilHealth(true);
+      setWorkerSssAmount("");
+      setWorkerPagIbigAmount("");
+      setWorkerPhilHealthAmount("");
+      setWorkerSssLoanAmount("");
       setWorkerStatus("Active");
 
       await loadData();
@@ -334,6 +350,10 @@ export default function AdminUsersPage() {
     setWorkerHasSss(employee.hasSss ?? true);
     setWorkerHasPagIbig(employee.hasPagIbig ?? true);
     setWorkerHasPhilHealth(employee.hasPhilHealth ?? true);
+    setWorkerSssAmount(employee.sssAmount == null ? "" : String(employee.sssAmount));
+    setWorkerPagIbigAmount(employee.pagIbigAmount == null ? "" : String(employee.pagIbigAmount));
+    setWorkerPhilHealthAmount(employee.philHealthAmount == null ? "" : String(employee.philHealthAmount));
+    setWorkerSssLoanAmount(employee.sssLoanAmount == null ? "" : String(employee.sssLoanAmount));
     setWorkerStatus("Active");
     setWorkerProjectSite(workerProjectSite || projectSites[0]?.name || "");
     window.scrollTo({ top: 0, behavior: "smooth" });

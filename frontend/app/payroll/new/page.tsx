@@ -15,6 +15,11 @@ type WorkerRow = {
   dailyRate: number;
   days: number;
   otHours: number;
+  holidayPay: number;
+  sssManual: number | null;
+  pagIbigManual: number | null;
+  philHealthManual: number | null;
+  sssLoan: number;
   cashAdvance: number;
   tax: number;
   additionalDeduction: number;
@@ -25,6 +30,7 @@ type WorkerRow = {
   payrollSnapshot?: {
     salaryAmount?: number | null;
     otPay?: number | null;
+    holidayPayAmount?: number | null;
     philHealthAmount?: number | null;
     sssAmount?: number | null;
     pagIbigAmount?: number | null;
@@ -47,6 +53,10 @@ type Employee = {
   hasSss?: boolean;
   hasPagIbig?: boolean;
   hasPhilHealth?: boolean;
+  sssAmount?: number | null;
+  pagIbigAmount?: number | null;
+  philHealthAmount?: number | null;
+  sssLoanAmount?: number | null;
 };
 
 type ProjectWorkerSync = {
@@ -64,6 +74,7 @@ type ProjectWorkerSync = {
   payrollSnapshot?: {
     salaryAmount?: number | null;
     otPay?: number | null;
+    holidayPayAmount?: number | null;
     philHealthAmount?: number | null;
     sssAmount?: number | null;
     pagIbigAmount?: number | null;
@@ -117,6 +128,11 @@ function blankRow(): WorkerRow {
     dailyRate: 600,
     days: 6,
     otHours: 0,
+    holidayPay: 0,
+    sssManual: null,
+    pagIbigManual: null,
+    philHealthManual: null,
+    sssLoan: 0,
     cashAdvance: 0,
     tax: 0,
     additionalDeduction: 0,
@@ -127,9 +143,13 @@ function blankRow(): WorkerRow {
   };
 }
 
-function computeStatutoryDeductions(periodGross: number, frequency: PayFrequency, deductionsEnabled?: { sss?: boolean; pagIbig?: boolean; philHealth?: boolean }) {
+function computeStatutoryDeductions(
+  governmentContributionBasis: number,
+  frequency: PayFrequency,
+  deductionsEnabled?: { sss?: boolean; pagIbig?: boolean; philHealth?: boolean },
+) {
   const periodsPerMonth = frequencyConfig[frequency].periodsPerMonth;
-  const estimatedMonthlyCompensation = Math.max(0, periodGross * periodsPerMonth);
+  const estimatedMonthlyCompensation = Math.max(0, governmentContributionBasis * periodsPerMonth);
 
   const sssMonthlyCredit = clamp(estimatedMonthlyCompensation, 5000, 35000);
   const sssMonthlyEmployee = sssMonthlyCredit * 0.05;
@@ -151,17 +171,19 @@ function computeStatutoryDeductions(periodGross: number, frequency: PayFrequency
 function computeRow(row: WorkerRow, frequency: PayFrequency) {
   const amount = row.dailyRate * row.days;
   const otPay = (row.dailyRate / 8) * 1.25 * row.otHours;
-  const totalSalary = amount + otPay;
-  const statutory = computeStatutoryDeductions(totalSalary, frequency, {
+  const totalSalary = amount + otPay + row.holidayPay;
+  const statutory = computeStatutoryDeductions(amount, frequency, {
     sss: row.hasSss,
     pagIbig: row.hasPagIbig,
     philHealth: row.hasPhilHealth,
   });
-  const totalDeduction =
-    row.cashAdvance + row.tax + row.additionalDeduction + statutory.philHealth + statutory.pagIbig + statutory.sss;
+  const sss = row.sssManual !== null ? row.sssManual : statutory.sss;
+  const pagIbig = row.pagIbigManual !== null ? row.pagIbigManual : statutory.pagIbig;
+  const philHealth = row.philHealthManual !== null ? row.philHealthManual : statutory.philHealth;
+  const totalDeduction = row.cashAdvance + row.tax + row.sssLoan + row.additionalDeduction + philHealth + pagIbig + sss;
   const netSalary = Math.max(0, totalSalary - totalDeduction);
 
-  return { amount, otPay, totalSalary, ...statutory, totalDeduction, netSalary };
+  return { amount, otPay, holidayPay: row.holidayPay, totalSalary, sss, pagIbig, philHealth, totalDeduction, netSalary };
 }
 
 function todayLabel() {
@@ -296,15 +318,20 @@ export default function NewPayrollPage() {
         const computed = computeRow(row, payFrequency);
         sum.amount += computed.amount;
         sum.otPay += computed.otPay;
+        sum.holidayPay += computed.holidayPay;
         sum.totalSalary += computed.totalSalary;
         sum.philHealth += computed.philHealth;
         sum.pagIbig += computed.pagIbig;
         sum.sss += computed.sss;
+        sum.cashAdvance += row.cashAdvance;
+        sum.tax += row.tax;
+        sum.sssLoan += row.sssLoan;
+        sum.additionalDeduction += row.additionalDeduction;
         sum.totalDeduction += computed.totalDeduction;
         sum.netSalary += computed.netSalary;
         return sum;
       },
-      { amount: 0, otPay: 0, totalSalary: 0, philHealth: 0, pagIbig: 0, sss: 0, totalDeduction: 0, netSalary: 0 },
+      { amount: 0, otPay: 0, holidayPay: 0, totalSalary: 0, philHealth: 0, pagIbig: 0, sss: 0, cashAdvance: 0, tax: 0, sssLoan: 0, additionalDeduction: 0, totalDeduction: 0, netSalary: 0 },
     );
   }, [payFrequency, rows]);
 
@@ -342,6 +369,10 @@ export default function NewPayrollPage() {
       hasSss: employee?.hasSss ?? true,
       hasPagIbig: employee?.hasPagIbig ?? true,
       hasPhilHealth: employee?.hasPhilHealth ?? true,
+      sssManual: employee?.sssAmount ?? null,
+      pagIbigManual: employee?.pagIbigAmount ?? null,
+      philHealthManual: employee?.philHealthAmount ?? null,
+      sssLoan: employee?.sssLoanAmount ?? 0,
     });
   }
 
@@ -370,7 +401,7 @@ export default function NewPayrollPage() {
       }
 
       setRows(
-        workers.map((worker) => ({
+        workers.map((worker): WorkerRow => ({
           id: crypto.randomUUID(),
           employeeId: worker.employeeId,
           supervisor: "",
@@ -379,6 +410,11 @@ export default function NewPayrollPage() {
           dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
           days: worker.attendance.paidDays || 0,
           otHours: worker.attendance.overtimeHours || 0,
+          holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
+          sssManual: null,
+          pagIbigManual: null,
+          philHealthManual: null,
+          sssLoan: worker.payrollSnapshot?.additionalDeduction != null ? Number(worker.payrollSnapshot.additionalDeduction) || 0 : 0,
           cashAdvance: worker.payrollSnapshot?.cashAdvance != null ? Number(worker.payrollSnapshot.cashAdvance) || 0 : 0,
           tax: worker.payrollSnapshot?.taxAmount != null ? Number(worker.payrollSnapshot.taxAmount) || 0 : 0,
           additionalDeduction: worker.payrollSnapshot?.additionalDeduction != null ? Number(worker.payrollSnapshot.additionalDeduction) || 0 : 0,
@@ -466,6 +502,7 @@ export default function NewPayrollPage() {
     notify("Payroll worksheet reset");
   }
 
+
   function handlePrint() {
     window.print();
   }
@@ -483,26 +520,25 @@ export default function NewPayrollPage() {
         .replace(/"/g, "&quot;");
 
     const headers = [
-      "NO.",
-      "SUPERVISOR / LEAD",
-      "WORKER NAME",
+      "NO",
+      "EMPLOYEE",
       "POSITION",
       "SALARY",
-      "NO. OF DAYS",
+      "DAYS",
       "AMOUNT",
       "OT HRS",
       "OT PAY",
+      "HOLIDAY PAY",
       "TOTAL SALARY",
       "CA",
-      "PHILHEALTH",
       "TAX",
-      "PAG-IBIG",
+      "SSS LOAN",
+      "PHILHEALTH",
       "SSS",
+      "PAG-IBIG",
       "ADDITIONAL DEDUCTION",
       "TOTAL DEDUCTION",
       "NET SALARY",
-      "SIGNATURE",
-      "REMARKS",
     ];
 
     const workerRows = rows
@@ -511,7 +547,6 @@ export default function NewPayrollPage() {
         const snapshot = row.payrollSnapshot;
         const cells = [
           index + 1,
-          row.supervisor,
           row.name,
           row.position,
           row.dailyRate,
@@ -519,17 +554,17 @@ export default function NewPayrollPage() {
           roundMoney(snapshot?.salaryAmount ?? computed.amount),
           row.otHours,
           roundMoney(snapshot?.otPay ?? computed.otPay),
+          roundMoney(snapshot?.holidayPayAmount ?? computed.holidayPay),
           roundMoney(snapshot?.totalSalary ?? computed.totalSalary),
           roundMoney(snapshot?.cashAdvance ?? row.cashAdvance),
-          roundMoney(snapshot?.philHealthAmount ?? computed.philHealth),
           roundMoney(snapshot?.taxAmount ?? row.tax),
-          roundMoney(snapshot?.pagIbigAmount ?? computed.pagIbig),
+          roundMoney(row.sssLoan),
+          roundMoney(snapshot?.philHealthAmount ?? computed.philHealth),
           roundMoney(snapshot?.sssAmount ?? computed.sss),
+          roundMoney(snapshot?.pagIbigAmount ?? computed.pagIbig),
           roundMoney(snapshot?.additionalDeduction ?? row.additionalDeduction),
           roundMoney(snapshot?.totalDeduction ?? computed.totalDeduction),
           roundMoney(snapshot?.netSalary ?? computed.netSalary),
-          "",
-          row.remarks,
         ];
 
         return `<tr>${cells.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`;
@@ -542,21 +577,20 @@ export default function NewPayrollPage() {
       "",
       "",
       "",
-      "",
       roundMoney(totals.amount),
       "",
       roundMoney(totals.otPay),
+      roundMoney(totals.holidayPay),
       roundMoney(totals.totalSalary),
-      "",
+      roundMoney(totals.cashAdvance),
+      roundMoney(totals.tax),
+      roundMoney(totals.sssLoan),
       roundMoney(totals.philHealth),
-      "",
-      roundMoney(totals.pagIbig),
       roundMoney(totals.sss),
-      "",
+      roundMoney(totals.pagIbig),
+      roundMoney(totals.additionalDeduction),
       roundMoney(totals.totalDeduction),
       roundMoney(totals.netSalary),
-      "",
-      "",
     ];
 
     const worksheetHtml = `
@@ -576,16 +610,16 @@ export default function NewPayrollPage() {
         </head>
         <body>
           <table>
-            <tr><td class="title" colspan="20">${escapeCell(projectName)}</td></tr>
-            <tr><td class="meta" colspan="20">PAYROLL COVERED: ${escapeCell(coveredPeriod)}</td></tr>
-            <tr><td class="meta" colspan="20">PAYROLL DATE: ${escapeCell(payrollDate)}</td></tr>
-            <tr><td class="meta" colspan="20">DEDUCTION SCHEDULE: ${escapeCell(frequencyConfig[payFrequency].label)}</td></tr>
+            <tr><td class="title" colspan="19">${escapeCell(projectName)}</td></tr>
+            <tr><td class="meta" colspan="19">PAYROLL COVERED: ${escapeCell(coveredPeriod)}</td></tr>
+            <tr><td class="meta" colspan="19">PAYROLL DATE: ${escapeCell(payrollDate)}</td></tr>
+            <tr><td class="meta" colspan="19">DEDUCTION SCHEDULE: ${escapeCell(frequencyConfig[payFrequency].label)}</td></tr>
             <tr></tr>
-            <tr>${headers.map((header, index) => `<th class="${index >= 10 && index <= 15 ? "deduction" : ""}">${escapeCell(header)}</th>`).join("")}</tr>
+            <tr>${headers.map((header, index) => `<th class="${index >= 10 && index <= 17 ? "deduction" : ""}">${escapeCell(header)}</th>`).join("")}</tr>
             ${workerRows}
             <tr class="total">${totalRow.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>
             <tr></tr>
-            <tr><td class="meta" colspan="7">PREPARED BY: ${escapeCell(preparedBy)}</td><td class="meta" colspan="7">NOTED BY: ${escapeCell(notedBy)}</td><td class="meta" colspan="6">APPROVED BY: ${escapeCell(approvedBy)}</td></tr>
+            <tr><td class="meta" colspan="6">PREPARED BY: ${escapeCell(preparedBy)}</td><td class="meta" colspan="6">NOTED BY: ${escapeCell(notedBy)}</td><td class="meta" colspan="7">APPROVED BY: ${escapeCell(approvedBy)}</td></tr>
           </table>
         </body>
       </html>
@@ -796,6 +830,10 @@ export default function NewPayrollPage() {
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
                       <input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
                     </label>
+                    <label className="block sm:col-span-2 xl:col-span-1 rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-3">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</span>
+                      <input type="number" value={row.holidayPay} onChange={(event) => updateRow(row.id, { holidayPay: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
                     <label className="block">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cash advance</span>
                       <input type="number" value={row.cashAdvance} onChange={(event) => updateRow(row.id, { cashAdvance: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
@@ -820,13 +858,17 @@ export default function NewPayrollPage() {
                       <p className="mt-1 text-sm font-black text-slate-950">{money(computed.amount)}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
-                      <p className="mt-1 text-sm font-black text-slate-950">{money(computed.otPay)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-3 py-3">
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p>
-                      <p className="mt-1 text-sm font-black text-rose-700">{money(computed.totalDeduction)}</p>
-                    </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
+                <p className="mt-1 text-sm font-black text-slate-950">{money(computed.otPay)}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p>
+                <p className="mt-1 text-sm font-black text-amber-700">{money(computed.holidayPay)}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
+                <p className="mt-1 text-sm font-black text-slate-950">{money(computed.totalSalary)}</p>
+              </div>
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
                       <p className="mt-1 text-sm font-black text-emerald-700">{money(computed.netSalary)}</p>
@@ -891,6 +933,30 @@ export default function NewPayrollPage() {
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
                           <input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
                         </label>
+                        <label className="block rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</span>
+                          <input type="number" value={row.holidayPay} onChange={(event) => updateRow(row.id, { holidayPay: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">PhilHealth</span>
+                          <input type="number" value={row.philHealthManual ?? ""} onChange={(event) => updateRow(row.id, { philHealthManual: event.target.value === "" ? null : numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} placeholder="Auto" />
+                        </label>
+                        <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">Pag-IBIG</span>
+                          <input type="number" value={row.pagIbigManual ?? ""} onChange={(event) => updateRow(row.id, { pagIbigManual: event.target.value === "" ? null : numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} placeholder="Auto" />
+                        </label>
+                        <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">SSS</span>
+                          <input type="number" value={row.sssManual ?? ""} onChange={(event) => updateRow(row.id, { sssManual: event.target.value === "" ? null : numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} placeholder="Auto" />
+                        </label>
+                        <label className="block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:col-span-2 xl:col-span-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">SSS loan</span>
+                          <input type="number" value={row.sssLoan} onChange={(event) => updateRow(row.id, { sssLoan: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:col-span-2 xl:col-span-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Additional deduction</span>
+                          <input type="number" value={row.additionalDeduction} onChange={(event) => updateRow(row.id, { additionalDeduction: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
                         <label className="block">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cash advance</span>
                           <input type="number" value={row.cashAdvance} onChange={(event) => updateRow(row.id, { cashAdvance: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
@@ -899,10 +965,7 @@ export default function NewPayrollPage() {
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Tax</span>
                           <input type="number" value={row.tax} onChange={(event) => updateRow(row.id, { tax: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
                         </label>
-                        <label className="block xl:col-span-3">
-                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Additional deduction</span>
-                          <input type="number" value={row.additionalDeduction} onChange={(event) => updateRow(row.id, { additionalDeduction: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
-                        </label>
+
                         <label className="block xl:col-span-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Remarks</span>
                           <textarea value={row.remarks} onChange={(event) => updateRow(row.id, { remarks: event.target.value })} className={`${tableInputClass} mt-1 min-h-[96px]`} placeholder="Notes / balance / sync details" />
@@ -915,6 +978,7 @@ export default function NewPayrollPage() {
                       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.amount)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.otPay)}</p></div>
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p><p className="mt-2 text-lg font-black text-amber-700">{money(computed.holidayPay)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.totalSalary)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">PhilHealth</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.philHealth)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Pag-IBIG</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.pagIbig)}</p></div>
