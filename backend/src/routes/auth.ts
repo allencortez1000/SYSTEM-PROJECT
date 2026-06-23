@@ -14,6 +14,7 @@ type AppUser = {
   role: string;
   full_name: string;
   is_active: boolean;
+  permissions?: string[];
 };
 
 function createToken(user: AppUser) {
@@ -23,6 +24,7 @@ function createToken(user: AppUser) {
       username: user.username,
       role: user.role,
       name: user.full_name,
+      permissions: user.permissions || [],
     },
     process.env.JWT_SECRET ?? 'secret',
     { expiresIn: '8h' },
@@ -149,6 +151,7 @@ router.post('/login', async (req, res) => {
           email: adminUser.email,
           role: adminUser.role,
           name: adminUser.full_name,
+          permissions: adminUser.permissions || [],
         },
       });
     }
@@ -176,6 +179,21 @@ router.post('/login', async (req, res) => {
     }
 
     const typedUser = user as AppUser;
+
+    // fetch permissions for the user if present in DB
+    const { data: permsResult, error: permsError } = await supabase
+      .from('app_users')
+      .select('permissions')
+      .eq('id', typedUser.id)
+      .limit(1);
+
+    if (permsError) throw permsError;
+    const permsRow = permsResult && permsResult[0];
+    const permissions = Array.isArray(permsRow?.permissions) ? permsRow.permissions.map((p: unknown) => String(p)) : [];
+
+    // attach permissions to typedUser for token creation
+    (typedUser as any).permissions = permissions;
+
     const token = createToken(typedUser);
 
     res.json({
@@ -186,6 +204,7 @@ router.post('/login', async (req, res) => {
         email: typedUser.email,
         role: typedUser.role,
         name: typedUser.full_name,
+        permissions,
       },
     });
   } catch (error) {
@@ -196,8 +215,17 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/me', verifyToken, (req: AuthRequest, res) => {
-  res.json({ user: req.user });
+router.get('/me', verifyToken, async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
+    const { data, error } = await supabase.from('app_users').select('id, username, email, role, full_name, is_active, permissions').eq('id', req.user.userId).limit(1);
+    if (error) throw error;
+    const row = data && data[0];
+    if (!row) return res.status(404).json({ message: 'User not found' });
+    res.json({ user: { id: row.id, username: row.username, email: row.email, role: row.role, name: row.full_name, permissions: row.permissions || [] } });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to load user', error: (err as Error).message });
+  }
 });
 
 router.post('/signup', async (_, res) => {

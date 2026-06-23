@@ -51,6 +51,17 @@ type PayrollOverrideRow = {
   period_end: string;
   paid_days_override?: number | string | null;
   overtime_hours_override?: number | string | null;
+  salary_amount?: number | string | null;
+  ot_pay?: number | string | null;
+  philhealth_amount?: number | string | null;
+  sss_amount?: number | string | null;
+  pagibig_amount?: number | string | null;
+  total_salary?: number | string | null;
+  total_deduction?: number | string | null;
+  net_salary?: number | string | null;
+  cash_advance?: number | string | null;
+  tax_amount?: number | string | null;
+  additional_deduction?: number | string | null;
   remarks?: string | null;
 };
 
@@ -138,7 +149,7 @@ router.get('/attendance-summary', async (req, res) => {
 
     const { data: overrideRows, error: overrideError } = await supabase
       .from('payroll_attendance_overrides')
-      .select('employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, remarks')
+      .select('employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, salary_amount, ot_pay, philhealth_amount, sss_amount, pagibig_amount, total_salary, total_deduction, net_salary, cash_advance, tax_amount, additional_deduction, remarks')
       .eq('employee_id', employee.id)
       .eq('project_site', projectSite || summary.projectSite || '')
       .eq('period_start', startDate)
@@ -183,7 +194,7 @@ router.get('/project-sync', async (req, res) => {
     }
 
     const [employeesResult, positionsResult, attendanceResult, overridesResult] = await Promise.all([
-      supabase.from('employees').select('id, full_name, salary, position_id').in('id', employeeIds),
+      supabase.from('employees').select('id, full_name, salary, salary_basis, position_id').in('id', employeeIds),
       supabase.from('job_positions').select('id, title'),
       supabase
         .from('attendance_records')
@@ -232,7 +243,9 @@ router.get('/project-sync', async (req, res) => {
           projectSite,
         );
         const finalSummary = applyAttendanceOverride(baseSummary, overrideMap.get(String(employee.id)) || null);
-        const dailyRate = employee.salary ? roundCurrency(Number(employee.salary) / 26) : 600;
+        const salary = employee.salary ? Number(employee.salary) : 0;
+        const salaryBasis = String((employee as any).salary_basis || 'monthly').toLowerCase();
+        const dailyRate = salaryBasis === 'daily' ? roundCurrency(salary || 0) : salary ? roundCurrency(salary / 26) : 600;
         return {
           employeeId: String(employee.id),
           employeeName: String(employee.full_name || ''),
@@ -240,6 +253,21 @@ router.get('/project-sync', async (req, res) => {
           dailyRate,
           attendance: finalSummary,
           remarks: overrideMap.get(String(employee.id))?.remarks || buildAttendanceRemarks(finalSummary) || '',
+          payrollSnapshot: overrideMap.get(String(employee.id))
+            ? {
+                salaryAmount: overrideMap.get(String(employee.id))?.salary_amount ?? null,
+                otPay: overrideMap.get(String(employee.id))?.ot_pay ?? null,
+                philHealthAmount: overrideMap.get(String(employee.id))?.philhealth_amount ?? null,
+                sssAmount: overrideMap.get(String(employee.id))?.sss_amount ?? null,
+                pagIbigAmount: overrideMap.get(String(employee.id))?.pagibig_amount ?? null,
+                totalSalary: overrideMap.get(String(employee.id))?.total_salary ?? null,
+                totalDeduction: overrideMap.get(String(employee.id))?.total_deduction ?? null,
+                netSalary: overrideMap.get(String(employee.id))?.net_salary ?? null,
+                cashAdvance: overrideMap.get(String(employee.id))?.cash_advance ?? null,
+                taxAmount: overrideMap.get(String(employee.id))?.tax_amount ?? null,
+                additionalDeduction: overrideMap.get(String(employee.id))?.additional_deduction ?? null,
+              }
+            : null,
         };
       })
       .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
@@ -255,7 +283,26 @@ router.get('/project-sync', async (req, res) => {
 
 router.post('/attendance-overrides', async (req, res) => {
   try {
-    const { employeeId, projectSite, startDate, endDate, paidDaysOverride, overtimeHoursOverride, remarks } = req.body;
+    const {
+      employeeId,
+      projectSite,
+      startDate,
+      endDate,
+      paidDaysOverride,
+      overtimeHoursOverride,
+      salaryAmount,
+      otPay,
+      philhealthAmount,
+      sssAmount,
+      pagibigAmount,
+      totalSalary,
+      totalDeduction,
+      netSalary,
+      cashAdvance,
+      taxAmount,
+      additionalDeduction,
+      remarks,
+    } = req.body;
 
     if (!employeeId || !projectSite || !startDate || !endDate) {
       return res.status(400).json({ message: 'employeeId, projectSite, startDate, and endDate are required' });
@@ -270,6 +317,17 @@ router.post('/attendance-overrides', async (req, res) => {
         period_end: endDate,
         paid_days_override: paidDaysOverride ?? null,
         overtime_hours_override: overtimeHoursOverride ?? null,
+        salary_amount: salaryAmount ?? null,
+        ot_pay: otPay ?? null,
+        philhealth_amount: philhealthAmount ?? null,
+        sss_amount: sssAmount ?? null,
+        pagibig_amount: pagibigAmount ?? null,
+        total_salary: totalSalary ?? null,
+        total_deduction: totalDeduction ?? null,
+        net_salary: netSalary ?? null,
+        cash_advance: cashAdvance ?? null,
+        tax_amount: taxAmount ?? null,
+        additional_deduction: additionalDeduction ?? null,
         remarks: remarks || null,
       }, {
         onConflict: 'employee_id,project_site,period_start,period_end',

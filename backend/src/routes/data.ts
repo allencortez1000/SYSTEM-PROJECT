@@ -56,6 +56,12 @@ async function fetchDepartmentMap() {
   };
 }
 
+// Expose departments list for frontend forms (id, name)
+router.get('/departments', async (_, res) => {
+  const { rows, error } = await fetchTable('departments', undefined, 'id, name');
+  res.json({ departments: rows, error });
+});
+
 router.get('/leave', async (_, res) => {
   const { rows, error } = await fetchTable(
     'leave_requests',

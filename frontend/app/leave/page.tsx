@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import RecordDetailsModal from "../components/record-details-modal";
 
 const API_BASE = "/api";
 
@@ -28,6 +29,7 @@ export default function LeavePage() {
   const [rows, setRows] = useState<LeaveRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeRow, setActiveRow] = useState<LeaveRow | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -98,11 +100,16 @@ export default function LeavePage() {
                   <th>End</th>
                   <th>Days</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
                 {rows.map((row, index) => (
-                  <tr key={index} className="hover:bg-slate-50">
+                  <tr
+                    key={index}
+                    className={`cursor-pointer hover:bg-slate-50 ${activeRow === row ? "bg-blue-50/70" : ""}`}
+                    onClick={() => setActiveRow(row)}
+                  >
                     <td className="font-bold text-slate-950">{nested(row, "employees", "full_name")}</td>
                     <td className="text-slate-700">{nested(row, "leave_types", "name")}</td>
                     <td className="text-slate-600">{pick(row, ["start_date"])}</td>
@@ -113,6 +120,18 @@ export default function LeavePage() {
                         {pick(row, ["status"])}
                       </span>
                     </td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setActiveRow(row);
+                        }}
+                        className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-blue-700"
+                      >
+                        View details
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -120,6 +139,13 @@ export default function LeavePage() {
           </div>
         )}
       </section>
+
+      <RecordDetailsModal
+        title={activeRow ? nested(activeRow, "employees", "full_name") : "Leave request"}
+        subtitle={activeRow ? `${nested(activeRow, "leave_types", "name")} · ${pick(activeRow, ["status"])}` : undefined}
+        row={activeRow}
+        onClose={() => setActiveRow(null)}
+      />
     </div>
   );
 }

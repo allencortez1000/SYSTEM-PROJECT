@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useNotification } from "../components/notification";
 
 type SessionUser = {
   role?: string;
@@ -30,6 +31,16 @@ type Employee = {
   email: string;
   position: string;
   department: string;
+  salary?: number;
+  salaryBasis?: string;
+  hasSss?: boolean;
+  hasPagIbig?: boolean;
+  hasPhilHealth?: boolean;
+};
+
+type ProjectSite = {
+  id: string;
+  name: string;
 };
 
 const API_BASE = "/api";
@@ -49,6 +60,7 @@ function roleLabel(role: string) {
 }
 
 export default function AdminUsersPage() {
+  const { notify } = useNotification();
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,12 +79,19 @@ export default function AdminUsersPage() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
 
-  // Department head form state
-  const [departmentHeadFullName, setDepartmentHeadFullName] = useState("");
-  const [departmentHeadUsername, setDepartmentHeadUsername] = useState("");
-  const [departmentHeadEmail, setDepartmentHeadEmail] = useState("");
-  const [departmentHeadPassword, setDepartmentHeadPassword] = useState("");
-  const [departmentHeadDepartmentIds, setDepartmentHeadDepartmentIds] = useState<string[]>([]);
+  // Worker form state
+  const [workerFullName, setWorkerFullName] = useState("");
+  const [workerEmail, setWorkerEmail] = useState("");
+  const [workerDepartment, setWorkerDepartment] = useState("");
+  const [workerPosition, setWorkerPosition] = useState("");
+  const [workerSalary, setWorkerSalary] = useState("");
+  const [workerSalaryBasis, setWorkerSalaryBasis] = useState("monthly");
+  const [workerProjectSite, setWorkerProjectSite] = useState("");
+  const [workerStatus, setWorkerStatus] = useState("Active");
+  const [workerHasSss, setWorkerHasSss] = useState(true);
+  const [workerHasPagIbig, setWorkerHasPagIbig] = useState(true);
+  const [workerHasPhilHealth, setWorkerHasPhilHealth] = useState(true);
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
 
   // Department assignment state
   const [assignmentSavingUserId, setAssignmentSavingUserId] = useState<string | null>(null);
@@ -80,6 +99,7 @@ export default function AdminUsersPage() {
 
   // Employee management state
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projectSites, setProjectSites] = useState<ProjectSite[]>([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [employeePage, setEmployeePage] = useState(1);
   const employeesPerPage = 10;
@@ -127,15 +147,17 @@ export default function AdminUsersPage() {
       setAuthorized(true);
 
       const headers = { Authorization: `Bearer ${token}` };
-      const [usersRes, departmentsRes, employeesRes] = await Promise.all([
+      const [usersRes, departmentsRes, employeesRes, projectsRes] = await Promise.all([
         fetch(`${API_BASE}/admin-users`, { headers }),
         fetch(`${API_BASE}/admin-users/departments`, { headers }),
         fetch(`${API_BASE}/employees`, { headers }),
+        fetch(`${API_BASE}/attendance/projects`, { headers }),
       ]);
 
       const usersData = await usersRes.json().catch(() => ({}));
       const departmentsData = await departmentsRes.json().catch(() => ({}));
       const employeesData = await employeesRes.json().catch(() => ({}));
+      const projectsData = await projectsRes.json().catch(() => ({}));
 
       if (!usersRes.ok) {
         throw new Error(usersData?.error || usersData?.message || "Failed to load admin users");
@@ -148,10 +170,19 @@ export default function AdminUsersPage() {
       const nextUsers = usersData.users || [];
       const nextDepartments = departmentsData.departments || [];
       const nextEmployees = employeesData.employees || [];
+      const nextProjects = projectsData.projects || [];
 
       setUsers(nextUsers);
       setDepartments(nextDepartments);
       setEmployees(nextEmployees);
+      setProjectSites(nextProjects);
+      setWorkerDepartment((current) => current || String(nextDepartments[0]?.name || ""));
+      setWorkerProjectSite((current) => current || String(nextProjects[0]?.name || ""));
+      setWorkerPosition((current) => current || "Worker");
+      setWorkerSalaryBasis((current) => current || "monthly");
+      setWorkerHasSss((current) => current ?? true);
+      setWorkerHasPagIbig((current) => current ?? true);
+      setWorkerHasPhilHealth((current) => current ?? true);
       setAssignmentDrafts(
         nextUsers.reduce((map: Record<string, string[]>, user: AdminUser) => {
           map[user.id] = user.departmentIds || [];
@@ -161,9 +192,6 @@ export default function AdminUsersPage() {
 
       if (selectedDepartmentIds.length === 0 && nextDepartments.length > 0) {
         setSelectedDepartmentIds([String(nextDepartments[0].id)]);
-      }
-      if (departmentHeadDepartmentIds.length === 0 && nextDepartments.length > 0) {
-        setDepartmentHeadDepartmentIds([String(nextDepartments[0].id)]);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -200,12 +228,148 @@ export default function AdminUsersPage() {
     );
   }
 
-  function toggleDepartmentHeadDepartment(departmentId: string) {
-    setDepartmentHeadDepartmentIds((current) =>
-      current.includes(departmentId)
-        ? current.filter((value) => value !== departmentId)
-        : [...current, departmentId],
-    );
+  async function handleCreateWorker(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("hr_token");
+      if (!token) throw new Error("Missing login token. Please sign in again.");
+      if (!workerFullName.trim() || !workerEmail.trim()) {
+        throw new Error("Worker full name and email are required.");
+      }
+      if (!workerProjectSite.trim()) {
+        throw new Error("Project site is required.");
+      }
+
+      const payload = {
+        fullName: workerFullName,
+        email: workerEmail,
+        department: workerDepartment || "Unassigned",
+        position: workerPosition || "Worker",
+        salary: Number(workerSalary) || 0,
+        salaryBasis: workerSalaryBasis,
+        status: workerStatus,
+        hasSss: workerHasSss,
+        hasPagIbig: workerHasPagIbig,
+        hasPhilHealth: workerHasPhilHealth,
+      };
+
+      const response = editingEmployeeId
+        ? await fetch(`${API_BASE}/employees/${editingEmployeeId}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          })
+        : await fetch(`${API_BASE}/employees`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to save worker");
+      }
+
+      const employeeId = data?.employee?.id || editingEmployeeId;
+      if (employeeId) {
+        const assignmentResponse = await fetch(`${API_BASE}/attendance/assignments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            employeeId,
+            projectName: workerProjectSite,
+          }),
+        });
+
+        const assignmentData = await assignmentResponse.json().catch(() => ({}));
+        if (!assignmentResponse.ok) {
+          throw new Error(assignmentData?.error || assignmentData?.message || "Worker saved, but project site assignment failed");
+        }
+      }
+
+      setEditingEmployeeId(null);
+      setWorkerFullName("");
+      setWorkerEmail("");
+      setWorkerDepartment("");
+      setWorkerPosition("Worker");
+      setWorkerSalary("");
+      setWorkerSalaryBasis("monthly");
+      setWorkerProjectSite("");
+      setWorkerHasSss(true);
+      setWorkerHasPagIbig(true);
+      setWorkerHasPhilHealth(true);
+      setWorkerStatus("Active");
+
+      await loadData();
+      notify(editingEmployeeId ? "Worker updated successfully" : "Worker added successfully");
+    } catch (err) {
+      const message = (err as Error).message;
+      setError(message);
+      notify(`Worker save failed: ${message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function startEditWorker(employee: Employee) {
+    setEditingEmployeeId(employee.id);
+    setWorkerFullName(employee.fullName);
+    setWorkerEmail(employee.email);
+    setWorkerDepartment(employee.department);
+    setWorkerPosition(employee.position);
+    setWorkerSalary(String(employee.salary ?? ""));
+    setWorkerSalaryBasis(employee.salaryBasis || "monthly");
+    setWorkerHasSss(employee.hasSss ?? true);
+    setWorkerHasPagIbig(employee.hasPagIbig ?? true);
+    setWorkerHasPhilHealth(employee.hasPhilHealth ?? true);
+    setWorkerStatus("Active");
+    setWorkerProjectSite(workerProjectSite || projectSites[0]?.name || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function deleteWorker(employeeId: string) {
+    if (!confirm("Delete this worker? This cannot be undone.")) return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("hr_token");
+      if (!token) throw new Error("Missing login token. Please sign in again.");
+
+      const response = await fetch(`${API_BASE}/employees/${employeeId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to delete worker");
+      }
+
+      if (editingEmployeeId === employeeId) {
+        setEditingEmployeeId(null);
+      }
+      await loadData();
+      notify("Worker deleted successfully");
+    } catch (err) {
+      const message = (err as Error).message;
+      setError(message);
+      notify(`Worker delete failed: ${message}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function toggleDraftDepartment(userId: string, departmentId: string) {
@@ -264,51 +428,7 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleCreateDepartmentHead(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
 
-    try {
-      const token = localStorage.getItem("hr_token");
-      if (!token) throw new Error("Missing login token. Please sign in again.");
-      if (departmentHeadDepartmentIds.length === 0) {
-        throw new Error("Select at least one department.");
-      }
-
-      const response = await fetch(`${API_BASE}/admin-users/department-head`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          fullName: departmentHeadFullName,
-          username: departmentHeadUsername,
-          email: departmentHeadEmail,
-          password: departmentHeadPassword,
-          departmentIds: departmentHeadDepartmentIds,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.error || data?.message || "Failed to create department head admin");
-      }
-
-      setDepartmentHeadFullName("");
-      setDepartmentHeadUsername("");
-      setDepartmentHeadEmail("");
-      setDepartmentHeadPassword("");
-      setDepartmentHeadDepartmentIds([]);
-
-      await loadData();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function saveAssignments(userId: string) {
     setAssignmentSavingUserId(userId);
@@ -482,21 +602,21 @@ export default function AdminUsersPage() {
           <article className="section-card min-w-0">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="eyebrow">Create account</p>
-                <h3 className="mt-2 text-2xl font-black text-slate-950">Add department-head admin</h3>
+                <p className="eyebrow">Workforce</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-950">Add worker</h3>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                 Super Admin Action
               </span>
             </div>
 
-            <form onSubmit={handleCreateDepartmentHead} className="mt-6 space-y-5">
+            <form onSubmit={handleCreateWorker} className="mt-6 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block sm:col-span-2">
                   <span className="text-sm font-bold text-slate-600">Full name</span>
                   <input
-                    value={departmentHeadFullName}
-                    onChange={(event) => setDepartmentHeadFullName(event.target.value)}
+                    value={workerFullName}
+                    onChange={(event) => setWorkerFullName(event.target.value)}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                     placeholder="Maria Santos"
                     required
@@ -504,77 +624,119 @@ export default function AdminUsersPage() {
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Username</span>
-                  <input
-                    value={departmentHeadUsername}
-                    onChange={(event) => setDepartmentHeadUsername(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                    placeholder="maria.head"
-                    required
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Password</span>
-                  <input
-                    type="password"
-                    value={departmentHeadPassword}
-                    onChange={(event) => setDepartmentHeadPassword(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                    placeholder="minimum 4 characters"
-                    required
-                  />
-                </label>
-
-                <label className="block sm:col-span-2">
                   <span className="text-sm font-bold text-slate-600">Email</span>
                   <input
                     type="email"
-                    value={departmentHeadEmail}
-                    onChange={(event) => setDepartmentHeadEmail(event.target.value)}
+                    value={workerEmail}
+                    onChange={(event) => setWorkerEmail(event.target.value)}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                     placeholder="maria@company.com"
                     required
                   />
                 </label>
-              </div>
 
-              <div className="block">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-slate-600">Departments (multi-select)</span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    Selected: {departmentHeadDepartmentIds.length}
-                  </span>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-600">Salary amount</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={workerSalary}
+                    onChange={(event) => setWorkerSalary(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    placeholder="32000"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-600">Salary basis</span>
+                  <select
+                    value={workerSalaryBasis}
+                    onChange={(event) => setWorkerSalaryBasis(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                  >
+                    <option value="monthly">Per month</option>
+                    <option value="daily">Per day</option>
+                  </select>
+                </label>
+
+                <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2 sm:grid-cols-3">
+                  <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                    <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    SSS
+                  </label>
+                  <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                    <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    Pag-IBIG
+                  </label>
+                  <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                    <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    PhilHealth
+                  </label>
                 </div>
 
-                <div className="mt-2 max-h-56 overflow-auto rounded-2xl border border-slate-200 bg-white p-3">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {departmentOptions.length === 0 && (
-                      <p className="text-sm text-slate-500">No departments found</p>
-                    )}
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-600">Department</span>
+                  <input
+                    list="worker-departments"
+                    value={workerDepartment}
+                    onChange={(event) => setWorkerDepartment(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    placeholder="Select or type department"
+                  />
+                  <datalist id="worker-departments">
                     {departmentOptions.map((option) => (
-                      <label
-                        key={option.value}
-                        className="flex items-center gap-2 rounded-xl px-2 py-1 text-sm text-slate-700 hover:bg-slate-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={departmentHeadDepartmentIds.includes(option.value)}
-                          onChange={() => toggleDepartmentHeadDepartment(option.value)}
-                        />
-                        <span className="truncate">{option.label}</span>
-                      </label>
+                      <option key={option.value} value={option.label} />
                     ))}
-                  </div>
-                </div>
+                  </datalist>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-600">Position</span>
+                  <input
+                    value={workerPosition}
+                    onChange={(event) => setWorkerPosition(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    placeholder="Worker"
+                  />
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-sm font-bold text-slate-600">Project site</span>
+                  <input
+                    list="worker-project-sites"
+                    value={workerProjectSite}
+                    onChange={(event) => setWorkerProjectSite(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    placeholder="Select or type project site"
+                  />
+                  <datalist id="worker-project-sites">
+                    {projectSites.map((site) => (
+                      <option key={site.id} value={site.name} />
+                    ))}
+                  </datalist>
+                </label>
               </div>
+
+              <label className="block">
+                <span className="text-sm font-bold text-slate-600">Status</span>
+                <select
+                  value={workerStatus}
+                  onChange={(event) => setWorkerStatus(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Onboarding">Onboarding</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </label>
 
               <button
                 type="submit"
-                disabled={saving || loading || departmentHeadDepartmentIds.length === 0}
+                disabled={saving || loading}
                 className="primary-button w-full"
               >
-                {saving ? "Creating..." : "Create department-head admin"}
+                {saving ? "Creating..." : "Create worker"}
               </button>
             </form>
           </article>
@@ -743,6 +905,26 @@ export default function AdminUsersPage() {
                   <p className="mt-2 text-xs text-slate-600">
                     <span className="font-semibold">{employee.position}</span> • {employee.department}
                   </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Salary: {employee.salaryBasis === "daily" ? "Per day" : "Per month"} • {employee.salary ?? 0}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => startEditWorker(employee)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700"
+                    onClick={() => deleteWorker(employee.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

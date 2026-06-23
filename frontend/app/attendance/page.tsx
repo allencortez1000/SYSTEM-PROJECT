@@ -260,10 +260,10 @@ export default function AttendancePage() {
         const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
         const [attendanceRes, employeesRes, projectsRes, assignmentsRes] = await Promise.all([
-          fetch("/api/attendance"),
+          fetch("/api/attendance", { headers }),
           fetch("/api/employees", { headers }),
-          fetch("/api/attendance/projects"),
-          fetch("/api/attendance/assignments"),
+          fetch("/api/attendance/projects", { headers }),
+          fetch("/api/attendance/assignments", { headers }),
         ]);
 
         const attendanceData = await attendanceRes.json().catch(() => ({}));

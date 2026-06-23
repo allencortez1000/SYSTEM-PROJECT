@@ -19,6 +19,22 @@ type WorkerRow = {
   tax: number;
   additionalDeduction: number;
   remarks: string;
+  hasSss: boolean;
+  hasPagIbig: boolean;
+  hasPhilHealth: boolean;
+  payrollSnapshot?: {
+    salaryAmount?: number | null;
+    otPay?: number | null;
+    philHealthAmount?: number | null;
+    sssAmount?: number | null;
+    pagIbigAmount?: number | null;
+    totalSalary?: number | null;
+    totalDeduction?: number | null;
+    netSalary?: number | null;
+    cashAdvance?: number | null;
+    taxAmount?: number | null;
+    additionalDeduction?: number | null;
+  } | null;
   syncedFromAttendance?: boolean;
 };
 
@@ -27,6 +43,10 @@ type Employee = {
   fullName: string;
   position?: string;
   salary?: number;
+  salaryBasis?: string;
+  hasSss?: boolean;
+  hasPagIbig?: boolean;
+  hasPhilHealth?: boolean;
 };
 
 type ProjectWorkerSync = {
@@ -41,6 +61,19 @@ type ProjectWorkerSync = {
     endDate: string;
     overrideApplied?: boolean;
   };
+  payrollSnapshot?: {
+    salaryAmount?: number | null;
+    otPay?: number | null;
+    philHealthAmount?: number | null;
+    sssAmount?: number | null;
+    pagIbigAmount?: number | null;
+    totalSalary?: number | null;
+    totalDeduction?: number | null;
+    netSalary?: number | null;
+    cashAdvance?: number | null;
+    taxAmount?: number | null;
+    additionalDeduction?: number | null;
+  } | null;
   remarks?: string;
 };
 
@@ -88,10 +121,13 @@ function blankRow(): WorkerRow {
     tax: 0,
     additionalDeduction: 0,
     remarks: "",
+    hasSss: true,
+    hasPagIbig: true,
+    hasPhilHealth: true,
   };
 }
 
-function computeStatutoryDeductions(periodGross: number, frequency: PayFrequency) {
+function computeStatutoryDeductions(periodGross: number, frequency: PayFrequency, deductionsEnabled?: { sss?: boolean; pagIbig?: boolean; philHealth?: boolean }) {
   const periodsPerMonth = frequencyConfig[frequency].periodsPerMonth;
   const estimatedMonthlyCompensation = Math.max(0, periodGross * periodsPerMonth);
 
@@ -106,9 +142,9 @@ function computeStatutoryDeductions(periodGross: number, frequency: PayFrequency
   const pagIbigMonthlyEmployee = Math.min(pagIbigMonthlyBase * pagIbigEmployeeRate, 200);
 
   return {
-    sss: roundMoney(sssMonthlyEmployee / periodsPerMonth),
-    philHealth: roundMoney(philHealthMonthlyEmployee / periodsPerMonth),
-    pagIbig: roundMoney(pagIbigMonthlyEmployee / periodsPerMonth),
+    sss: deductionsEnabled?.sss === false ? 0 : roundMoney(sssMonthlyEmployee / periodsPerMonth),
+    philHealth: deductionsEnabled?.philHealth === false ? 0 : roundMoney(philHealthMonthlyEmployee / periodsPerMonth),
+    pagIbig: deductionsEnabled?.pagIbig === false ? 0 : roundMoney(pagIbigMonthlyEmployee / periodsPerMonth),
   };
 }
 
@@ -116,7 +152,11 @@ function computeRow(row: WorkerRow, frequency: PayFrequency) {
   const amount = row.dailyRate * row.days;
   const otPay = (row.dailyRate / 8) * 1.25 * row.otHours;
   const totalSalary = amount + otPay;
-  const statutory = computeStatutoryDeductions(totalSalary, frequency);
+  const statutory = computeStatutoryDeductions(totalSalary, frequency, {
+    sss: row.hasSss,
+    pagIbig: row.hasPagIbig,
+    philHealth: row.hasPhilHealth,
+  });
   const totalDeduction =
     row.cashAdvance + row.tax + row.additionalDeduction + statutory.philHealth + statutory.pagIbig + statutory.sss;
   const netSalary = Math.max(0, totalSalary - totalDeduction);
@@ -159,25 +199,34 @@ function formatCoveredPeriod(startDate: string, endDate: string) {
   return `${format(startDate)} - ${format(endDate)}`;
 }
 
+function sanitizeFileName(value: string) {
+  return value.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-");
+}
+
 const inputClass =
   "relative z-0 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:z-50 focus:border-blue-400 focus:shadow-lg focus:ring-2 focus:ring-blue-100";
 
 const numberInputClass = `${inputClass} text-right tabular-nums`;
-const readonlyMoneyClass = "px-2 py-2 text-right text-xs font-black tabular-nums text-slate-700";
+const tableInputClass = "relative z-0 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:z-50 focus:border-blue-400 focus:shadow-lg focus:ring-2 focus:ring-blue-100";
+const tableNumberInputClass = `${tableInputClass} text-right tabular-nums`;
+const readonlyMoneyClass = "px-3 py-3 text-right text-sm font-black tabular-nums text-slate-700 whitespace-nowrap";
 const toolButtonClass = "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700";
 
 export default function NewPayrollPage() {
   const defaultWeek = currentWeekDates();
   const [isWorksheetOpen, setIsWorksheetOpen] = useState(false);
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [payFrequency, setPayFrequency] = useState<PayFrequency>("weekly");
   const [periodStart, setPeriodStart] = useState(defaultWeek.startDate);
   const [periodEnd, setPeriodEnd] = useState(defaultWeek.endDate);
   const [coveredPeriod, setCoveredPeriod] = useState(currentWeekRange());
   const [payrollDate, setPayrollDate] = useState(todayLabel());
   const [projectName, setProjectName] = useState("Rabino Home Builders Corporation - Weekly Payroll");
+  const [exportFileName, setExportFileName] = useState("weekly-payroll");
   const [selectedProject, setSelectedProject] = useState("Daan Pari");
   const [projects, setProjects] = useState<string[]>(["Daan Pari", "Bagac", "Orion"]);
   const tableSectionRef = useRef<HTMLDivElement | null>(null);
+  const initialSyncDoneRef = useRef(false);
   const [preparedBy, setPreparedBy] = useState("Aubrey Rose N. Gomez");
   const [notedBy, setNotedBy] = useState("Juniffer Tagupa");
   const [approvedBy, setApprovedBy] = useState("Karla Cepeda");
@@ -197,6 +246,7 @@ export default function NewPayrollPage() {
     async function loadEmployees() {
       setLoadingEmployees(true);
       setError(null);
+      initialSyncDoneRef.current = false;
 
       try {
         const token = localStorage.getItem("hr_token");
@@ -232,6 +282,14 @@ export default function NewPayrollPage() {
     loadEmployees();
   }, []);
 
+  useEffect(() => {
+    if (loadingEmployees) return;
+    if (initialSyncDoneRef.current) return;
+
+    initialSyncDoneRef.current = true;
+    syncPayrollFromAttendance();
+  }, [loadingEmployees, selectedProject, periodStart, periodEnd]);
+
   const totals = useMemo(() => {
     return rows.reduce(
       (sum, row) => {
@@ -253,6 +311,7 @@ export default function NewPayrollPage() {
   const filledRows = rows.filter((row) => row.name.trim()).length;
   const syncedRows = rows.filter((row) => row.syncedFromAttendance).length;
   const previewRows = rows.filter((row) => row.name.trim()).slice(0, 3);
+  const activeRow = rows.find((row) => row.id === activeRowId) || null;
 
   const stats = [
     { label: "Workers", value: filledRows || rows.length, detail: "Rows in this payroll", tone: "bg-blue-50 text-blue-700" },
@@ -267,7 +326,12 @@ export default function NewPayrollPage() {
 
   function selectEmployee(rowId: string, employeeName: string) {
     const employee = employees.find((item) => item.fullName === employeeName);
-    const estimatedDailyRate = employee?.salary ? Math.round(Number(employee.salary) / 26) : undefined;
+    const employeeSalary = employee?.salary ? Number(employee.salary) : 0;
+    const estimatedDailyRate = employee?.salaryBasis?.toLowerCase() === "daily"
+      ? employeeSalary || undefined
+      : employeeSalary
+        ? Math.round(employeeSalary / 26)
+        : undefined;
 
     updateRow(rowId, {
       employeeId: employee?.id,
@@ -275,6 +339,9 @@ export default function NewPayrollPage() {
       position: employee?.position || "Labor",
       syncedFromAttendance: false,
       ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
+      hasSss: employee?.hasSss ?? true,
+      hasPagIbig: employee?.hasPagIbig ?? true,
+      hasPhilHealth: employee?.hasPhilHealth ?? true,
     });
   }
 
@@ -309,13 +376,17 @@ export default function NewPayrollPage() {
           supervisor: "",
           name: worker.employeeName,
           position: worker.position || "Labor",
-          dailyRate: worker.dailyRate || 600,
+          dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
           days: worker.attendance.paidDays || 0,
           otHours: worker.attendance.overtimeHours || 0,
-          cashAdvance: 0,
-          tax: 0,
-          additionalDeduction: 0,
+          cashAdvance: worker.payrollSnapshot?.cashAdvance != null ? Number(worker.payrollSnapshot.cashAdvance) || 0 : 0,
+          tax: worker.payrollSnapshot?.taxAmount != null ? Number(worker.payrollSnapshot.taxAmount) || 0 : 0,
+          additionalDeduction: worker.payrollSnapshot?.additionalDeduction != null ? Number(worker.payrollSnapshot.additionalDeduction) || 0 : 0,
           remarks: worker.remarks || "Synced from attendance",
+          hasSss: true,
+          hasPagIbig: true,
+          hasPhilHealth: true,
+          payrollSnapshot: worker.payrollSnapshot || null,
           syncedFromAttendance: true,
         })),
       );
@@ -350,6 +421,17 @@ export default function NewPayrollPage() {
             endDate: periodEnd,
             paidDaysOverride: row.days,
             overtimeHoursOverride: row.otHours,
+            salaryAmount: row.dailyRate,
+            otPay: computeRow(row, payFrequency).otPay,
+            philhealthAmount: computeRow(row, payFrequency).philHealth,
+            sssAmount: computeRow(row, payFrequency).sss,
+            pagibigAmount: computeRow(row, payFrequency).pagIbig,
+            totalSalary: computeRow(row, payFrequency).totalSalary,
+            totalDeduction: computeRow(row, payFrequency).totalDeduction,
+            netSalary: computeRow(row, payFrequency).netSalary,
+            cashAdvance: row.cashAdvance,
+            taxAmount: row.tax,
+            additionalDeduction: row.additionalDeduction,
             remarks: row.remarks,
           }),
         });
@@ -426,6 +508,7 @@ export default function NewPayrollPage() {
     const workerRows = rows
       .map((row, index) => {
         const computed = computeRow(row, payFrequency);
+        const snapshot = row.payrollSnapshot;
         const cells = [
           index + 1,
           row.supervisor,
@@ -433,18 +516,18 @@ export default function NewPayrollPage() {
           row.position,
           row.dailyRate,
           row.days,
-          roundMoney(computed.amount),
+          roundMoney(snapshot?.salaryAmount ?? computed.amount),
           row.otHours,
-          roundMoney(computed.otPay),
-          roundMoney(computed.totalSalary),
-          row.cashAdvance,
-          computed.philHealth,
-          row.tax,
-          computed.pagIbig,
-          computed.sss,
-          row.additionalDeduction,
-          computed.totalDeduction,
-          computed.netSalary,
+          roundMoney(snapshot?.otPay ?? computed.otPay),
+          roundMoney(snapshot?.totalSalary ?? computed.totalSalary),
+          roundMoney(snapshot?.cashAdvance ?? row.cashAdvance),
+          roundMoney(snapshot?.philHealthAmount ?? computed.philHealth),
+          roundMoney(snapshot?.taxAmount ?? row.tax),
+          roundMoney(snapshot?.pagIbigAmount ?? computed.pagIbig),
+          roundMoney(snapshot?.sssAmount ?? computed.sss),
+          roundMoney(snapshot?.additionalDeduction ?? row.additionalDeduction),
+          roundMoney(snapshot?.totalDeduction ?? computed.totalDeduction),
+          roundMoney(snapshot?.netSalary ?? computed.netSalary),
           "",
           row.remarks,
         ];
@@ -511,8 +594,9 @@ export default function NewPayrollPage() {
     const blob = new Blob([worksheetHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+    const fileNameBase = sanitizeFileName(exportFileName) || `${payFrequency}-payroll`;
     link.href = url;
-    link.download = `${payFrequency}-payroll-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.download = `${fileNameBase}-${new Date().toISOString().slice(0, 10)}.xls`;
     link.click();
     URL.revokeObjectURL(url);
     notify("Payroll Excel file exported");
@@ -656,7 +740,7 @@ export default function NewPayrollPage() {
           <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Payroll table</p>
-              <p className="mt-1 text-sm font-semibold text-slate-600">This is the full editable payroll table. Scroll sideways if needed for all columns.</p>
+              <p className="mt-1 text-sm font-semibold text-slate-600">This is the full editable payroll view. Each worker is shown in a readable full-detail layout so you can see and edit every field directly without cramped columns.</p>
             </div>
             <button onClick={addRow} type="button" className="rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100">Add row</button>
           </div>
@@ -664,7 +748,7 @@ export default function NewPayrollPage() {
           <div className="space-y-4 print:hidden xl:hidden">
             <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <p className="font-black">Mobile payroll editor</p>
-              <p className="mt-1">Use these worker cards to edit payroll on smaller screens. Open the wide table on a larger screen if you need the spreadsheet view.</p>
+              <p className="mt-1">Use these worker cards to edit payroll on smaller screens. Every row stays visible in a readable stacked format instead of a compressed spreadsheet line.</p>
             </div>
 
             {rows.map((row, index) => {
@@ -681,12 +765,13 @@ export default function NewPayrollPage() {
                       <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => setActiveRowId(row.id)} className={`${toolButtonClass} bg-slate-900 text-white hover:bg-blue-700 hover:text-white`}>Edit full details</button>
                       <button type="button" onClick={() => duplicateRow(row)} className={toolButtonClass}>Copy</button>
                       <button type="button" onClick={() => removeRow(row.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100">Remove</button>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <label className="block">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Supervisor / lead</span>
                       <input value={row.supervisor} onChange={(event) => updateRow(row.id, { supervisor: event.target.value })} className={`${inputClass} mt-1`} placeholder="Lead person" />
@@ -719,11 +804,11 @@ export default function NewPayrollPage() {
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Tax</span>
                       <input type="number" value={row.tax} onChange={(event) => updateRow(row.id, { tax: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
                     </label>
-                    <label className="block sm:col-span-2">
+                    <label className="block sm:col-span-2 xl:col-span-1">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Additional deduction</span>
                       <input type="number" value={row.additionalDeduction} onChange={(event) => updateRow(row.id, { additionalDeduction: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
                     </label>
-                    <label className="block sm:col-span-2">
+                    <label className="block sm:col-span-2 xl:col-span-2">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Remarks</span>
                       <input value={row.remarks} onChange={(event) => updateRow(row.id, { remarks: event.target.value })} className={`${inputClass} mt-1`} placeholder="Notes / balance" />
                     </label>
@@ -752,76 +837,156 @@ export default function NewPayrollPage() {
             })}
           </div>
 
-          <div className="hidden xl:block">
-          <table className="payroll-print-table min-w-[1680px] border-collapse text-left text-sm print:min-w-0 print:text-[7px]">
+          <div className="hidden xl:block space-y-4 print:hidden">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <p className="font-black">Full payroll details view</p>
+              <p className="mt-1">Every row is shown in a stacked layout so all details are visible at once without horizontal scrolling.</p>
+            </div>
+
+            {rows.map((row, index) => {
+              const computed = computeRow(row, payFrequency);
+              return (
+                <article key={row.id} className={`rounded-[1.5rem] border p-5 shadow-sm ${row.syncedFromAttendance ? "border-cyan-100 bg-cyan-50/40" : "border-slate-100 bg-white"}`}>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
+                        {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                      </div>
+                      <p className="mt-2 text-xl font-black text-slate-950">{row.name || "New worker row"}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => setActiveRowId(row.id)} className={`${toolButtonClass} bg-slate-900 text-white hover:bg-blue-700 hover:text-white`}>Edit full details</button>
+                      <button type="button" onClick={() => duplicateRow(row)} className={toolButtonClass}>Copy</button>
+                      <button type="button" onClick={() => removeRow(row.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100">Remove</button>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-5 2xl:grid-cols-[1.15fr_0.85fr]">
+                    <section className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Worker information</p>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Supervisor / lead</span>
+                          <input value={row.supervisor} onChange={(event) => updateRow(row.id, { supervisor: event.target.value })} className={`${tableInputClass} mt-1`} placeholder="Lead person" />
+                        </label>
+                        <label className="block md:col-span-2">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Worker name</span>
+                          <input list="employee-options" value={row.name} onChange={(event) => selectEmployee(row.id, event.target.value)} className={`${tableInputClass} mt-1`} placeholder="Worker name" />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Position</span>
+                          <input value={row.position} onChange={(event) => updateRow(row.id, { position: event.target.value })} className={`${tableInputClass} mt-1`} />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Salary / daily rate</span>
+                          <input type="number" value={row.dailyRate} onChange={(event) => updateRow(row.id, { dailyRate: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Days worked</span>
+                          <input type="number" step="0.1" value={row.days} onChange={(event) => updateRow(row.id, { days: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
+                          <input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cash advance</span>
+                          <input type="number" value={row.cashAdvance} onChange={(event) => updateRow(row.id, { cashAdvance: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Tax</span>
+                          <input type="number" value={row.tax} onChange={(event) => updateRow(row.id, { tax: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block xl:col-span-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Additional deduction</span>
+                          <input type="number" value={row.additionalDeduction} onChange={(event) => updateRow(row.id, { additionalDeduction: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block xl:col-span-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Remarks</span>
+                          <textarea value={row.remarks} onChange={(event) => updateRow(row.id, { remarks: event.target.value })} className={`${tableInputClass} mt-1 min-h-[96px]`} placeholder="Notes / balance / sync details" />
+                        </label>
+                      </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-slate-100 bg-white p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Computed values</p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.amount)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.otPay)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.totalSalary)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">PhilHealth</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.philHealth)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Pag-IBIG</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.pagIbig)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">SSS</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.sss)}</p></div>
+                        <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.totalDeduction)}</p></div>
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p><p className="mt-2 text-lg font-black text-emerald-700">{money(computed.netSalary)}</p></div>
+                      </div>
+                    </section>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden print:block">
+          <table className="payroll-print-table min-w-[2420px] border-collapse text-left text-sm print:min-w-0 print:text-[7px]">
             <thead className="sticky top-0 z-30 print:static">
               <tr className="bg-slate-950 text-white">
-                <th className="sticky left-0 z-40 w-12 bg-slate-950 px-2 py-2 text-center text-[11px] font-black">No.</th>
-                <th className="w-44 px-2 py-2 text-[11px] font-black">Supervisor / Lead</th>
-                <th className="sticky left-12 z-40 w-56 bg-slate-950 px-2 py-2 text-[11px] font-black">Worker name</th>
-                <th className="w-36 px-2 py-2 text-[11px] font-black">Position</th>
-                <th className="w-28 px-2 py-2 text-right text-[11px] font-black">Salary</th>
-                <th className="w-24 px-2 py-2 text-right text-[11px] font-black">No. of days</th>
-                <th className="w-28 px-2 py-2 text-right text-[11px] font-black">Amount</th>
-                <th className="w-24 px-2 py-2 text-right text-[11px] font-black">OT hrs</th>
-                <th className="w-28 px-2 py-2 text-right text-[11px] font-black">OT pay</th>
-                <th className="w-32 px-2 py-2 text-right text-[11px] font-black">Total salary</th>
-                <th className="w-24 bg-rose-950/70 px-2 py-2 text-right text-[11px] font-black">CA</th>
-                <th className="w-28 bg-rose-950/70 px-2 py-2 text-right text-[11px] font-black">PhilHealth</th>
-                <th className="w-24 bg-rose-950/70 px-2 py-2 text-right text-[11px] font-black">Tax</th>
-                <th className="w-24 bg-rose-950/70 px-2 py-2 text-right text-[11px] font-black">Pag-IBIG</th>
-                <th className="w-24 bg-rose-950/70 px-2 py-2 text-right text-[11px] font-black">SSS</th>
-                <th className="w-36 bg-rose-950/70 px-2 py-2 text-right text-[11px] font-black">Additional deduction</th>
-                <th className="w-36 px-2 py-2 text-right text-[11px] font-black">Total deduction</th>
-                <th className="w-36 px-2 py-2 text-right text-[11px] font-black">Net salary</th>
-                <th className="w-36 px-2 py-2 text-[11px] font-black">Signature</th>
-                <th className="w-52 px-2 py-2 text-[11px] font-black">Remarks</th>
-                <th className="w-36 px-2 py-2 text-center text-[11px] font-black print:hidden">Actions</th>
+                <th className="w-14 px-3 py-3 text-center text-[11px] font-black">No.</th>
+                <th className="w-64 px-3 py-3 text-[11px] font-black">Supervisor / Lead</th>
+                <th className="w-80 px-3 py-3 text-[11px] font-black">Worker name</th>
+                <th className="w-52 px-3 py-3 text-[11px] font-black">Position</th>
+                <th className="w-36 px-3 py-3 text-right text-[11px] font-black">Salary</th>
+                <th className="w-28 px-3 py-3 text-right text-[11px] font-black">Days</th>
+                <th className="w-36 px-3 py-3 text-right text-[11px] font-black">Amount</th>
+                <th className="w-28 px-3 py-3 text-right text-[11px] font-black">OT hrs</th>
+                <th className="w-36 px-3 py-3 text-right text-[11px] font-black">OT pay</th>
+                <th className="w-40 px-3 py-3 text-right text-[11px] font-black">Total salary</th>
+                <th className="w-32 px-3 py-3 text-right text-[11px] font-black">Cash advance</th>
+                <th className="w-36 px-3 py-3 text-right text-[11px] font-black">PhilHealth</th>
+                <th className="w-28 px-3 py-3 text-right text-[11px] font-black">Tax</th>
+                <th className="w-32 px-3 py-3 text-right text-[11px] font-black">Pag-IBIG</th>
+                <th className="w-32 px-3 py-3 text-right text-[11px] font-black">SSS</th>
+                <th className="w-44 px-3 py-3 text-right text-[11px] font-black">Additional deduction</th>
+                <th className="w-40 px-3 py-3 text-right text-[11px] font-black">Total deduction</th>
+                <th className="w-40 px-3 py-3 text-right text-[11px] font-black">Net salary</th>
+                <th className="w-44 px-3 py-3 text-[11px] font-black">Signature</th>
+                <th className="w-80 px-3 py-3 text-[11px] font-black">Remarks</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => {
                 const computed = computeRow(row, payFrequency);
                 return (
-                  <tr key={row.id} className={`border-b border-slate-100 align-top hover:bg-slate-50/80 ${row.syncedFromAttendance ? "bg-cyan-50/30" : "bg-white"}`}>
-                    <td className="sticky left-0 z-20 bg-white px-2 py-2 text-center text-xs font-black text-slate-400">{index + 1}</td>
-                    <td className="px-2 py-2"><input value={row.supervisor} onChange={(event) => updateRow(row.id, { supervisor: event.target.value })} className={inputClass} placeholder="Lead person" /></td>
-                    <td className={`sticky left-12 z-20 px-2 py-2 ${row.syncedFromAttendance ? "bg-cyan-50/30" : "bg-white"}`}>
-                      <div className="space-y-1">
-                        <input list="employee-options" value={row.name} onChange={(event) => selectEmployee(row.id, event.target.value)} className={inputClass} placeholder="Worker name" />
-                        {row.syncedFromAttendance && <span className="inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
-                      </div>
-                    </td>
-                    <td className="px-2 py-2"><input value={row.position} onChange={(event) => updateRow(row.id, { position: event.target.value })} className={inputClass} /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.dailyRate} onChange={(event) => updateRow(row.id, { dailyRate: numberValue(event.target.value) })} className={numberInputClass} /></td>
-                    <td className="px-2 py-2"><input type="number" step="0.1" value={row.days} onChange={(event) => updateRow(row.id, { days: numberValue(event.target.value) })} className={numberInputClass} /></td>
-                    <td className={readonlyMoneyClass}>{money(computed.amount)}</td>
-                    <td className="px-2 py-2"><input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={numberInputClass} /></td>
-                    <td className={readonlyMoneyClass}>{money(computed.otPay)}</td>
-                    <td className="px-2 py-2 text-right text-xs font-black tabular-nums text-slate-950">{money(computed.totalSalary)}</td>
-                    <td className="px-2 py-2"><input type="number" value={row.cashAdvance} onChange={(event) => updateRow(row.id, { cashAdvance: numberValue(event.target.value) })} className={numberInputClass} /></td>
-                    <td className="px-2 py-2 text-right text-xs font-black tabular-nums text-red-700">{money(computed.philHealth)}</td>
-                    <td className="px-2 py-2"><input type="number" value={row.tax} onChange={(event) => updateRow(row.id, { tax: numberValue(event.target.value) })} className={numberInputClass} /></td>
-                    <td className="px-2 py-2 text-right text-xs font-black tabular-nums text-red-700">{money(computed.pagIbig)}</td>
-                    <td className="px-2 py-2 text-right text-xs font-black tabular-nums text-red-700">{money(computed.sss)}</td>
-                    <td className="px-2 py-2"><input type="number" value={row.additionalDeduction} onChange={(event) => updateRow(row.id, { additionalDeduction: numberValue(event.target.value) })} className={numberInputClass} /></td>
-                    <td className="px-2 py-2 text-right text-xs font-black tabular-nums text-red-700">{money(computed.totalDeduction)}</td>
-                    <td className="px-2 py-2 text-right text-xs font-black tabular-nums text-emerald-700">{money(computed.netSalary)}</td>
-                    <td className="px-2 py-2"><div className="h-8 rounded-lg border border-dashed border-slate-300 bg-slate-50" /></td>
-                    <td className="px-2 py-2"><input value={row.remarks} onChange={(event) => updateRow(row.id, { remarks: event.target.value })} className={inputClass} placeholder="Notes / balance" /></td>
-                    <td className="px-2 py-2 print:hidden">
-                      <div className="flex flex-wrap gap-1.5">
-                        <button type="button" onClick={() => duplicateRow(row)} className={toolButtonClass}>Copy</button>
-                        <button type="button" onClick={() => removeRow(row.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100">Remove</button>
-                      </div>
-                    </td>
+                  <tr key={row.id} className="border-b border-slate-100 align-top bg-white">
+                    <td className="px-3 py-3 text-center text-xs font-black text-slate-400">{index + 1}</td>
+                    <td className="px-3 py-3 text-sm font-semibold text-slate-700">{row.supervisor || "-"}</td>
+                    <td className="px-3 py-3 text-sm font-semibold text-slate-700">{row.name || "-"}</td>
+                    <td className="px-3 py-3 text-sm font-semibold text-slate-700">{row.position || "-"}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(row.dailyRate)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{row.days}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(computed.amount)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{row.otHours}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(computed.otPay)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(computed.totalSalary)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(row.cashAdvance)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(computed.philHealth)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(row.tax)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(computed.pagIbig)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(computed.sss)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black">{money(row.additionalDeduction)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black text-red-700">{money(computed.totalDeduction)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black text-emerald-700">{money(computed.netSalary)}</td>
+                    <td className="px-3 py-3"><div className="h-10 rounded-lg border border-dashed border-slate-300 bg-slate-50" /></td>
+                    <td className="px-3 py-3 text-sm font-semibold text-slate-700">{row.remarks || "-"}</td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot className="print:static">
               <tr className="bg-slate-100 text-slate-950">
-                <td colSpan={6} className="sticky left-0 z-40 bg-slate-100 px-3 py-4 text-right text-sm font-black uppercase tracking-[0.16em]">Total salary</td>
+                <td colSpan={6} className="px-3 py-4 text-right text-sm font-black uppercase tracking-[0.16em]">Total salary</td>
                 <td className="px-3 py-4 text-right font-black tabular-nums">{money(totals.amount)}</td>
                 <td />
                 <td className="px-3 py-4 text-right font-black tabular-nums">{money(totals.otPay)}</td>
@@ -834,7 +999,7 @@ export default function NewPayrollPage() {
                 <td />
                 <td className="px-3 py-4 text-right font-black tabular-nums text-red-700">{money(totals.totalDeduction)}</td>
                 <td className="px-3 py-4 text-right font-black tabular-nums text-emerald-700">{money(totals.netSalary)}</td>
-                <td colSpan={3} />
+                <td colSpan={2} />
               </tr>
             </tfoot>
           </table>
@@ -877,7 +1042,7 @@ export default function NewPayrollPage() {
               Excel-like payroll opens in a focused editing tab.
             </h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-              SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule.
+              SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule, while each payroll row stays fully visible in the editor.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
@@ -932,15 +1097,25 @@ export default function NewPayrollPage() {
         <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <div>
             <p className="eyebrow">Worksheet ready</p>
-            <h3 className="mt-2 break-words text-2xl font-black text-slate-950">Review the payroll first, then open the editor</h3>
+            <h3 className="mt-2 break-words text-2xl font-black text-slate-950">Review the payroll first, then open the full-detail editor</h3>
             <p className="mt-2 text-sm text-slate-500">
-              Keep the page clean for review, then open the popup workspace when you need to edit the full payroll table.
+              Open the payroll workspace to edit each worker in a readable full-detail layout instead of compressed spreadsheet cells.
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap 2xl:justify-end">
-            <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Edit table</button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end 2xl:justify-end">
+            <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Open full-detail editor</button>
             <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
             <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
+            <label className="flex min-w-[240px] flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm">
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Export file name</span>
+              <input
+                type="text"
+                value={exportFileName}
+                onChange={(event) => setExportFileName(event.target.value)}
+                className={inputClass}
+                placeholder="weekly-payroll"
+              />
+            </label>
             <button onClick={exportExcel} type="button" className="secondary-button">Export Excel</button>
           </div>
         </div>
@@ -950,7 +1125,7 @@ export default function NewPayrollPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black text-slate-950">Payroll row preview</p>
-                <p className="mt-1 text-sm text-slate-500">A quick view of the current payroll before opening the full editor.</p>
+                <p className="mt-1 text-sm text-slate-500">A quick view of the current payroll before opening the full-detail editor.</p>
               </div>
               <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{filledRows || rows.length} row(s)</span>
             </div>
@@ -987,9 +1162,9 @@ export default function NewPayrollPage() {
 
           <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
             <p className="text-sm font-black text-slate-950">Editor actions</p>
-            <p className="mt-1 text-sm text-slate-500">Open the table popup when you need full row-by-row editing.</p>
+            <p className="mt-1 text-sm text-slate-500">Open the payroll workspace when you need full row-by-row editing with every detail visible.</p>
             <div className="mt-4 grid gap-3">
-              <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button w-full">Edit payroll table</button>
+              <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button w-full">Open full-detail editor</button>
               <button onClick={addRow} type="button" className="secondary-button w-full">Add worker row</button>
               <button onClick={handlePrint} type="button" className="secondary-button w-full">Print payroll</button>
             </div>
@@ -1068,10 +1243,10 @@ export default function NewPayrollPage() {
             <div className="flex shrink-0 flex-col gap-2 border-b border-slate-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between print:hidden">
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Payroll worksheet</p>
-                <h3 className="break-words pr-2 text-base font-black text-slate-950">Excel-like table editor</h3>
+                <h3 className="break-words pr-2 text-base font-black text-slate-950">Full-detail payroll editor</h3>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <button onClick={jumpToTable} type="button" className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700">Go to table</button>
+                <button onClick={jumpToTable} type="button" className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700">Go to rows</button>
                 <button onClick={syncPayrollFromAttendance} type="button" className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm">{syncingAttendance ? "Syncing..." : "Sync attendance"}</button>
                 <button onClick={applyPayrollEditsToAttendance} type="button" className={toolButtonClass}>{savingOverrides ? "Applying..." : "Apply to attendance"}</button>
                 <button onClick={addRow} type="button" className={toolButtonClass}>Add row</button>
@@ -1087,6 +1262,125 @@ export default function NewPayrollPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
+
+      {activeRow && (
+          <div className="fixed inset-0 z-[80] bg-slate-950/70 p-3 backdrop-blur-sm">
+            <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+              <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Payroll row editor</p>
+                  <h3 className="mt-1 break-words text-xl font-black text-slate-950">{activeRow.name || `Worker row ${rows.findIndex((row) => row.id === activeRow.id) + 1}`}</h3>
+                  <p className="mt-1 text-sm text-slate-500">Open every field clearly here, then close when done editing.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => duplicateRow(activeRow)} className={toolButtonClass}>Copy row</button>
+                  <button type="button" onClick={() => setActiveRowId(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Done</button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-auto bg-slate-50 p-4 sm:p-5">
+                <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+                  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Worker details</p>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Supervisor / lead</span>
+                        <input value={activeRow.supervisor} onChange={(event) => updateRow(activeRow.id, { supervisor: event.target.value })} className={`${inputClass} mt-1 text-sm`} placeholder="Lead person" />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Worker name</span>
+                        <input list="employee-options" value={activeRow.name} onChange={(event) => selectEmployee(activeRow.id, event.target.value)} className={`${inputClass} mt-1 text-sm`} placeholder="Worker name" />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Position</span>
+                        <input value={activeRow.position} onChange={(event) => updateRow(activeRow.id, { position: event.target.value })} className={`${inputClass} mt-1 text-sm`} />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Daily rate</span>
+                        <input type="number" value={activeRow.dailyRate} onChange={(event) => updateRow(activeRow.id, { dailyRate: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">No. of days</span>
+                        <input type="number" step="0.1" value={activeRow.days} onChange={(event) => updateRow(activeRow.id, { days: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
+                        <input type="number" step="0.5" value={activeRow.otHours} onChange={(event) => updateRow(activeRow.id, { otHours: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Deductions and notes</p>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cash advance</span>
+                        <input type="number" value={activeRow.cashAdvance} onChange={(event) => updateRow(activeRow.id, { cashAdvance: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Tax</span>
+                        <input type="number" value={activeRow.tax} onChange={(event) => updateRow(activeRow.id, { tax: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Additional deduction</span>
+                        <input type="number" value={activeRow.additionalDeduction} onChange={(event) => updateRow(activeRow.id, { additionalDeduction: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Remarks</span>
+                        <textarea value={activeRow.remarks} onChange={(event) => updateRow(activeRow.id, { remarks: event.target.value })} className={`${inputClass} mt-1 min-h-[120px] text-sm`} placeholder="Notes / balance / sync remarks" />
+                      </label>
+                    </div>
+                  </section>
+                </div>
+
+                <section className="mt-5 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Computed payroll summary</p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {(() => {
+                      const computed = computeRow(activeRow, payFrequency);
+                      return (
+                        <>
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                            <p className="mt-2 text-lg font-black text-slate-950">{money(computed.amount)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
+                            <p className="mt-2 text-lg font-black text-slate-950">{money(computed.otPay)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p>
+                            <p className="mt-2 text-lg font-black text-rose-700">{money(computed.totalDeduction)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
+                            <p className="mt-2 text-lg font-black text-emerald-700">{money(computed.netSalary)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">PhilHealth</p>
+                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.philHealth)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pag-IBIG</p>
+                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.pagIbig)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">SSS</p>
+                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.sss)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
+                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.totalSalary)}</p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }

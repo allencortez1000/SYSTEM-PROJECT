@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import RecordDetailsModal from "../components/record-details-modal";
 
 const API_BASE = "/api";
 
@@ -20,6 +21,7 @@ export default function CompliancePage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeRow, setActiveRow] = useState<Row | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -65,9 +67,16 @@ export default function CompliancePage() {
           <p className="mt-6 text-sm text-slate-500">No compliance requirements found in Supabase yet.</p>
         )}
 
+        <p className="mt-4 text-sm text-slate-500">Click any compliance item or its button to open the full record.</p>
+
         <div className="mt-6 space-y-3">
           {rows.map((row, index) => (
-            <div key={index} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4">
+            <button
+              key={index}
+              type="button"
+              onClick={() => setActiveRow(row)}
+              className={`flex w-full items-center justify-between rounded-2xl p-4 text-left transition hover:bg-slate-100 ${activeRow === row ? "bg-blue-50 ring-1 ring-blue-200" : "bg-slate-50"}`}
+            >
               <div>
                 <p className="font-bold text-slate-700">
                   {pick(row, ["title"])}
@@ -76,13 +85,25 @@ export default function CompliancePage() {
                   {pick(row, ["category", "description"])}
                 </p>
               </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700 shadow-sm">
-                {pick(row, ["frequency"])}
-              </span>
-            </div>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700 shadow-sm">
+                  {pick(row, ["frequency"])}
+                </span>
+                <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-black text-white shadow-sm">
+                  View details
+                </span>
+              </div>
+            </button>
           ))}
         </div>
       </section>
+
+      <RecordDetailsModal
+        title={activeRow ? pick(activeRow, ["title"]) : "Compliance requirement"}
+        subtitle={activeRow ? `${pick(activeRow, ["category"])} · ${pick(activeRow, ["frequency"])}` : undefined}
+        row={activeRow}
+        onClose={() => setActiveRow(null)}
+      />
     </div>
   );
 }

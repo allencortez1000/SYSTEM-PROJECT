@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import RecordDetailsModal from "../components/record-details-modal";
 
 const API_BASE = "/api";
 
@@ -21,6 +22,7 @@ export default function RecruitmentPage() {
   const [openings, setOpenings] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeRow, setActiveRow] = useState<Row | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -83,24 +85,41 @@ export default function RecruitmentPage() {
           <p className="mt-6 text-sm text-slate-500">No candidates found in Supabase yet.</p>
         )}
 
+        <p className="mt-4 text-sm text-slate-500">Click any candidate card or its button to open the full record.</p>
+
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {candidates.map((candidate, index) => (
-            <div key={index} className="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-sm">
+            <button
+              key={index}
+              type="button"
+              onClick={() => setActiveRow(candidate)}
+              className={`rounded-[1.5rem] border p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${activeRow === candidate ? "border-blue-200 bg-blue-50/60" : "border-slate-100 bg-white"}`}
+            >
               <p className="font-black text-slate-950">
                 {pick(candidate, ["full_name", "name", "first_name"])}
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 {pick(candidate, ["email", "phone"])}
               </p>
-              <div className="mt-5 flex items-center justify-between">
+              <div className="mt-5 flex items-center justify-between gap-3">
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
                   {pick(candidate, ["source"])}
                 </span>
+                <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-black text-white">
+                  View details
+                </span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </section>
+
+      <RecordDetailsModal
+        title={activeRow ? pick(activeRow, ["full_name", "name", "first_name"]) : "Candidate"}
+        subtitle={activeRow ? `${pick(activeRow, ["source"])} · ${pick(activeRow, ["email", "phone"])}` : undefined}
+        row={activeRow}
+        onClose={() => setActiveRow(null)}
+      />
     </div>
   );
 }

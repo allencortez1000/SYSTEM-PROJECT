@@ -17,6 +17,10 @@ const EMPLOYEE_SELECT = `
   phone,
   status,
   salary,
+  salary_basis,
+  has_sss,
+  has_pagibig,
+  has_philhealth,
   department_id,
   position_id
 `;
@@ -32,6 +36,10 @@ type EmployeeRow = {
   phone?: string | null;
   status?: string | null;
   salary?: number | string | null;
+  salary_basis?: string | null;
+  has_sss?: boolean | null;
+  has_pagibig?: boolean | null;
+  has_philhealth?: boolean | null;
   department_id?: string | null;
   position_id?: string | null;
 };
@@ -68,6 +76,10 @@ function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps) {
     status: row.status || 'Active',
     manager: null,
     salary: Number(row.salary || 0),
+    salaryBasis: row.salary_basis || 'monthly',
+    hasSss: row.has_sss ?? true,
+    hasPagIbig: row.has_pagibig ?? true,
+    hasPhilHealth: row.has_philhealth ?? true,
   };
 }
 
@@ -100,26 +112,48 @@ async function getAllowedDepartmentIds(req: AuthRequest): Promise<string[] | nul
     throw new Error('User not authenticated');
   }
 
+  // Super admin can access all departments
   if (req.user.role === 'super-admin') {
     return null;
   }
 
-  if (req.user.role !== 'department-head-admin') {
+  // Department head can access only assigned departments
+  if (req.user.role === 'department-head-admin') {
+    const { data, error } = await supabase
+      .from('app_user_departments')
+      .select('department_id')
+      .eq('user_id', req.user.userId);
+
+    if (error) {
+      throw error;
+    }
+
+    return (data || [])
+      .map((row) => row.department_id as string)
+      .filter(Boolean);
+  }
+
+  // Sub-admins: allow if they have the 'employees' permission
+  if (req.user.role === 'sub-admin') {
+    const { data: userRows, error: userError } = await supabase
+      .from('app_users')
+      .select('permissions')
+      .eq('id', req.user.userId)
+      .limit(1);
+
+    if (userError) throw userError;
+    const userRow = userRows && userRows[0];
+    const permissions = Array.isArray(userRow?.permissions) ? userRow.permissions.map((p: unknown) => String(p)) : [];
+
+    if (permissions.includes('employees')) {
+      // Give access to all departments for sub-admins with the employees permission
+      return null;
+    }
+
     throw new Error('Insufficient permissions');
   }
 
-  const { data, error } = await supabase
-    .from('app_user_departments')
-    .select('department_id')
-    .eq('user_id', req.user.userId);
-
-  if (error) {
-    throw error;
-  }
-
-  return (data || [])
-    .map((row) => row.department_id as string)
-    .filter(Boolean);
+  throw new Error('Insufficient permissions');
 }
 
 
@@ -231,6 +265,10 @@ router.get('/', async (req, res) => {
   try {
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
+    const search = String(req.query.search || '').trim();
+    const limit = Number(req.query.limit || 25);
+    const offset = Number(req.query.offset || 0);
+
     let employeesQuery = supabase.from('employees').select(EMPLOYEE_SELECT).order('created_at', { ascending: false }) as any;
 
     if (departmentIds !== null) {
@@ -240,14 +278,39 @@ router.get('/', async (req, res) => {
       );
     }
 
+    if (search) {
+      // Use ilike for case-insensitive partial matching on full_name, employee_no, and email
+      const searchPattern = `%${search}%`;
+      employeesQuery = employeesQuery.or(`full_name.ilike.${searchPattern},employee_no.ilike.${searchPattern},email.ilike.${searchPattern}`);
+    }
+
+    if (limit > 0) {
+      employeesQuery = employeesQuery.range(offset, offset + limit - 1);
+    }
+
     const [employeesResult, lookups] = await Promise.all([employeesQuery, getLookupMaps()]);
 
     if (employeesResult.error) {
       throw employeesResult.error;
     }
 
+    const rows = (employeesResult.data || []) as EmployeeRow[];
+
+    // Client-side filter to ensure search accuracy
+    let filteredRows = rows;
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      filteredRows = rows.filter(
+        (row) =>
+          row.full_name?.toLowerCase().includes(searchTerm) ||
+          row.employee_no?.toLowerCase().includes(searchTerm) ||
+          row.email?.toLowerCase().includes(searchTerm),
+      );
+    }
+
     res.json({
-      employees: ((employeesResult.data || []) as EmployeeRow[]).map((row) => toEmployeeApi(row, lookups)),
+      employees: filteredRows.map((row) => toEmployeeApi(row, lookups)),
+      count: search ? filteredRows.length : (employeesResult.count as number) || rows.length,
     });
   } catch (error) {
     const message = (error as Error).message;
@@ -303,7 +366,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { fullName, email, department, position, status, salary } = req.body;
+    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth } = req.body;
 
     if (!fullName || !email) {
       return res.status(400).json({ message: 'fullName and email are required' });
@@ -339,6 +402,10 @@ router.post('/', async (req, res) => {
         position_id: positionId,
         status: status || 'Active',
         salary: Number(salary) || 0,
+        salary_basis: salaryBasis || 'monthly',
+        has_sss: hasSss ?? true,
+        has_pagibig: hasPagIbig ?? true,
+        has_philhealth: hasPhilHealth ?? true,
       })
       .select(EMPLOYEE_SELECT)
       .single();
@@ -360,6 +427,263 @@ router.post('/', async (req, res) => {
 
     res.status(500).json({
       message: 'Failed to create employee in Supabase',
+      error: message,
+    });
+  }
+});
+
+router.patch('/:id', async (req, res) => {
+  try {
+    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth } = req.body || {};
+    const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
+
+    let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
+
+    if (departmentIds !== null) {
+      employeeQuery = employeeQuery.in(
+        'department_id',
+        departmentIds.length > 0 ? departmentIds : ['00000000-0000-0000-0000-000000000000'],
+      );
+    }
+
+    const existingResult = await employeeQuery.maybeSingle();
+
+    if (existingResult.error) {
+      throw existingResult.error;
+    }
+
+    if (!existingResult.data) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const existing = existingResult.data as EmployeeRow;
+    const organizationId = await getDefaultOrganizationId();
+    const lookups = await getLookupMaps();
+    const currentDepartmentName = existing.department_id
+      ? lookups.departmentMap.get(existing.department_id) || 'Unassigned'
+      : 'Unassigned';
+    const currentPositionName = existing.position_id
+      ? lookups.positionMap.get(existing.position_id) || 'Employee'
+      : 'Employee';
+
+    const nextDepartmentId = await getOrCreateDepartment(
+      organizationId,
+      department || currentDepartmentName,
+    );
+
+    if (departmentIds !== null && !departmentIds.includes(nextDepartmentId)) {
+      return res.status(403).json({ message: 'You can only update employees in your assigned department(s)' });
+    }
+
+    const nextPositionId = await getOrCreatePosition(
+      organizationId,
+      nextDepartmentId,
+      position || currentPositionName,
+    );
+
+    const mergedFullName = String(fullName || existing.full_name || [existing.first_name, existing.last_name].filter(Boolean).join(' ')).trim();
+    const { firstName, lastName } = splitFullName(mergedFullName);
+
+    const { data, error } = await supabase
+      .from('employees')
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        email: email === undefined ? existing.email : email,
+        department_id: nextDepartmentId,
+        position_id: nextPositionId,
+        status: status || existing.status || 'Active',
+        salary: salary === undefined ? Number(existing.salary || 0) : Number(salary) || 0,
+        salary_basis: salaryBasis === undefined ? existing.salary_basis || 'monthly' : String(salaryBasis || 'monthly'),
+        has_sss: hasSss === undefined ? existing.has_sss ?? true : Boolean(hasSss),
+        has_pagibig: hasPagIbig === undefined ? existing.has_pagibig ?? true : Boolean(hasPagIbig),
+        has_philhealth: hasPhilHealth === undefined ? existing.has_philhealth ?? true : Boolean(hasPhilHealth),
+      })
+      .eq('id', req.params.id)
+      .select(EMPLOYEE_SELECT)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    const refreshedLookups = await getLookupMaps();
+
+    res.json({
+      employee: toEmployeeApi(data as EmployeeRow, refreshedLookups),
+    });
+  } catch (error) {
+    const message = (error as Error).message;
+    if (message === 'Insufficient permissions') {
+      return res.status(403).json({ message });
+    }
+
+    res.status(500).json({
+      message: 'Failed to update employee in Supabase',
+      error: message,
+    });
+  }
+});
+
+router.patch('/:id/deactivate', async (req, res) => {
+  try {
+    const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
+
+    let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
+
+    if (departmentIds !== null) {
+      employeeQuery = employeeQuery.in(
+        'department_id',
+        departmentIds.length > 0 ? departmentIds : ['00000000-0000-0000-0000-000000000000'],
+      );
+    }
+
+    const existingResult = await employeeQuery.maybeSingle();
+
+    if (existingResult.error) {
+      throw existingResult.error;
+    }
+
+    if (!existingResult.data) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    if (departmentIds !== null) {
+      const deptId = existingResult.data.department_id;
+      if (deptId && !departmentIds.includes(deptId)) {
+        return res.status(403).json({ message: 'You can only update employees in your assigned department(s)' });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ status: 'Inactive' })
+      .eq('id', req.params.id)
+      .select(EMPLOYEE_SELECT)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    const lookups = await getLookupMaps();
+
+    res.json({ employee: toEmployeeApi(data as EmployeeRow, lookups) });
+  } catch (error) {
+    const message = (error as Error).message;
+    if (message === 'Insufficient permissions') {
+      return res.status(403).json({ message });
+    }
+
+    res.status(500).json({
+      message: 'Failed to deactivate employee in Supabase',
+      error: message,
+    });
+  }
+});
+
+router.patch('/:id/activate', async (req, res) => {
+  try {
+    const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
+
+    let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
+
+    if (departmentIds !== null) {
+      employeeQuery = employeeQuery.in(
+        'department_id',
+        departmentIds.length > 0 ? departmentIds : ['00000000-0000-0000-0000-000000000000'],
+      );
+    }
+
+    const existingResult = await employeeQuery.maybeSingle();
+
+    if (existingResult.error) {
+      throw existingResult.error;
+    }
+
+    if (!existingResult.data) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    if (departmentIds !== null) {
+      const deptId = existingResult.data.department_id;
+      if (deptId && !departmentIds.includes(deptId)) {
+        return res.status(403).json({ message: 'You can only update employees in your assigned department(s)' });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ status: 'Active' })
+      .eq('id', req.params.id)
+      .select(EMPLOYEE_SELECT)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    const lookups = await getLookupMaps();
+
+    res.json({ employee: toEmployeeApi(data as EmployeeRow, lookups) });
+  } catch (error) {
+    const message = (error as Error).message;
+    if (message === 'Insufficient permissions') {
+      return res.status(403).json({ message });
+    }
+
+    res.status(500).json({
+      message: 'Failed to activate employee in Supabase',
+      error: message,
+    });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
+
+    let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
+
+    if (departmentIds !== null) {
+      employeeQuery = employeeQuery.in(
+        'department_id',
+        departmentIds.length > 0 ? departmentIds : ['00000000-0000-0000-0000-000000000000'],
+      );
+    }
+
+    const existingResult = await employeeQuery.maybeSingle();
+
+    if (existingResult.error) {
+      throw existingResult.error;
+    }
+
+    if (!existingResult.data) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    if (departmentIds !== null) {
+      const deptId = existingResult.data.department_id;
+      if (deptId && !departmentIds.includes(deptId)) {
+        return res.status(403).json({ message: 'You can only delete employees in your assigned department(s)' });
+      }
+    }
+
+    const { error } = await supabase.from('employees').delete().eq('id', req.params.id);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({ message: 'Employee deleted' });
+  } catch (error) {
+    const message = (error as Error).message;
+    if (message === 'Insufficient permissions') {
+      return res.status(403).json({ message });
+    }
+
+    res.status(500).json({
+      message: 'Failed to delete employee in Supabase',
       error: message,
     });
   }
