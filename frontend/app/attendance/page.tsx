@@ -123,6 +123,17 @@ function addDays(date: Date, days: number) {
   return next;
 }
 
+function periodStartDate(anchorDate: string, periodMode: PeriodMode) {
+  const anchor = parseIsoDate(anchorDate);
+  if (periodMode === "weekly") {
+    return isoDate(weekStart(anchor));
+  }
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const day = anchor.getDate();
+  return isoDate(new Date(year, month, day <= 15 ? 1 : 16));
+}
+
 function getPeriodDates(anchorDate: string, periodMode: PeriodMode) {
   const anchor = parseIsoDate(anchorDate);
 
@@ -226,6 +237,7 @@ export default function AttendancePage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [activeCell, setActiveCell] = useState<ActiveCell>(null);
+  const [activeAttendanceDate, setActiveAttendanceDate] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -397,10 +409,18 @@ export default function AttendancePage() {
     }));
   }, [assignments, employees, projects]);
 
+  useEffect(() => {
+    if (activeCell) {
+      setActiveAttendanceDate(activeCell.date);
+    } else {
+      setActiveAttendanceDate("");
+    }
+  }, [activeCell]);
+
   const activeEmployee = activeCell
     ? assignedEmployees.find((employee) => employee.id === activeCell.employeeId) || employees.find((employee) => employee.id === activeCell.employeeId)
     : null;
-  const activeDraft = activeCell ? ensureDraft(activeCell.employeeId, activeCell.date) : null;
+  const activeDraft = activeCell ? ensureDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date) : null;
 
   function getSavedRecord(employeeId: string, date: string) {
     const employee = employees.find((item) => item.id === employeeId);
@@ -582,7 +602,9 @@ export default function AttendancePage() {
     setError(null);
 
     try {
-      const draft = ensureDraft(activeCell.employeeId, activeCell.date);
+      const targetDate = activeAttendanceDate || activeCell.date;
+      const sourceDate = activeCell.date;
+      const draft = ensureDraft(activeCell.employeeId, targetDate);
       const workedHours = draft.status === "Absent" || draft.status === "Leave"
         ? 0
         : draft.status === "Halfday"
@@ -592,7 +614,7 @@ export default function AttendancePage() {
       const payload = {
         employeeId: employee.id,
         employeeName: employee.fullName,
-        date: activeCell.date,
+        date: targetDate,
         status: draft.status,
         checkIn: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkIn,
         checkOut: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkOut,
@@ -613,13 +635,21 @@ export default function AttendancePage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
 
+      if (sourceDate !== targetDate) {
+        await fetch("/api/attendance", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeId: employee.id, date: sourceDate }),
+        });
+      }
+
       const refreshed = await fetch("/api/attendance");
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
         setRecords(refreshedData?.attendance || []);
       }
 
-      notify("Attendance saved");
+      notify(sourceDate !== targetDate ? "Attendance date updated" : "Attendance saved");
       setActiveCell(null);
     } catch (err) {
       setError((err as Error).message);
@@ -775,38 +805,46 @@ export default function AttendancePage() {
 
         <div className="space-y-6">
           <section className="section-card space-y-4">
-            <div className="flex flex-col gap-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="eyebrow">Attendance workspace</p>
                 <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">{selectedProject} attendance planner</h3>
                 <p className="mt-2 text-sm text-slate-500">{describePeriod(periodDates, periodMode)} · Mon–Sat only</p>
               </div>
 
-              <div className="grid w-full gap-3 sm:grid-cols-2 2xl:max-w-3xl 2xl:grid-cols-3">
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Period type</span>
-                  <select
-                    value={periodMode}
-                    onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                  >
-                    <option value="weekly">Weekly</option>
-                    <option value="semi-monthly">Semi-monthly</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Anchor date</span>
-                  <input
-                    type="date"
-                    value={anchorDate}
-                    onChange={(event) => setAnchorDate(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                  />
-                </label>
-                <div className="flex items-end sm:col-span-2 xl:col-span-1">
-                  <button type="button" onClick={saveAttendance} disabled={saving || loading} className="primary-button w-full">
-                    {saving ? "Saving..." : `Save ${periodMode === "weekly" ? "weekly" : "semi-monthly"} attendance`}
-                  </button>
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:max-w-5xl">
+                <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance date</p>
+                  <label className="mt-3 block">
+                    <span className="text-sm font-bold text-slate-600">Choose attendance day</span>
+                    <input
+                      type="date"
+                      value={anchorDate}
+                      onChange={(event) => setAnchorDate(event.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    />
+                  </label>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Pick the exact day you want to work on, then the table below will reflect that attendance period.</p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                  <label className="block rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+                    <span className="text-sm font-bold text-slate-600">Period type</span>
+                    <select
+                      value={periodMode}
+                      onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="semi-monthly">Semi-monthly</option>
+                    </select>
+                  </label>
+
+                  <div className="flex items-end">
+                    <button type="button" onClick={saveAttendance} disabled={saving || loading} className="primary-button w-full">
+                      {saving ? "Saving..." : `Save ${periodMode === "weekly" ? "weekly" : "semi-monthly"} attendance`}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -865,7 +903,56 @@ export default function AttendancePage() {
               <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">Recent saved attendance for {selectedProject}</h3>
             </div>
 
-            <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
+            <div className="mt-6 space-y-4 xl:hidden">
+              {loading ? (
+                <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 text-center text-slate-500">Loading attendance...</div>
+              ) : latestRecords.length === 0 ? (
+                <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 text-center text-slate-500">No saved attendance records for this project yet.</div>
+              ) : (
+                latestRecords.map((record) => (
+                  <article key={record.id} className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-base font-black text-slate-950">
+                          {record.employeeName}
+                          {record.employeeId ? <span className="ml-2 text-xs font-semibold text-slate-400">({record.employeeId})</span> : null}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{record.date}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${statusClass[record.status] || "bg-slate-100 text-slate-700"}`}>
+                        {record.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-bold text-slate-500">Check-in</p>
+                        <p className="mt-1 font-black text-slate-950">{record.checkIn || "—"}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-bold text-slate-500">Check-out</p>
+                        <p className="mt-1 font-black text-slate-950">{record.checkOut || "—"}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-bold text-slate-500">Project</p>
+                        <p className="mt-1 font-black text-slate-950">{record.projectSite || selectedProject}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-bold text-slate-500">OT</p>
+                        <p className="mt-1 font-black text-slate-950">{record.overtimeHours !== undefined && record.overtimeHours !== null ? `${record.overtimeHours}h` : "—"}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      <p className="font-bold text-slate-500">Notes</p>
+                      <p className="mt-1 font-semibold text-slate-700">{record.notes || "—"}</p>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <div className="mt-6 hidden overflow-x-auto rounded-[1.5rem] border border-slate-100 xl:block">
               <table className="soft-table">
                 <thead>
                   <tr>
@@ -910,23 +997,73 @@ export default function AttendancePage() {
           <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-3 py-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance workspace</p>
-                <h3 className="break-words pr-2 text-base font-black text-slate-950">
-                  {selectedProject} daily time and overtime table
-                </h3>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {assignedEmployees.length} assigned workers · {periodDates.length} day columns · Mon–Sat only
-                </p>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance workspace</p>
+                  <h3 className="break-words pr-2 text-base font-black text-slate-950">
+                    {selectedProject} daily time and overtime table
+                  </h3>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {assignedEmployees.length} assigned workers · {periodDates.length} day columns · Mon–Sat only
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={saveAttendance} disabled={saving || loading} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
+                    {saving ? "Saving..." : "Save attendance"}
+                  </button>
+                  <button type="button" onClick={() => setIsWorkspaceOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                    Close
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                <button type="button" onClick={saveAttendance} disabled={saving || loading} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
-                  {saving ? "Saving..." : "Save attendance"}
-                </button>
-                <button type="button" onClick={() => setIsWorkspaceOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
-                  Close
-                </button>
-              </div>
+
+              <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance range</p>
+                  <label className="mt-3 block">
+                    <span className="text-sm font-bold text-slate-600">Choose range anchor date</span>
+                    <input
+                      type="date"
+                      value={anchorDate}
+                      onChange={(event) => setAnchorDate(event.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    />
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAnchorDate(periodStartDate(anchorDate, "weekly"))}
+                      className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
+                    >
+                      This week
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAnchorDate(periodStartDate(anchorDate, "semi-monthly"))}
+                      className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
+                    >
+                      First half / Second half
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Select a date, then switch between a 1-week or half-month attendance period.</p>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Range type</p>
+                    <select
+                      value={periodMode}
+                      onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    >
+                      <option value="weekly">Weekly range</option>
+                      <option value="semi-monthly">Half-month range</option>
+                    </select>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Selected range</p>
+                    <p className="mt-2 text-sm font-bold text-slate-700">{describePeriod(periodDates, periodMode)}</p>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -956,8 +1093,88 @@ export default function AttendancePage() {
             <div className="min-h-0 flex-1 overflow-auto bg-white p-4">
               {error && <p className="mb-4 rounded-2xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
 
-              <div className="overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm">
-              <table className="min-w-[1200px] border-collapse text-left text-sm">
+              <div className="space-y-4 xl:hidden">
+                {loading ? (
+                  <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 text-center text-slate-500">Loading attendance workspace...</div>
+                ) : assignedEmployees.length === 0 ? (
+                  <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 text-center text-slate-500">No workers are assigned to this project yet. Assign workers from Admin Access to start encoding attendance.</div>
+                ) : (
+                  assignedEmployees.map((employee) => (
+                    <article key={employee.id} className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-base font-black text-slate-950">{employee.fullName}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">{employee.position || "Employee"}</p>
+                        </div>
+                        <p className="text-xs font-bold text-slate-400">Tap a day to edit</p>
+                      </div>
+
+                      <div className="mt-4 grid gap-3">
+                        {periodDates.map((date) => {
+                          const draft = ensureDraft(employee.id, date);
+                          const savedRecord = getSavedRecord(employee.id, date);
+                          const hasSavedRecord = Boolean(savedRecord);
+                          const isPeriodRow = savedRecord?.periodMode === "payroll_period" || (!savedRecord?.checkIn && !savedRecord?.checkOut && Number(savedRecord?.workedHours || 0) > 0);
+                          const periodWorkdays = periodDates.length || 1;
+                          const totalWorkedHours = Number(savedRecord?.workedHours ?? 0);
+                          const totalOvertimeHours = Number(savedRecord?.overtimeHours ?? 0);
+                          const distributedWorkedHours = isPeriodRow && totalWorkedHours > 0 ? Math.min(8, Math.round((totalWorkedHours / periodWorkdays) * 100) / 100) : totalWorkedHours;
+                          const distributedOvertimeHours = isPeriodRow && totalOvertimeHours > 0 ? Math.round((totalOvertimeHours / periodWorkdays) * 100) / 100 : totalOvertimeHours;
+                          const displayStatus = savedRecord?.status || (isPeriodRow ? "Present" : "No record");
+                          const displayCheckIn = savedRecord?.checkIn || (isPeriodRow ? "07:00" : "—");
+                          const displayCheckOut = savedRecord?.checkOut || (isPeriodRow ? "16:00" : "—");
+                          const displayWorkedHours = savedRecord?.workedHours !== undefined && savedRecord?.workedHours !== null
+                            ? `${distributedWorkedHours.toFixed(2)}`
+                            : hasSavedRecord
+                              ? computeWorkedHours(draft.checkIn, draft.checkOut).toFixed(2)
+                              : "0.00";
+                          const displayOvertime = savedRecord?.overtimeHours !== undefined && savedRecord?.overtimeHours !== null
+                            ? `${distributedOvertimeHours.toFixed(2)}h`
+                            : hasSavedRecord
+                              ? `${draft.overtimeHours}h`
+                              : "0h";
+                          return (
+                            <button
+                              key={date}
+                              type="button"
+                              onClick={() => setActiveCell({ employeeId: employee.id, date })}
+                              className="rounded-[1.25rem] border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${statusClass[displayStatus] || "bg-slate-100 text-slate-700"}`}>
+                                    {displayStatus}
+                                  </p>
+                                  <p className="mt-2 text-sm font-bold text-slate-950">{formatDateLabel(date)}</p>
+                                  <p className="mt-1 text-xs text-slate-500">Attendance date</p>
+                                  <p className="mt-1 text-xs font-semibold text-slate-500">{displayCheckIn} - {displayCheckOut}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-2 text-right">
+                                  <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>
+                                  {savedRecord?.projectSite ? <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-600">{savedRecord.projectSite}</span> : null}
+                                </div>
+                              </div>
+                              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+                                <div className="rounded-xl bg-white/80 px-3 py-2">
+                                  <p className="font-bold text-slate-500">Worked</p>
+                                  <p className="mt-1 font-black text-slate-950">{displayWorkedHours}h</p>
+                                </div>
+                                <div className="rounded-xl bg-white/80 px-3 py-2">
+                                  <p className="font-bold text-slate-500">OT</p>
+                                  <p className="mt-1 font-black text-emerald-700">{displayOvertime}</p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+
+              <div className="hidden overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm xl:block">
+                <table className="min-w-[1200px] border-collapse text-left text-sm">
                 <thead className="bg-slate-950 text-white">
                   <tr>
                     <th className="sticky left-0 z-20 min-w-[260px] bg-slate-950 px-4 py-3 text-xs font-black">Worker</th>
@@ -1045,7 +1262,7 @@ export default function AttendancePage() {
                     ))
                   )}
                 </tbody>
-              </table>
+                </table>
               </div>
             </div>
           </div>
@@ -1098,7 +1315,8 @@ export default function AttendancePage() {
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance details</p>
                 <h3 className="mt-1 text-xl font-black text-slate-950">{activeEmployee.fullName}</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-500">{activeEmployee.position || "Employee"} · {selectedProject}</p>
-                <p className="mt-1 text-sm text-slate-500">{formatDateFull(activeCell.date)}</p>
+                <p className="mt-1 text-sm text-slate-500">Source date: {formatDateFull(activeCell.date)}</p>
+                <p className="mt-1 text-sm font-semibold text-blue-600">Editing attendance date: {activeAttendanceDate ? formatDateFull(activeAttendanceDate) : formatDateFull(activeCell.date)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1116,11 +1334,22 @@ export default function AttendancePage() {
 
             <div className="min-h-0 flex-1 overflow-auto p-5">
               <div className="grid gap-4 md:grid-cols-2">
+                <label className="block md:col-span-2">
+                  <span className="text-sm font-bold text-slate-600">Attendance date</span>
+                  <input
+                    type="date"
+                    value={activeAttendanceDate}
+                    onChange={(event) => setActiveAttendanceDate(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                  />
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Choose the exact date for this attendance entry before saving.</p>
+                </label>
+
                 <label className="block">
                   <span className="text-sm font-bold text-slate-600">Attendance status</span>
                   <select
                     value={activeDraft.status}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { status: event.target.value as AttendanceStatus })}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { status: event.target.value as AttendanceStatus })}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                   >
                     {statusOptions.map((option) => (
@@ -1140,7 +1369,7 @@ export default function AttendancePage() {
                   <input
                     type="time"
                     value={activeDraft.checkIn}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { checkIn: event.target.value })}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { checkIn: event.target.value })}
                     disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
@@ -1151,7 +1380,7 @@ export default function AttendancePage() {
                   <input
                     type="time"
                     value={activeDraft.checkOut}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { checkOut: event.target.value })}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { checkOut: event.target.value })}
                     disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
@@ -1178,7 +1407,7 @@ export default function AttendancePage() {
                   <span className="text-sm font-bold text-slate-600">Overtime mode</span>
                   <select
                     value={activeDraft.overtimeMode}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { overtimeMode: event.target.value as OvertimeMode })}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { overtimeMode: event.target.value as OvertimeMode })}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                   >
                     <option value="manual">Manual OT</option>
@@ -1192,7 +1421,7 @@ export default function AttendancePage() {
                     min="0"
                     step="0.25"
                     value={activeDraft.overtimeHours}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { overtimeHours: event.target.value })}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { overtimeHours: event.target.value })}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                   />
                 </label>
@@ -1201,7 +1430,7 @@ export default function AttendancePage() {
                   <span className="text-sm font-bold text-slate-600">Notes</span>
                   <textarea
                     value={activeDraft.notes}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { notes: event.target.value })}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { notes: event.target.value })}
                     rows={5}
                     placeholder="Add attendance notes, deployment notes, approved undertime, approved overtime, etc."
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
