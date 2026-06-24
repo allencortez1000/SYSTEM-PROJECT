@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNotification } from "../components/notification";
 
-const statusOptions = ["Present", "Absent", "Leave", "Remote"] as const;
+const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
 type AttendanceStatus = (typeof statusOptions)[number];
 type PeriodMode = "weekly" | "semi-monthly";
 type OvertimeMode = "auto" | "manual";
 
 type AttendanceRecord = {
   id: string | number;
+  employeeId?: string;
   employeeName: string;
   date: string;
   status: string;
@@ -50,21 +51,27 @@ type ActiveCell = {
   date: string;
 } | null;
 
+type DeleteTarget = {
+  employeeId: string;
+  date: string;
+} | null;
+
 const PROJECTS_STORAGE_KEY = "attendance_project_sites_v1";
 const ASSIGNMENTS_STORAGE_KEY = "attendance_project_assignments_v1";
 
-const defaultProjects = ["Daan Pari", "Bagac", "Orion"];
+const defaultProjects: string[] = [];
 const defaultDraftEntry: DraftEntry = {
   status: "Present",
-  checkIn: "08:00",
-  checkOut: "17:00",
+  checkIn: "07:00",
+  checkOut: "16:00",
   notes: "",
   overtimeHours: "0",
-  overtimeMode: "auto",
+  overtimeMode: "manual",
 };
 
 const statusClass: Record<string, string> = {
   Present: "bg-emerald-50 text-emerald-700",
+  Halfday: "bg-cyan-50 text-cyan-700",
   Absent: "bg-red-50 text-red-700",
   Leave: "bg-amber-50 text-amber-700",
   Remote: "bg-blue-50 text-blue-700",
@@ -83,6 +90,12 @@ function formatDateLabel(value: string) {
   return parseIsoDate(value).toLocaleDateString("en-PH", {
     month: "short",
     day: "2-digit",
+    weekday: "short",
+  });
+}
+
+function formatWeekdayLabel(value: string) {
+  return parseIsoDate(value).toLocaleDateString("en-PH", {
     weekday: "short",
   });
 }
@@ -115,7 +128,7 @@ function getPeriodDates(anchorDate: string, periodMode: PeriodMode) {
 
   if (periodMode === "weekly") {
     const start = weekStart(anchor);
-    return Array.from({ length: 7 }, (_, index) => isoDate(addDays(start, index)));
+    return Array.from({ length: 7 }, (_, index) => isoDate(addDays(start, index))).filter((date) => parseIsoDate(date).getDay() !== 0);
   }
 
   const year = anchor.getFullYear();
@@ -126,7 +139,7 @@ function getPeriodDates(anchorDate: string, periodMode: PeriodMode) {
 
   return Array.from({ length: lastDay - startDay + 1 }, (_, index) =>
     isoDate(new Date(year, month, startDay + index)),
-  );
+  ).filter((date) => parseIsoDate(date).getDay() !== 0);
 }
 
 function describePeriod(dates: string[], mode: PeriodMode) {
@@ -151,7 +164,9 @@ function computeWorkedHours(checkIn: string, checkOut: string) {
   const start = parseTimeToMinutes(checkIn);
   const end = parseTimeToMinutes(checkOut);
   if (start === null || end === null || end <= start) return 0;
-  return Math.round(((end - start) / 60) * 100) / 100;
+  const grossHours = (end - start) / 60;
+  const breakHours = grossHours >= 1 ? 1 : 0;
+  return Math.max(0, Math.round((grossHours - breakHours) * 100) / 100);
 }
 
 function computeAutoOvertime(checkIn: string, checkOut: string) {
@@ -178,7 +193,7 @@ function extractSavedOvertime(notes?: string, record?: AttendanceRecord) {
   }
 
   if (!notes) {
-    return { notes: "", overtimeHours: "0", overtimeMode: "auto" as const };
+    return { notes: "", overtimeHours: "0", overtimeMode: "manual" as const };
   }
 
   const parts = notes.split("|").map((part) => part.trim()).filter(Boolean);
@@ -186,7 +201,7 @@ function extractSavedOvertime(notes?: string, record?: AttendanceRecord) {
   const cleanNotes = parts.filter((part) => !/^OT hours:\s*/i.test(part)).join(" | ");
 
   if (!overtimePart) {
-    return { notes: cleanNotes, overtimeHours: "0", overtimeMode: "auto" as const };
+    return { notes: cleanNotes, overtimeHours: "0", overtimeMode: "manual" as const };
   }
 
   const parsed = overtimePart.replace(/^OT hours:\s*/i, "").trim();
@@ -211,6 +226,7 @@ export default function AttendancePage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [activeCell, setActiveCell] = useState<ActiveCell>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [assignmentSavingId, setAssignmentSavingId] = useState<string | null>(null);
@@ -280,15 +296,35 @@ export default function AttendancePage() {
         }
 
         const uniqueEmployees = uniqueByName(employeesData?.employees || []);
-        setRecords(attendanceData?.attendance || []);
+        const loadedRecords = attendanceData?.attendance || [];
+        setRecords(loadedRecords);
         setEmployees(uniqueEmployees);
+
+        const latestRecordDate = loadedRecords
+          .map((record: AttendanceRecord) => record.date)
+          .filter(Boolean)
+          .sort((a: string, b: string) => b.localeCompare(a))[0];
+        if (latestRecordDate) {
+          setAnchorDate(latestRecordDate);
+        }
+
+        const latestRecordProject = loadedRecords
+          .slice()
+          .sort((a: AttendanceRecord, b: AttendanceRecord) => String(b.date || "").localeCompare(String(a.date || "")))[0]?.projectSite
+          ?.trim();
 
         const dbProjects = Array.isArray(projectsData?.projects)
           ? projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean)
           : [];
         const mergedProjects = Array.from(new Set([...defaultProjects, ...dbProjects]));
         setProjects(mergedProjects);
-        setSelectedProject((current) => (mergedProjects.includes(current) ? current : mergedProjects[0] || defaultProjects[0]));
+        setSelectedProject((current) => {
+          const currentMatch = mergedProjects.find((project) => project.toLowerCase() === String(current || "").toLowerCase());
+          const latestMatch = latestRecordProject
+            ? mergedProjects.find((project) => project.toLowerCase() === latestRecordProject.toLowerCase())
+            : undefined;
+          return currentMatch || latestMatch || mergedProjects[0] || "";
+        });
 
         setAssignments((current) => {
           const dbAssignments = assignmentsData?.assignments && typeof assignmentsData.assignments === "object"
@@ -316,16 +352,22 @@ export default function AttendancePage() {
   const periodDates = useMemo(() => getPeriodDates(anchorDate, periodMode), [anchorDate, periodMode]);
 
   const assignedEmployees = useMemo(() => {
-    const fallbackProject = projects[0] || defaultProjects[0];
+    if (!selectedProject) return [];
     return employees
-      .filter((employee) => (assignments[employee.id] || fallbackProject) === selectedProject)
+      .filter((employee) => assignments[employee.id] === selectedProject)
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
-  }, [assignments, employees, selectedProject, projects]);
+  }, [assignments, employees, selectedProject]);
 
   const latestRecords = useMemo(() => {
     const selectedDateSet = new Set(periodDates);
     return records
-      .filter((record) => assignedEmployees.some((employee) => employee.fullName === record.employeeName))
+      .filter((record) => {
+        const matchesAssignedEmployee = assignedEmployees.some((employee) => {
+          if (record.employeeId) return record.employeeId === employee.id;
+          return employee.fullName === record.employeeName;
+        });
+        return matchesAssignedEmployee;
+      })
       .filter((record) => selectedDateSet.has(record.date))
       .slice(0, 20);
   }, [assignedEmployees, records, periodDates]);
@@ -333,10 +375,14 @@ export default function AttendancePage() {
   const summary = useMemo(() => {
     const counts = { Present: 0, Absent: 0, Leave: 0, Remote: 0 };
     const selectedDateSet = new Set(periodDates);
-    const assignedNameSet = new Set(assignedEmployees.map((employee) => employee.fullName));
 
     records.forEach((record) => {
-      if (!selectedDateSet.has(record.date) || !assignedNameSet.has(record.employeeName)) return;
+      if (!selectedDateSet.has(record.date)) return;
+      const matchesAssignedEmployee = assignedEmployees.some((employee) => {
+        if (record.employeeId) return record.employeeId === employee.id;
+        return employee.fullName === record.employeeName;
+      });
+      if (!matchesAssignedEmployee) return;
       const status = record.status as keyof typeof counts;
       if (status in counts) counts[status] += 1;
     });
@@ -347,7 +393,7 @@ export default function AttendancePage() {
   const projectCounts = useMemo(() => {
     return projects.map((project) => ({
       project,
-      count: employees.filter((employee) => (assignments[employee.id] || (projects[0] || defaultProjects[0])) === project).length,
+      count: employees.filter((employee) => assignments[employee.id] === project).length,
     }));
   }, [assignments, employees, projects]);
 
@@ -356,10 +402,18 @@ export default function AttendancePage() {
     : null;
   const activeDraft = activeCell ? ensureDraft(activeCell.employeeId, activeCell.date) : null;
 
+  function getSavedRecord(employeeId: string, date: string) {
+    const employee = employees.find((item) => item.id === employeeId);
+    return records.find((record) => {
+      const matchesId = record.employeeId ? record.employeeId === employeeId : false;
+      const matchesName = employee?.fullName ? record.employeeName === employee.fullName : false;
+      return (matchesId || matchesName) && record.date === date;
+    });
+  }
+
   function ensureDraft(employeeId: string, date: string) {
     const key = getDraftKey(employeeId, date);
-    const employee = employees.find((item) => item.id === employeeId);
-    const existingRecord = records.find((record) => record.employeeName === employee?.fullName && record.date === date);
+    const existingRecord = getSavedRecord(employeeId, date);
     const savedOvertime = extractSavedOvertime(existingRecord?.notes, existingRecord);
 
     return (
@@ -369,15 +423,17 @@ export default function AttendancePage() {
         checkOut: existingRecord?.checkOut || defaultDraftEntry.checkOut,
         notes: savedOvertime.notes,
         overtimeHours:
-          savedOvertime.overtimeMode === "manual"
-            ? savedOvertime.overtimeHours
-            : String(existingRecord?.overtimeHours ?? computeAutoOvertime(existingRecord?.checkIn || defaultDraftEntry.checkIn, existingRecord?.checkOut || defaultDraftEntry.checkOut)),
-        overtimeMode: savedOvertime.overtimeMode,
+          existingRecord?.overtimeHours !== undefined && existingRecord?.overtimeHours !== null
+            ? String(existingRecord.overtimeHours)
+            : savedOvertime.overtimeMode === "manual"
+              ? savedOvertime.overtimeHours
+              : String(computeAutoOvertime(existingRecord?.checkIn || defaultDraftEntry.checkIn, existingRecord?.checkOut || defaultDraftEntry.checkOut)),
+        overtimeMode: existingRecord?.overtimeHours !== undefined && existingRecord?.overtimeHours !== null ? "manual" : "manual",
       }
     );
   }
 
-  function updateDraft(employeeId: string, date: string, patch: Partial<DraftEntry>, autoRecalculate = false) {
+  function updateDraft(employeeId: string, date: string, patch: Partial<DraftEntry>) {
     const key = getDraftKey(employeeId, date);
     const current = ensureDraft(employeeId, date);
     const next = { ...current, ...patch };
@@ -389,22 +445,17 @@ export default function AttendancePage() {
     if (patch.status === "Absent" || patch.status === "Leave") {
       next.checkIn = "";
       next.checkOut = "";
-      if (next.overtimeMode === "auto") {
-        next.overtimeHours = "0";
-      }
+      next.overtimeHours = "0";
+    }
+
+    if (patch.status === "Halfday") {
+      next.checkIn = next.checkIn || "07:00";
+      next.checkOut = next.checkOut || "11:00";
     }
 
     if (patch.status === "Present" && !next.checkIn && !next.checkOut) {
       next.checkIn = defaultDraftEntry.checkIn;
       next.checkOut = defaultDraftEntry.checkOut;
-    }
-
-    if (autoRecalculate && next.overtimeMode === "auto") {
-      next.overtimeHours = String(computeAutoOvertime(next.checkIn, next.checkOut));
-    }
-
-    if (patch.overtimeMode === "auto") {
-      next.overtimeHours = String(computeAutoOvertime(next.checkIn, next.checkOut));
     }
 
     setDrafts((prev) => ({ ...prev, [key]: next }));
@@ -441,7 +492,7 @@ export default function AttendancePage() {
   }
 
   async function assignEmployee(employeeId: string, project: string) {
-    const previous = assignments[employeeId] || projects[0] || defaultProjects[0];
+    const previous = assignments[employeeId] || selectedProject || "";
     setAssignments((current) => ({ ...current, [employeeId]: project }));
     setAssignmentSavingId(employeeId);
     setError(null);
@@ -473,9 +524,14 @@ export default function AttendancePage() {
       const payloads = assignedEmployees.flatMap((employee) =>
         periodDates.map((date) => {
           const draft = ensureDraft(employee.id, date);
-          const workedHours = draft.status === "Absent" || draft.status === "Leave" ? 0 : computeWorkedHours(draft.checkIn, draft.checkOut);
+          const workedHours = draft.status === "Absent" || draft.status === "Leave"
+            ? 0
+            : draft.status === "Halfday"
+              ? 4
+              : computeWorkedHours(draft.checkIn, draft.checkOut);
           const overtimeHours = Number(draft.overtimeHours || 0);
           return {
+            employeeId: employee.id,
             employeeName: employee.fullName,
             date,
             status: draft.status,
@@ -513,6 +569,113 @@ export default function AttendancePage() {
       setError((err as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  const saveCurrentAttendance = async () => {
+    if (!activeCell) return;
+
+    const employee = employees.find((item) => item.id === activeCell.employeeId);
+    if (!employee) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const draft = ensureDraft(activeCell.employeeId, activeCell.date);
+      const workedHours = draft.status === "Absent" || draft.status === "Leave"
+        ? 0
+        : draft.status === "Halfday"
+          ? 4
+          : computeWorkedHours(draft.checkIn, draft.checkOut);
+      const overtimeHours = Number(draft.overtimeHours || 0);
+      const payload = {
+        employeeId: employee.id,
+        employeeName: employee.fullName,
+        date: activeCell.date,
+        status: draft.status,
+        checkIn: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkIn,
+        checkOut: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkOut,
+        notes: draft.notes.trim(),
+        projectSite: selectedProject,
+        periodMode,
+        workedHours,
+        overtimeHours,
+        overtimeMode: draft.overtimeMode,
+      };
+
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
+
+      const refreshed = await fetch("/api/attendance");
+      const refreshedData = await refreshed.json().catch(() => ({}));
+      if (refreshed.ok) {
+        setRecords(refreshedData?.attendance || []);
+      }
+
+      notify("Attendance saved");
+      setActiveCell(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  async function deleteAttendance(employeeId: string, date: string) {
+    const employee = employees.find((item) => item.id === employeeId);
+    if (!employee) return;
+
+    setDeleteTarget({ employeeId, date });
+  }
+
+  async function confirmDeleteAttendance() {
+    if (!deleteTarget) return;
+
+    const { employeeId, date } = deleteTarget;
+    const employee = employees.find((item) => item.id === employeeId);
+    if (!employee) return;
+
+    setDeleteTarget(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/attendance", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId, date }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete attendance");
+      }
+
+      const key = getDraftKey(employeeId, date);
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+
+      const refreshed = await fetch("/api/attendance");
+      const refreshedData = await refreshed.json().catch(() => ({}));
+      if (refreshed.ok) {
+        setRecords(refreshedData?.attendance || []);
+      }
+
+      if (activeCell?.employeeId === employeeId && activeCell.date === date) {
+        setActiveCell(null);
+      }
+
+      notify("Attendance deleted");
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
 
@@ -594,7 +757,7 @@ export default function AttendancePage() {
                       </p>
                     </div>
                     <select
-                      value={assignments[employee.id] || defaultProjects[0]}
+                      value={assignments[employee.id] || ""}
                       onChange={(event) => assignEmployee(employee.id, event.target.value)}
                       disabled={assignmentSavingId === employee.id}
                       className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -616,7 +779,7 @@ export default function AttendancePage() {
               <div>
                 <p className="eyebrow">Attendance workspace</p>
                 <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">{selectedProject} attendance planner</h3>
-                <p className="mt-2 text-sm text-slate-500">{describePeriod(periodDates, periodMode)}</p>
+                <p className="mt-2 text-sm text-slate-500">{describePeriod(periodDates, periodMode)} · Mon–Sat only</p>
               </div>
 
               <div className="grid w-full gap-3 sm:grid-cols-2 2xl:max-w-3xl 2xl:grid-cols-3">
@@ -687,6 +850,7 @@ export default function AttendancePage() {
               <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
                 <p className="text-sm font-bold text-slate-500">Visible workers</p>
                 <p className="mt-2 text-xl font-black text-slate-950">{assignedEmployees.length}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Only workers assigned to the selected project appear here</p>
               </div>
               <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
                 <p className="text-sm font-bold text-slate-500">Day columns</p>
@@ -723,13 +887,13 @@ export default function AttendancePage() {
                   ) : (
                     latestRecords.map((record) => (
                       <tr key={record.id} className="hover:bg-slate-50">
-                        <td className="font-bold text-slate-950">{record.employeeName}</td>
+                        <td className="font-bold text-slate-950">{record.employeeName}{record.employeeId ? <span className="ml-2 text-xs font-semibold text-slate-400">({record.employeeId})</span> : null}</td>
                         <td className="text-slate-600">{record.date}</td>
                         <td><span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass[record.status] || "bg-slate-100 text-slate-700"}`}>{record.status}</span></td>
                         <td className="text-slate-600">{record.checkIn || "—"}</td>
                         <td className="text-slate-600">{record.checkOut || "—"}</td>
                         <td className="text-slate-600">{record.projectSite || selectedProject}</td>
-                        <td className="text-slate-600">{record.overtimeHours !== undefined ? `${record.overtimeHours}h` : "—"}</td>
+                        <td className="text-slate-600">{record.overtimeHours !== undefined && record.overtimeHours !== null ? `${record.overtimeHours}h` : "—"}</td>
                         <td className="text-slate-600">{record.notes || "—"}</td>
                       </tr>
                     ))
@@ -752,7 +916,7 @@ export default function AttendancePage() {
                   {selectedProject} daily time and overtime table
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {assignedEmployees.length} workers · {periodDates.length} day columns · {describePeriod(periodDates, periodMode)}
+                  {assignedEmployees.length} assigned workers · {periodDates.length} day columns · Mon–Sat only
                 </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -768,7 +932,15 @@ export default function AttendancePage() {
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project</p>
-                  <p className="mt-1 text-sm font-black text-slate-950">{selectedProject}</p>
+                  <select
+                    value={selectedProject}
+                    onChange={(event) => setSelectedProject(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-700"
+                  >
+                    {projects.map((project) => (
+                      <option key={project} value={project}>{project}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Workers</p>
@@ -776,7 +948,7 @@ export default function AttendancePage() {
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Day columns</p>
-                  <p className="mt-1 text-sm font-black text-slate-950">{periodDates.length}</p>
+                  <p className="mt-1 text-sm font-black text-slate-950">{periodDates.length} (Mon–Sat)</p>
                 </div>
               </div>
             </div>
@@ -791,7 +963,10 @@ export default function AttendancePage() {
                     <th className="sticky left-0 z-20 min-w-[260px] bg-slate-950 px-4 py-3 text-xs font-black">Worker</th>
                     <th className="sticky left-[260px] z-20 min-w-[180px] bg-slate-950 px-4 py-3 text-xs font-black">Position</th>
                     {periodDates.map((date) => (
-                      <th key={date} className="min-w-[180px] px-4 py-3 text-xs font-black">{formatDateLabel(date)}</th>
+                      <th key={date} className="min-w-[180px] px-4 py-3 text-xs font-black">
+                        <span className="block text-[10px] uppercase tracking-[0.18em] text-white/60">{formatWeekdayLabel(date)}</span>
+                        <span className="block mt-1">{formatDateLabel(date)}</span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -799,7 +974,7 @@ export default function AttendancePage() {
                   {loading ? (
                     <tr><td colSpan={periodDates.length + 2} className="px-4 py-8 text-center text-slate-500">Loading attendance workspace...</td></tr>
                   ) : assignedEmployees.length === 0 ? (
-                    <tr><td colSpan={periodDates.length + 2} className="px-4 py-8 text-center text-slate-500">No workers assigned to this project yet.</td></tr>
+                    <tr><td colSpan={periodDates.length + 2} className="px-4 py-8 text-center text-slate-500">No workers are assigned to this project yet. Assign workers from Admin Access to start encoding attendance.</td></tr>
                   ) : (
                     assignedEmployees.map((employee) => (
                       <tr key={employee.id} className="border-b border-slate-100 hover:bg-slate-50/70">
@@ -807,6 +982,27 @@ export default function AttendancePage() {
                         <td className="sticky left-[260px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.position || "Employee"}</td>
                         {periodDates.map((date) => {
                           const draft = ensureDraft(employee.id, date);
+                          const savedRecord = getSavedRecord(employee.id, date);
+                          const hasSavedRecord = Boolean(savedRecord);
+                          const isPeriodRow = savedRecord?.periodMode === "payroll_period" || (!savedRecord?.checkIn && !savedRecord?.checkOut && Number(savedRecord?.workedHours || 0) > 0);
+                          const periodWorkdays = periodDates.length || 1;
+                          const totalWorkedHours = Number(savedRecord?.workedHours ?? 0);
+                          const totalOvertimeHours = Number(savedRecord?.overtimeHours ?? 0);
+                          const distributedWorkedHours = isPeriodRow && totalWorkedHours > 0 ? Math.min(8, Math.round((totalWorkedHours / periodWorkdays) * 100) / 100) : totalWorkedHours;
+                          const distributedOvertimeHours = isPeriodRow && totalOvertimeHours > 0 ? Math.round((totalOvertimeHours / periodWorkdays) * 100) / 100 : totalOvertimeHours;
+                          const displayStatus = savedRecord?.status || (isPeriodRow ? "Present" : "No record");
+                          const displayCheckIn = savedRecord?.checkIn || (isPeriodRow ? "07:00" : "—");
+                          const displayCheckOut = savedRecord?.checkOut || (isPeriodRow ? "16:00" : "—");
+                          const displayWorkedHours = savedRecord?.workedHours !== undefined && savedRecord?.workedHours !== null
+                            ? `${distributedWorkedHours.toFixed(2)}`
+                            : hasSavedRecord
+                              ? computeWorkedHours(draft.checkIn, draft.checkOut).toFixed(2)
+                              : "0.00";
+                          const displayOvertime = savedRecord?.overtimeHours !== undefined && savedRecord?.overtimeHours !== null
+                            ? `${distributedOvertimeHours.toFixed(2)}h`
+                            : hasSavedRecord
+                              ? `${draft.overtimeHours}h`
+                              : "0h";
                           return (
                             <td key={date} className="px-3 py-3">
                               <button
@@ -816,17 +1012,30 @@ export default function AttendancePage() {
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    <p className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${statusClass[draft.status] || "bg-slate-100 text-slate-700"}`}>
-                                      {draft.status}
+                                    <p className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${statusClass[displayStatus] || "bg-slate-100 text-slate-700"}`}>
+                                      {displayStatus}
                                     </p>
                                     <p className="mt-3 text-xs font-semibold text-slate-500">{formatDateLabel(date)}</p>
+                                    {savedRecord?.projectSite ? <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-blue-600">{savedRecord.projectSite}</p> : null}
                                   </div>
-                                  <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>
+                                  <div className="flex flex-col items-end gap-2">
+                                    <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void deleteAttendance(employee.id, date);
+                                      }}
+                                      className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700 transition hover:bg-rose-100"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
                                 <div className="mt-3 space-y-1 text-xs text-slate-600">
-                                  <p>Time: <span className="font-bold text-slate-950">{draft.checkIn || "--:--"} - {draft.checkOut || "--:--"}</span></p>
-                                  <p>Worked: <span className="font-bold text-slate-950">{computeWorkedHours(draft.checkIn, draft.checkOut).toFixed(2)}h</span></p>
-                                  <p>OT: <span className="font-bold text-emerald-700">{draft.overtimeHours}h</span></p>
+                                  <p>Time: <span className="font-bold text-slate-950">{displayCheckIn} - {displayCheckOut}</span></p>
+                                  <p>Worked: <span className="font-bold text-slate-950">{displayWorkedHours}h</span></p>
+                                  <p>OT: <span className="font-bold text-emerald-700">{displayOvertime}</span></p>
                                 </div>
                               </button>
                             </td>
@@ -843,6 +1052,44 @@ export default function AttendancePage() {
         </div>
       )}
 
+      {deleteTarget && (() => {
+        const employee = employees.find((item) => item.id === deleteTarget.employeeId);
+        return employee ? (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
+              <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-rose-50/70 px-5 py-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-600">Confirm deletion</p>
+                <h3 className="mt-1 text-xl font-black text-slate-950">Delete attendance record?</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {employee.fullName} · {formatDateFull(deleteTarget.date)}
+                </p>
+              </div>
+              <div className="px-5 py-5">
+                <p className="text-sm text-slate-600">
+                  This will permanently remove the saved attendance entry for this worker and date.
+                </p>
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void confirmDeleteAttendance()}
+                    className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700"
+                  >
+                    Delete attendance
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {activeCell && activeEmployee && activeDraft && (
         <div className="fixed inset-0 z-[60] bg-slate-950/70 p-3 backdrop-blur-sm">
           <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
@@ -853,9 +1100,18 @@ export default function AttendancePage() {
                 <p className="mt-1 text-sm font-semibold text-slate-500">{activeEmployee.position || "Employee"} · {selectedProject}</p>
                 <p className="mt-1 text-sm text-slate-500">{formatDateFull(activeCell.date)}</p>
               </div>
-              <button type="button" onClick={() => setActiveCell(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => deleteAttendance(activeCell.employeeId, activeCell.date)}
+                  className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-black text-rose-700"
+                >
+                  Delete
+                </button>
+                <button type="button" onClick={() => setActiveCell(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">
+                  Close
+                </button>
+              </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto p-5">
@@ -884,7 +1140,7 @@ export default function AttendancePage() {
                   <input
                     type="time"
                     value={activeDraft.checkIn}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { checkIn: event.target.value }, true)}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { checkIn: event.target.value })}
                     disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
@@ -895,7 +1151,7 @@ export default function AttendancePage() {
                   <input
                     type="time"
                     value={activeDraft.checkOut}
-                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { checkOut: event.target.value }, true)}
+                    onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { checkOut: event.target.value })}
                     disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
@@ -908,12 +1164,12 @@ export default function AttendancePage() {
                       <p className="mt-2 text-2xl font-black text-slate-950">{computeWorkedHours(activeDraft.checkIn, activeDraft.checkOut).toFixed(2)}h</p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-500">Automatic OT</p>
-                      <p className="mt-2 text-2xl font-black text-emerald-700">{computeAutoOvertime(activeDraft.checkIn, activeDraft.checkOut).toFixed(2)}h</p>
+                      <p className="text-sm font-bold text-slate-500">Manual OT</p>
+                      <p className="mt-2 text-2xl font-black text-emerald-700">{activeDraft.overtimeHours}h</p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-500">Current OT mode</p>
-                      <p className="mt-2 text-2xl font-black text-slate-950">{activeDraft.overtimeMode === "auto" ? "Auto" : "Manual"}</p>
+                      <p className="text-sm font-bold text-slate-500">Shift</p>
+                      <p className="mt-2 text-2xl font-black text-slate-950">7:00 AM - 4:00 PM</p>
                     </div>
                   </div>
                 </div>
@@ -925,7 +1181,6 @@ export default function AttendancePage() {
                     onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { overtimeMode: event.target.value as OvertimeMode })}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                   >
-                    <option value="auto">Automatic OT</option>
                     <option value="manual">Manual OT</option>
                   </select>
                 </label>
@@ -938,8 +1193,7 @@ export default function AttendancePage() {
                     step="0.25"
                     value={activeDraft.overtimeHours}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeCell.date, { overtimeHours: event.target.value })}
-                    disabled={activeDraft.overtimeMode === "auto"}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                   />
                 </label>
 
@@ -953,6 +1207,24 @@ export default function AttendancePage() {
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                   />
                 </label>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => void saveCurrentAttendance()}
+                  disabled={saving || loading}
+                  className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Saving..." : "Save attendance"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCell(null)}
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

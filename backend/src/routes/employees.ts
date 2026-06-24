@@ -21,10 +21,15 @@ const EMPLOYEE_SELECT = `
   has_sss,
   has_pagibig,
   has_philhealth,
+  has_sss_loan,
+  has_tax,
+  has_additional_deduction,
   sss_amount,
   pagibig_amount,
   philhealth_amount,
   sss_loan_amount,
+  tax_amount,
+  additional_deduction_amount,
   department_id,
   position_id
 `;
@@ -44,10 +49,15 @@ type EmployeeRow = {
   has_sss?: boolean | null;
   has_pagibig?: boolean | null;
   has_philhealth?: boolean | null;
+  has_sss_loan?: boolean | null;
+  has_tax?: boolean | null;
+  has_additional_deduction?: boolean | null;
   sss_amount?: number | string | null;
   pagibig_amount?: number | string | null;
   philhealth_amount?: number | string | null;
   sss_loan_amount?: number | string | null;
+  tax_amount?: number | string | null;
+  additional_deduction_amount?: number | string | null;
   department_id?: string | null;
   position_id?: string | null;
 };
@@ -88,10 +98,15 @@ function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps) {
     hasSss: row.has_sss ?? true,
     hasPagIbig: row.has_pagibig ?? true,
     hasPhilHealth: row.has_philhealth ?? true,
+    hasSssLoan: row.has_sss_loan ?? true,
+    hasTax: row.has_tax ?? true,
+    hasAdditionalDeduction: row.has_additional_deduction ?? true,
     sssAmount: row.sss_amount == null ? null : Number(row.sss_amount),
     pagIbigAmount: row.pagibig_amount == null ? null : Number(row.pagibig_amount),
     philHealthAmount: row.philhealth_amount == null ? null : Number(row.philhealth_amount),
     sssLoanAmount: row.sss_loan_amount == null ? null : Number(row.sss_loan_amount),
+    taxAmount: row.tax_amount == null ? null : Number(row.tax_amount),
+    additionalDeductionAmount: row.additional_deduction_amount == null ? null : Number(row.additional_deduction_amount),
   };
 }
 
@@ -378,7 +393,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount } = req.body;
+    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
 
     if (!fullName || !email) {
       return res.status(400).json({ message: 'fullName and email are required' });
@@ -418,10 +433,15 @@ router.post('/', async (req, res) => {
         has_sss: hasSss ?? true,
         has_pagibig: hasPagIbig ?? true,
         has_philhealth: hasPhilHealth ?? true,
+        has_sss_loan: hasSssLoan ?? true,
+        has_tax: hasTax ?? true,
+        has_additional_deduction: hasAdditionalDeduction ?? true,
         sss_amount: sssAmount ?? null,
         pagibig_amount: pagIbigAmount ?? null,
         philhealth_amount: philHealthAmount ?? null,
         sss_loan_amount: sssLoanAmount ?? null,
+        tax_amount: taxAmount ?? null,
+        additional_deduction_amount: additionalDeductionAmount ?? null,
       })
       .select(EMPLOYEE_SELECT)
       .single();
@@ -450,7 +470,7 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount } = req.body || {};
+    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
     let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
@@ -514,10 +534,15 @@ router.patch('/:id', async (req, res) => {
         has_sss: hasSss === undefined ? existing.has_sss ?? true : Boolean(hasSss),
         has_pagibig: hasPagIbig === undefined ? existing.has_pagibig ?? true : Boolean(hasPagIbig),
         has_philhealth: hasPhilHealth === undefined ? existing.has_philhealth ?? true : Boolean(hasPhilHealth),
+        has_sss_loan: hasSssLoan === undefined ? existing.has_sss_loan ?? true : Boolean(hasSssLoan),
+        has_tax: hasTax === undefined ? existing.has_tax ?? true : Boolean(hasTax),
+        has_additional_deduction: hasAdditionalDeduction === undefined ? existing.has_additional_deduction ?? true : Boolean(hasAdditionalDeduction),
         sss_amount: sssAmount === undefined ? existing.sss_amount ?? null : sssAmount,
         pagibig_amount: pagIbigAmount === undefined ? existing.pagibig_amount ?? null : pagIbigAmount,
         philhealth_amount: philHealthAmount === undefined ? existing.philhealth_amount ?? null : philHealthAmount,
         sss_loan_amount: sssLoanAmount === undefined ? existing.sss_loan_amount ?? null : sssLoanAmount,
+        tax_amount: taxAmount === undefined ? existing.tax_amount ?? null : taxAmount,
+        additional_deduction_amount: additionalDeductionAmount === undefined ? existing.additional_deduction_amount ?? null : additionalDeductionAmount,
       })
       .eq('id', req.params.id)
       .select(EMPLOYEE_SELECT)

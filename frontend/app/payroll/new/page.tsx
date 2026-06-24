@@ -20,13 +20,16 @@ type WorkerRow = {
   pagIbigManual: number | null;
   philHealthManual: number | null;
   sssLoan: number;
-  cashAdvance: number;
   tax: number;
   additionalDeduction: number;
+  cashAdvance: number;
   remarks: string;
   hasSss: boolean;
   hasPagIbig: boolean;
   hasPhilHealth: boolean;
+  hasSssLoan: boolean;
+  hasTax: boolean;
+  hasAdditionalDeduction: boolean;
   payrollSnapshot?: {
     salaryAmount?: number | null;
     otPay?: number | null;
@@ -53,10 +56,15 @@ type Employee = {
   hasSss?: boolean;
   hasPagIbig?: boolean;
   hasPhilHealth?: boolean;
+  hasSssLoan?: boolean;
+  hasTax?: boolean;
+  hasAdditionalDeduction?: boolean;
   sssAmount?: number | null;
   pagIbigAmount?: number | null;
   philHealthAmount?: number | null;
   sssLoanAmount?: number | null;
+  taxAmount?: number | null;
+  additionalDeductionAmount?: number | null;
 };
 
 type ProjectWorkerSync = {
@@ -89,6 +97,7 @@ type ProjectWorkerSync = {
 };
 
 const API_BASE = "/api";
+const PAYROLL_ROWS_STORAGE_KEY = "payroll_worker_rows_v1";
 
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -104,6 +113,14 @@ const frequencyConfig: Record<PayFrequency, { label: string; periodsPerMonth: nu
 
 function money(value: number) {
   return currency.format(Number.isFinite(value) ? value : 0);
+}
+
+function moneyWhole(value: number) {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
+  }).format(Number.isFinite(value) ? value : 0);
 }
 
 function roundMoney(value: number) {
@@ -124,22 +141,25 @@ function blankRow(): WorkerRow {
     id: crypto.randomUUID(),
     supervisor: "",
     name: "",
-    position: "Labor",
-    dailyRate: 600,
-    days: 6,
+    position: "",
+    dailyRate: 0,
+    days: 0,
     otHours: 0,
     holidayPay: 0,
     sssManual: null,
     pagIbigManual: null,
     philHealthManual: null,
     sssLoan: 0,
-    cashAdvance: 0,
     tax: 0,
     additionalDeduction: 0,
+    cashAdvance: 0,
     remarks: "",
     hasSss: true,
     hasPagIbig: true,
     hasPhilHealth: true,
+    hasSssLoan: true,
+    hasTax: true,
+    hasAdditionalDeduction: true,
   };
 }
 
@@ -171,19 +191,23 @@ function computeStatutoryDeductions(
 function computeRow(row: WorkerRow, frequency: PayFrequency) {
   const amount = row.dailyRate * row.days;
   const otPay = (row.dailyRate / 8) * 1.25 * row.otHours;
-  const totalSalary = amount + otPay + row.holidayPay;
+  const holidayPay = row.holidayPay;
+  const totalSalary = amount + otPay + holidayPay;
   const statutory = computeStatutoryDeductions(amount, frequency, {
     sss: row.hasSss,
     pagIbig: row.hasPagIbig,
     philHealth: row.hasPhilHealth,
   });
-  const sss = row.sssManual !== null ? row.sssManual : statutory.sss;
-  const pagIbig = row.pagIbigManual !== null ? row.pagIbigManual : statutory.pagIbig;
-  const philHealth = row.philHealthManual !== null ? row.philHealthManual : statutory.philHealth;
-  const totalDeduction = row.cashAdvance + row.tax + row.sssLoan + row.additionalDeduction + philHealth + pagIbig + sss;
+  const sss = row.hasSss ? (row.sssManual !== null ? row.sssManual : statutory.sss) : 0;
+  const pagIbig = row.hasPagIbig ? (row.pagIbigManual !== null ? row.pagIbigManual : statutory.pagIbig) : 0;
+  const philHealth = row.hasPhilHealth ? (row.philHealthManual !== null ? row.philHealthManual : statutory.philHealth) : 0;
+  const sssLoan = row.hasSssLoan ? row.sssLoan : 0;
+  const tax = row.hasTax ? row.tax : 0;
+  const additionalDeduction = row.additionalDeduction;
+  const totalDeduction = row.cashAdvance + tax + sssLoan + additionalDeduction + philHealth + pagIbig + sss;
   const netSalary = Math.max(0, totalSalary - totalDeduction);
 
-  return { amount, otPay, holidayPay: row.holidayPay, totalSalary, sss, pagIbig, philHealth, totalDeduction, netSalary };
+  return { amount, otPay, holidayPay, totalSalary, sss, pagIbig, philHealth, sssLoan, tax, additionalDeduction, totalDeduction, netSalary };
 }
 
 function todayLabel() {
@@ -243,20 +267,21 @@ export default function NewPayrollPage() {
   const [periodEnd, setPeriodEnd] = useState(defaultWeek.endDate);
   const [coveredPeriod, setCoveredPeriod] = useState(currentWeekRange());
   const [payrollDate, setPayrollDate] = useState(todayLabel());
-  const [projectName, setProjectName] = useState("Rabino Home Builders Corporation - Weekly Payroll");
+  const [projectName, setProjectName] = useState("");
   const [exportFileName, setExportFileName] = useState("weekly-payroll");
-  const [selectedProject, setSelectedProject] = useState("Daan Pari");
-  const [projects, setProjects] = useState<string[]>(["Daan Pari", "Bagac", "Orion"]);
+  const [selectedProject, setSelectedProject] = useState("");
+  const [projects, setProjects] = useState<string[]>([]);
   const tableSectionRef = useRef<HTMLDivElement | null>(null);
-  const initialSyncDoneRef = useRef(false);
-  const [preparedBy, setPreparedBy] = useState("Aubrey Rose N. Gomez");
-  const [notedBy, setNotedBy] = useState("Juniffer Tagupa");
-  const [approvedBy, setApprovedBy] = useState("Karla Cepeda");
-  const [rows, setRows] = useState<WorkerRow[]>(() => [blankRow(), blankRow(), blankRow()]);
+  const lastSyncKeyRef = useRef<string | null>(null);
+  const [preparedBy, setPreparedBy] = useState("");
+  const [notedBy, setNotedBy] = useState("");
+  const [approvedBy, setApprovedBy] = useState("");
+  const [rows, setRows] = useState<WorkerRow[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [syncingAttendance, setSyncingAttendance] = useState(false);
   const [savingOverrides, setSavingOverrides] = useState(false);
+  const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { notify } = useNotification();
 
@@ -265,10 +290,25 @@ export default function NewPayrollPage() {
   }, [periodStart, periodEnd]);
 
   useEffect(() => {
+    if (selectedProject.trim()) {
+      setProjectName(`${selectedProject} payroll workspace`);
+    }
+  }, [selectedProject]);
+
+  useEffect(() => {
+    try {
+      const storedRows = JSON.parse(localStorage.getItem(PAYROLL_ROWS_STORAGE_KEY) || "null");
+      if (Array.isArray(storedRows) && storedRows.length > 0) {
+        setRows(storedRows);
+      }
+    } catch {
+      // ignore invalid browser cache
+    }
+
     async function loadEmployees() {
       setLoadingEmployees(true);
       setError(null);
-      initialSyncDoneRef.current = false;
+      lastSyncKeyRef.current = null;
 
       try {
         const token = localStorage.getItem("hr_token");
@@ -289,7 +329,7 @@ export default function NewPayrollPage() {
           const loadedProjects = projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean);
           if (loadedProjects.length > 0) {
             setProjects(loadedProjects);
-            setSelectedProject((current) => (loadedProjects.includes(current) ? current : loadedProjects[0]));
+            setSelectedProject((current) => (current.trim() && loadedProjects.includes(current) ? current : loadedProjects[0]));
           }
         }
 
@@ -305,11 +345,22 @@ export default function NewPayrollPage() {
   }, []);
 
   useEffect(() => {
-    if (loadingEmployees) return;
-    if (initialSyncDoneRef.current) return;
+    try {
+      localStorage.setItem(PAYROLL_ROWS_STORAGE_KEY, JSON.stringify(rows));
+    } catch {
+      // ignore storage failures
+    }
+  }, [rows]);
 
-    initialSyncDoneRef.current = true;
-    syncPayrollFromAttendance();
+  useEffect(() => {
+    if (loadingEmployees) return;
+    if (!selectedProject.trim()) return;
+
+    const syncKey = `${selectedProject}__${periodStart}__${periodEnd}`;
+    if (lastSyncKeyRef.current === syncKey) return;
+
+    lastSyncKeyRef.current = syncKey;
+    void syncPayrollFromAttendance();
   }, [loadingEmployees, selectedProject, periodStart, periodEnd]);
 
   const totals = useMemo(() => {
@@ -340,6 +391,41 @@ export default function NewPayrollPage() {
   const previewRows = rows.filter((row) => row.name.trim()).slice(0, 3);
   const activeRow = rows.find((row) => row.id === activeRowId) || null;
 
+  useEffect(() => {
+    if (!activeRow?.employeeId) return;
+
+    const timer = setTimeout(() => {
+      void saveRowToSupabase(activeRow).catch((err) => {
+        setError((err as Error).message);
+      });
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [
+    activeRow?.employeeId,
+    activeRow?.supervisor,
+    activeRow?.name,
+    activeRow?.position,
+    activeRow?.dailyRate,
+    activeRow?.days,
+    activeRow?.otHours,
+    activeRow?.holidayPay,
+    activeRow?.cashAdvance,
+    activeRow?.tax,
+    activeRow?.additionalDeduction,
+    activeRow?.sssLoan,
+    activeRow?.remarks,
+    activeRow?.hasSss,
+    activeRow?.hasPagIbig,
+    activeRow?.hasPhilHealth,
+    activeRow?.hasSssLoan,
+    activeRow?.hasTax,
+    activeRow?.hasAdditionalDeduction,
+    activeRow?.sssManual,
+    activeRow?.pagIbigManual,
+    activeRow?.philHealthManual,
+  ]);
+
   const stats = [
     { label: "Workers", value: filledRows || rows.length, detail: "Rows in this payroll", tone: "bg-blue-50 text-blue-700" },
     { label: "Attendance-linked", value: syncedRows, detail: "Rows synced from attendance", tone: "bg-cyan-50 text-cyan-700" },
@@ -351,6 +437,61 @@ export default function NewPayrollPage() {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
 
+  async function saveRowToSupabase(row: WorkerRow) {
+    if (!row.employeeId) return;
+
+    const res = await fetch(`${API_BASE}/payroll/attendance-overrides`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employeeId: row.employeeId,
+        projectSite: selectedProject,
+        startDate: periodStart,
+        endDate: periodEnd,
+        paidDaysOverride: row.days,
+        overtimeHoursOverride: row.otHours,
+        salaryAmount: row.payrollSnapshot?.salaryAmount ?? null,
+        otPay: row.payrollSnapshot?.otPay ?? null,
+        philhealthAmount: row.payrollSnapshot?.philHealthAmount ?? null,
+        sssAmount: row.payrollSnapshot?.sssAmount ?? null,
+        pagibigAmount: row.payrollSnapshot?.pagIbigAmount ?? null,
+        totalSalary: row.payrollSnapshot?.totalSalary ?? null,
+        totalDeduction: row.payrollSnapshot?.totalDeduction ?? null,
+        netSalary: row.payrollSnapshot?.netSalary ?? null,
+        cashAdvance: row.payrollSnapshot?.cashAdvance ?? null,
+        taxAmount: row.payrollSnapshot?.taxAmount ?? null,
+        additionalDeduction: row.payrollSnapshot?.additionalDeduction ?? row.additionalDeduction,
+        remarks: row.remarks || null,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || "Failed to save worker information");
+  }
+
+  async function saveActiveRow() {
+    if (!activeRow) return;
+
+    setSavingRowId(activeRow.id);
+    setError(null);
+
+    try {
+      const current = JSON.parse(localStorage.getItem(PAYROLL_ROWS_STORAGE_KEY) || "[]");
+      const next = Array.isArray(current)
+        ? current.map((row: WorkerRow) => (row.id === activeRow.id ? activeRow : row))
+        : [activeRow];
+      if (!next.some((row: WorkerRow) => row.id === activeRow.id)) next.push(activeRow);
+      localStorage.setItem(PAYROLL_ROWS_STORAGE_KEY, JSON.stringify(next));
+      setRows(next);
+      await saveRowToSupabase(activeRow);
+      notify("Worker information saved");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingRowId(null);
+    }
+  }
+
   function selectEmployee(rowId: string, employeeName: string) {
     const employee = employees.find((item) => item.fullName === employeeName);
     const employeeSalary = employee?.salary ? Number(employee.salary) : 0;
@@ -360,23 +501,35 @@ export default function NewPayrollPage() {
         ? Math.round(employeeSalary / 26)
         : undefined;
 
-    updateRow(rowId, {
-      employeeId: employee?.id,
-      name: employeeName,
-      position: employee?.position || "Labor",
-      syncedFromAttendance: false,
-      ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
-      hasSss: employee?.hasSss ?? true,
-      hasPagIbig: employee?.hasPagIbig ?? true,
-      hasPhilHealth: employee?.hasPhilHealth ?? true,
-      sssManual: employee?.sssAmount ?? null,
-      pagIbigManual: employee?.pagIbigAmount ?? null,
-      philHealthManual: employee?.philHealthAmount ?? null,
-      sssLoan: employee?.sssLoanAmount ?? 0,
-    });
+  updateRow(rowId, {
+    employeeId: employee?.id,
+    name: employeeName,
+    position: employee?.position || "Labor",
+    syncedFromAttendance: false,
+    ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
+    hasSss: employee?.hasSss ?? true,
+    hasPagIbig: employee?.hasPagIbig ?? true,
+    hasPhilHealth: employee?.hasPhilHealth ?? true,
+    hasSssLoan: employee?.hasSssLoan ?? true,
+    hasTax: employee?.hasTax ?? true,
+    hasAdditionalDeduction: employee?.hasAdditionalDeduction ?? true,
+    sssManual: employee?.sssAmount ?? null,
+    pagIbigManual: employee?.pagIbigAmount ?? null,
+    philHealthManual: employee?.philHealthAmount ?? null,
+    sssLoan: employee?.sssLoanAmount ?? 0,
+    tax: employee?.taxAmount ?? 0,
+    additionalDeduction: employee?.additionalDeductionAmount ?? 0,
+  });
   }
 
+  const canSyncAttendance = Boolean(selectedProject.trim() && periodStart && periodEnd && !loadingEmployees && !syncingAttendance);
+
   async function syncPayrollFromAttendance() {
+    if (!canSyncAttendance) {
+      notify("Select a project and date range before syncing attendance");
+      return;
+    }
+
     setSyncingAttendance(true);
     setError(null);
 
@@ -401,30 +554,36 @@ export default function NewPayrollPage() {
       }
 
       setRows(
-        workers.map((worker): WorkerRow => ({
-          id: crypto.randomUUID(),
-          employeeId: worker.employeeId,
-          supervisor: "",
-          name: worker.employeeName,
-          position: worker.position || "Labor",
-          dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
-          days: worker.attendance.paidDays || 0,
-          otHours: worker.attendance.overtimeHours || 0,
-          holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
-          sssManual: null,
-          pagIbigManual: null,
-          philHealthManual: null,
-          sssLoan: worker.payrollSnapshot?.additionalDeduction != null ? Number(worker.payrollSnapshot.additionalDeduction) || 0 : 0,
-          cashAdvance: worker.payrollSnapshot?.cashAdvance != null ? Number(worker.payrollSnapshot.cashAdvance) || 0 : 0,
-          tax: worker.payrollSnapshot?.taxAmount != null ? Number(worker.payrollSnapshot.taxAmount) || 0 : 0,
-          additionalDeduction: worker.payrollSnapshot?.additionalDeduction != null ? Number(worker.payrollSnapshot.additionalDeduction) || 0 : 0,
-          remarks: worker.remarks || "Synced from attendance",
-          hasSss: true,
-          hasPagIbig: true,
-          hasPhilHealth: true,
-          payrollSnapshot: worker.payrollSnapshot || null,
-          syncedFromAttendance: true,
-        })),
+        workers.map((worker): WorkerRow => {
+          const employee = employees.find((item) => item.id === worker.employeeId);
+          return {
+            id: crypto.randomUUID(),
+            employeeId: worker.employeeId,
+            supervisor: "",
+            name: worker.employeeName,
+            position: worker.position || "Labor",
+            dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
+            days: worker.attendance.paidDays || 0,
+            otHours: worker.attendance.overtimeHours || 0,
+            holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
+            sssManual: employee?.sssAmount ?? null,
+            pagIbigManual: employee?.pagIbigAmount ?? null,
+            philHealthManual: employee?.philHealthAmount ?? null,
+            sssLoan: employee?.sssLoanAmount ?? 0,
+            tax: employee?.taxAmount ?? 0,
+            additionalDeduction: employee?.additionalDeductionAmount ?? 0,
+            cashAdvance: worker.payrollSnapshot?.cashAdvance != null ? Number(worker.payrollSnapshot.cashAdvance) || 0 : 0,
+            remarks: worker.remarks || "Synced from attendance",
+            hasSss: employee?.hasSss ?? true,
+            hasPagIbig: employee?.hasPagIbig ?? true,
+            hasPhilHealth: employee?.hasPhilHealth ?? true,
+            hasSssLoan: employee?.hasSssLoan ?? true,
+            hasTax: employee?.hasTax ?? true,
+            hasAdditionalDeduction: employee?.hasAdditionalDeduction ?? true,
+            payrollSnapshot: worker.payrollSnapshot || null,
+            syncedFromAttendance: true,
+          };
+        }),
       );
       setProjectName(`${selectedProject} Payroll`);
       notify("Payroll rows synced from attendance");
@@ -498,7 +657,7 @@ export default function NewPayrollPage() {
   }
 
   function clearPayroll() {
-    setRows([blankRow(), blankRow(), blankRow()]);
+    setRows([]);
     notify("Payroll worksheet reset");
   }
 
@@ -699,6 +858,7 @@ export default function NewPayrollPage() {
                   <option key={project} value={project}>{project}</option>
                 ))}
               </select>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Attendance-linked workers and days will refresh for the selected site.</p>
             </label>
             <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Payroll date</span>
@@ -739,7 +899,7 @@ export default function NewPayrollPage() {
               />
             </label>
             <div className="flex items-end">
-              <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={syncingAttendance}>
+              <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canSyncAttendance}>
                 {syncingAttendance ? "Syncing..." : "Sync from attendance"}
               </button>
             </div>
@@ -871,7 +1031,7 @@ export default function NewPayrollPage() {
               </div>
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
-                      <p className="mt-1 text-sm font-black text-emerald-700">{money(computed.netSalary)}</p>
+                      <p className="mt-1 text-sm font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
                     </div>
                   </div>
                 </article>
@@ -1168,7 +1328,7 @@ export default function NewPayrollPage() {
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end 2xl:justify-end">
             <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Open full-detail editor</button>
-            <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+            <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button" disabled={!canSyncAttendance}>{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
             <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
             <label className="flex min-w-[240px] flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm">
               <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Export file name</span>
@@ -1337,6 +1497,7 @@ export default function NewPayrollPage() {
                   <p className="mt-1 text-sm text-slate-500">Open every field clearly here, then close when done editing.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void saveActiveRow()} disabled={savingRowId === activeRow.id} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">{savingRowId === activeRow.id ? "Saving..." : "Save row"}</button>
                   <button type="button" onClick={() => duplicateRow(activeRow)} className={toolButtonClass}>Copy row</button>
                   <button type="button" onClick={() => setActiveRowId(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Done</button>
                 </div>
@@ -1371,6 +1532,12 @@ export default function NewPayrollPage() {
                         <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
                         <input type="number" step="0.5" value={activeRow.otHours} onChange={(event) => updateRow(activeRow.id, { otHours: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
                       </label>
+                    </div>
+
+                    <div className="mt-5 flex justify-end">
+                      <button type="button" onClick={() => void saveActiveRow()} disabled={savingRowId === activeRow.id} className="rounded-lg bg-slate-950 px-4 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
+                        {savingRowId === activeRow.id ? "Saving..." : "Save worker info"}
+                      </button>
                     </div>
                   </section>
 
@@ -1413,12 +1580,16 @@ export default function NewPayrollPage() {
                             <p className="mt-2 text-lg font-black text-slate-950">{money(computed.otPay)}</p>
                           </div>
                           <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Additional deduction</p>
+                            <p className="mt-2 text-lg font-black text-rose-700">{money(computed.additionalDeduction)}</p>
+                          </div>
+                          <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p>
                             <p className="mt-2 text-lg font-black text-rose-700">{money(computed.totalDeduction)}</p>
                           </div>
                           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
-                            <p className="mt-2 text-lg font-black text-emerald-700">{money(computed.netSalary)}</p>
+                            <p className="mt-2 text-lg font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
                           </div>
                           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">PhilHealth</p>

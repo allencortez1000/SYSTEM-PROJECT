@@ -42,6 +42,7 @@ type AttendanceRecord = {
   worked_hours?: number | string | null;
   overtime_hours?: number | string | null;
   project_site?: string | null;
+  period_mode?: string | null;
 };
 
 type PayrollOverrideRow = {
@@ -131,7 +132,7 @@ router.get('/attendance-summary', async (req, res) => {
       .order('attendance_date', { ascending: true });
 
     if (projectSite) {
-      attendanceQuery = attendanceQuery.eq('project_site', projectSite);
+      attendanceQuery = attendanceQuery.ilike('project_site', projectSite);
     }
 
     const { data: records, error: attendanceError } = await attendanceQuery;
@@ -151,7 +152,7 @@ router.get('/attendance-summary', async (req, res) => {
       .from('payroll_attendance_overrides')
       .select('employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, salary_amount, ot_pay, philhealth_amount, sss_amount, pagibig_amount, total_salary, total_deduction, net_salary, cash_advance, tax_amount, additional_deduction, remarks')
       .eq('employee_id', employee.id)
-      .eq('project_site', projectSite || summary.projectSite || '')
+      .ilike('project_site', projectSite || summary.projectSite || '')
       .eq('period_start', startDate)
       .eq('period_end', endDate)
       .limit(1);
@@ -183,12 +184,16 @@ router.get('/project-sync', async (req, res) => {
     const { data: assignments, error: assignmentsError } = await supabase
       .from('employee_project_deployments')
       .select('employee_id, project_sites!inner(name)')
-      .eq('is_active', true)
-      .eq('project_sites.name', projectSite);
+      .eq('is_active', true);
+
+    const normalizedProjectSite = projectSite.toLowerCase();
+    const matchingAssignments = (assignments || []).filter((row: any) =>
+      String(row?.project_sites?.name || '').trim().toLowerCase() === normalizedProjectSite,
+    );
 
     if (assignmentsError) throw assignmentsError;
 
-    const employeeIds = Array.from(new Set((assignments || []).map((row: any) => String(row.employee_id)).filter(Boolean)));
+    const employeeIds = Array.from(new Set(matchingAssignments.map((row: any) => String(row.employee_id)).filter(Boolean)));
     if (employeeIds.length === 0) {
       return res.json({ workers: [] });
     }
@@ -208,7 +213,7 @@ router.get('/project-sync', async (req, res) => {
         .from('payroll_attendance_overrides')
         .select('employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, remarks')
         .in('employee_id', employeeIds)
-        .eq('project_site', projectSite)
+        .ilike('project_site', projectSite)
         .eq('period_start', startDate)
         .eq('period_end', endDate),
     ]);
@@ -519,8 +524,11 @@ function summarizeAttendance(
     totalRecords: records.length,
   };
 
+  const hasPayrollPeriodRows = records.some((record) => String(record.period_mode || '').toLowerCase() === 'payroll_period');
+
   for (const record of records) {
     const status = String(record.status || '').toLowerCase();
+    const workedHours = workedHoursFromRecord(record);
 
     if (status === 'present') summary.presentDays += 1;
     if (status === 'remote') summary.remoteDays += 1;
@@ -528,13 +536,19 @@ function summarizeAttendance(
     if (status === 'absent') summary.absentDays += 1;
     if (status === 'late') summary.lateDays += 1;
     summary.overtimeHours += overtimeHoursFromRecord(record);
+
+    if (hasPayrollPeriodRows) {
+      summary.regularHours += workedHours;
+    }
   }
 
-  summary.paidDays = summary.presentDays + summary.remoteDays + summary.leaveDays + summary.lateDays;
+  summary.paidDays = hasPayrollPeriodRows
+    ? roundCurrency(summary.regularHours / 8)
+    : summary.presentDays + summary.remoteDays + summary.leaveDays + summary.lateDays;
   summary.basePaidDays = summary.paidDays;
   summary.baseOvertimeHours = roundCurrency(summary.overtimeHours);
   summary.overtimeHours = roundCurrency(summary.overtimeHours);
-  summary.regularHours = roundCurrency(summary.paidDays * 8);
+  summary.regularHours = hasPayrollPeriodRows ? roundCurrency(summary.regularHours) : roundCurrency(summary.paidDays * 8);
 
   return summary;
 }

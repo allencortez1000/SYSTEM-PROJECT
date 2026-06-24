@@ -13,6 +13,7 @@ type Employee = {
   position: string;
   status: string;
   salary: number;
+  salaryBasis?: string | null;
 };
 
 export default function EmployeesPage() {
@@ -23,7 +24,7 @@ export default function EmployeesPage() {
 
   const employeeList = employees ?? [];
   const stats = useMemo(() => {
-    const activeStaff = employeeList.filter((employee) => employee.status.toLowerCase() === "active").length;
+    const activeStaff = employeeList.filter((employee) => String(employee.status || "").toLowerCase() === "active").length;
     const departments = new Set(employeeList.map((employee) => employee.department).filter(Boolean)).size;
 
     return {
@@ -101,12 +102,19 @@ export default function EmployeesPage() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {employees?.map((employee) => {
-            const initials = employee.fullName
+            const displayName = employee.fullName || "Unnamed employee";
+            const initials = displayName
               .split(" ")
               .map((name) => name[0])
+              .filter(Boolean)
               .slice(0, 2)
               .join("");
-            const isActive = employee.status.toLowerCase() === "active";
+            const status = String(employee.status || "");
+            const isActive = status.toLowerCase() === "active";
+            const salaryBasis = employee.salaryBasis || "Not set";
+            const salaryLabel = Number.isFinite(employee.salary) && employee.salary > 0
+              ? `₱${employee.salary.toLocaleString()}`
+              : "Salary not set";
 
             return (
               <Link
@@ -116,17 +124,23 @@ export default function EmployeesPage() {
               >
                 <div className="flex items-center gap-4">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 font-black text-white">
-                    {initials}
+                    {initials || "?"}
                   </div>
                   <div>
-                    <p className="font-black text-slate-950 group-hover:text-blue-700">{employee.fullName}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{employee.position}</p>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{employee.department}</p>
+                    <p className="font-black text-slate-950 group-hover:text-blue-700">{displayName}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{employee.position || "No position set"}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{employee.department || "No department set"}</p>
                   </div>
+                </div>
+                <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                  <p><span className="font-semibold text-slate-500">Employee No:</span> {employee.employeeId || "Not assigned"}</p>
+                  <p><span className="font-semibold text-slate-500">Email:</span> {employee.email || "No email on file"}</p>
+                  <p><span className="font-semibold text-slate-500">Salary basis:</span> {salaryBasis}</p>
+                  <p><span className="font-semibold text-slate-500">Salary:</span> {salaryLabel}</p>
                 </div>
                 <div className="mt-5 flex items-center justify-between text-sm">
                   <span className={`rounded-full px-3 py-1 font-bold ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                    {employee.status}
+                    {status || "Unknown"}
                   </span>
                   <span className="font-bold text-slate-400">View profile →</span>
                 </div>

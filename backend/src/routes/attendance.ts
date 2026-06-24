@@ -5,6 +5,7 @@ const router = Router();
 
 type AttendanceRow = {
   id: string;
+  employee_id?: string | null;
   attendance_date: string;
   status: string;
   check_in?: string | null;
@@ -47,6 +48,7 @@ function splitFullName(fullName: string) {
 function toAttendanceApi(row: AttendanceRow) {
   return {
     id: row.id,
+    employeeId: row.employee_id || undefined,
     employeeName: row.employees?.full_name || 'Unknown employee',
     date: row.attendance_date,
     status: row.status,
@@ -336,6 +338,7 @@ router.get('/', async (_, res) => {
 router.post('/', async (req, res) => {
   try {
     const {
+      employeeId: employeeIdFromBody,
       employeeName,
       date,
       status,
@@ -353,7 +356,24 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'employeeName, date and status are required' });
     }
 
-    const employeeId = await findOrCreateEmployeeByName(employeeName);
+    let employeeId = String(employeeIdFromBody || '').trim();
+    if (employeeId) {
+      const { data: existingEmployee, error: employeeLookupError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('id', employeeId)
+        .maybeSingle();
+
+      if (employeeLookupError) {
+        throw employeeLookupError;
+      }
+
+      if (!existingEmployee?.id) {
+        return res.status(400).json({ message: 'Employee not found for attendance save' });
+      }
+    } else {
+      employeeId = await findOrCreateEmployeeByName(employeeName);
+    }
 
     const { data, error } = await supabase
       .from('attendance_records')
@@ -391,6 +411,38 @@ router.post('/', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Failed to save attendance in Supabase',
+      error: (error as Error).message,
+    });
+  }
+});
+
+router.delete('/', async (req, res) => {
+  try {
+    const { employeeId, employeeName, date } = req.body || {};
+
+    if (!date || (!employeeId && !employeeName)) {
+      return res.status(400).json({ message: 'employeeId or employeeName and date are required' });
+    }
+
+    let resolvedEmployeeId = String(employeeId || '').trim();
+    if (!resolvedEmployeeId && employeeName) {
+      resolvedEmployeeId = await findOrCreateEmployeeByName(String(employeeName));
+    }
+
+    const { error } = await supabase
+      .from('attendance_records')
+      .delete()
+      .eq('employee_id', resolvedEmployeeId)
+      .eq('attendance_date', date);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({ message: 'Attendance deleted' });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to delete attendance in Supabase',
       error: (error as Error).message,
     });
   }

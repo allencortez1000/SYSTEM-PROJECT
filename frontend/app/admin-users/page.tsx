@@ -36,10 +36,15 @@ type Employee = {
   hasSss?: boolean;
   hasPagIbig?: boolean;
   hasPhilHealth?: boolean;
+  hasSssLoan?: boolean;
+  hasTax?: boolean;
+  hasAdditionalDeduction?: boolean;
   sssAmount?: number | null;
   pagIbigAmount?: number | null;
   philHealthAmount?: number | null;
   sssLoanAmount?: number | null;
+  taxAmount?: number | null;
+  additionalDeductionAmount?: number | null;
 };
 
 type ProjectSite = {
@@ -95,10 +100,15 @@ export default function AdminUsersPage() {
   const [workerHasSss, setWorkerHasSss] = useState(true);
   const [workerHasPagIbig, setWorkerHasPagIbig] = useState(true);
   const [workerHasPhilHealth, setWorkerHasPhilHealth] = useState(true);
+  const [workerHasSssLoan, setWorkerHasSssLoan] = useState(true);
+  const [workerHasTax, setWorkerHasTax] = useState(true);
+  const [workerHasAdditionalDeduction, setWorkerHasAdditionalDeduction] = useState(true);
   const [workerSssAmount, setWorkerSssAmount] = useState("");
   const [workerPagIbigAmount, setWorkerPagIbigAmount] = useState("");
   const [workerPhilHealthAmount, setWorkerPhilHealthAmount] = useState("");
   const [workerSssLoanAmount, setWorkerSssLoanAmount] = useState("");
+  const [workerTaxAmount, setWorkerTaxAmount] = useState("");
+  const [workerAdditionalDeductionAmount, setWorkerAdditionalDeductionAmount] = useState("");
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
 
   // Department assignment state
@@ -121,10 +131,12 @@ export default function AdminUsersPage() {
   const canViewAdmins = sessionUser?.role === "super-admin" || sessionUser?.permissions?.includes("admin_access");
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) =>
-      emp.fullName.toLowerCase().includes(employeeSearch.toLowerCase()) ||
-      emp.email.toLowerCase().includes(employeeSearch.toLowerCase())
-    );
+    const search = employeeSearch.toLowerCase();
+    return employees.filter((emp) => {
+      const fullName = String(emp.fullName || "").toLowerCase();
+      const email = String(emp.email || "").toLowerCase();
+      return fullName.includes(search) || email.includes(search);
+    });
   }, [employees, employeeSearch]);
 
   const paginatedEmployees = useMemo(() => {
@@ -262,10 +274,15 @@ export default function AdminUsersPage() {
         hasSss: workerHasSss,
         hasPagIbig: workerHasPagIbig,
         hasPhilHealth: workerHasPhilHealth,
-        sssAmount: workerSssAmount === "" ? null : Number(workerSssAmount),
-        pagIbigAmount: workerPagIbigAmount === "" ? null : Number(workerPagIbigAmount),
-        philHealthAmount: workerPhilHealthAmount === "" ? null : Number(workerPhilHealthAmount),
-        sssLoanAmount: workerSssLoanAmount === "" ? null : Number(workerSssLoanAmount),
+        hasSssLoan: workerHasSssLoan,
+        hasTax: workerHasTax,
+        hasAdditionalDeduction: workerHasAdditionalDeduction,
+        sssAmount: workerHasSss ? (workerSssAmount === "" ? null : Number(workerSssAmount)) : 0,
+        pagIbigAmount: workerHasPagIbig ? (workerPagIbigAmount === "" ? null : Number(workerPagIbigAmount)) : 0,
+        philHealthAmount: workerHasPhilHealth ? (workerPhilHealthAmount === "" ? null : Number(workerPhilHealthAmount)) : 0,
+        sssLoanAmount: workerHasSssLoan ? (workerSssLoanAmount === "" ? null : Number(workerSssLoanAmount)) : 0,
+        taxAmount: workerHasTax ? (workerTaxAmount === "" ? null : Number(workerTaxAmount)) : 0,
+        additionalDeductionAmount: workerHasAdditionalDeduction ? (workerAdditionalDeductionAmount === "" ? null : Number(workerAdditionalDeductionAmount)) : 0,
       };
 
       const response = editingEmployeeId
@@ -322,10 +339,15 @@ export default function AdminUsersPage() {
       setWorkerHasSss(true);
       setWorkerHasPagIbig(true);
       setWorkerHasPhilHealth(true);
+      setWorkerHasSssLoan(true);
+      setWorkerHasTax(true);
+      setWorkerHasAdditionalDeduction(true);
       setWorkerSssAmount("");
       setWorkerPagIbigAmount("");
       setWorkerPhilHealthAmount("");
       setWorkerSssLoanAmount("");
+      setWorkerTaxAmount("");
+      setWorkerAdditionalDeductionAmount("");
       setWorkerStatus("Active");
 
       await loadData();
@@ -350,10 +372,15 @@ export default function AdminUsersPage() {
     setWorkerHasSss(employee.hasSss ?? true);
     setWorkerHasPagIbig(employee.hasPagIbig ?? true);
     setWorkerHasPhilHealth(employee.hasPhilHealth ?? true);
+    setWorkerHasSssLoan(employee.hasSssLoan ?? true);
+    setWorkerHasTax(employee.hasTax ?? true);
+    setWorkerHasAdditionalDeduction(employee.hasAdditionalDeduction ?? true);
     setWorkerSssAmount(employee.sssAmount == null ? "" : String(employee.sssAmount));
     setWorkerPagIbigAmount(employee.pagIbigAmount == null ? "" : String(employee.pagIbigAmount));
     setWorkerPhilHealthAmount(employee.philHealthAmount == null ? "" : String(employee.philHealthAmount));
     setWorkerSssLoanAmount(employee.sssLoanAmount == null ? "" : String(employee.sssLoanAmount));
+    setWorkerTaxAmount(employee.taxAmount == null ? "" : String(employee.taxAmount));
+    setWorkerAdditionalDeductionAmount(employee.additionalDeductionAmount == null ? "" : String(employee.additionalDeductionAmount));
     setWorkerStatus("Active");
     setWorkerProjectSite(workerProjectSite || projectSites[0]?.name || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -680,18 +707,48 @@ export default function AdminUsersPage() {
                 </label>
 
                 <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2 sm:grid-cols-3">
-                  <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                    <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    SSS
-                  </label>
-                  <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                    <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    Pag-IBIG
-                  </label>
-                  <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                    <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    PhilHealth
-                  </label>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                      <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      SSS
+                    </label>
+                    <input type="number" value={workerSssAmount} onChange={(event) => setWorkerSssAmount(event.target.value)} disabled={!workerHasSss} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                      <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      Pag-IBIG
+                    </label>
+                    <input type="number" value={workerPagIbigAmount} onChange={(event) => setWorkerPagIbigAmount(event.target.value)} disabled={!workerHasPagIbig} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                      <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      PhilHealth
+                    </label>
+                    <input type="number" value={workerPhilHealthAmount} onChange={(event) => setWorkerPhilHealthAmount(event.target.value)} disabled={!workerHasPhilHealth} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                      <input type="checkbox" checked={workerHasSssLoan} onChange={(event) => setWorkerHasSssLoan(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      SSS Loan
+                    </label>
+                    <input type="number" value={workerSssLoanAmount} onChange={(event) => setWorkerSssLoanAmount(event.target.value)} disabled={!workerHasSssLoan} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                      <input type="checkbox" checked={workerHasTax} onChange={(event) => setWorkerHasTax(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      Tax
+                    </label>
+                    <input type="number" value={workerTaxAmount} onChange={(event) => setWorkerTaxAmount(event.target.value)} disabled={!workerHasTax} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                      <input type="checkbox" checked={workerHasAdditionalDeduction} onChange={(event) => setWorkerHasAdditionalDeduction(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                      Additional Deduction
+                    </label>
+                    <input type="number" value={workerAdditionalDeductionAmount} onChange={(event) => setWorkerAdditionalDeductionAmount(event.target.value)} disabled={!workerHasAdditionalDeduction} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                  </div>
                 </div>
 
                 <label className="block">
