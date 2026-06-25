@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNotification } from "../../components/notification";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
@@ -146,9 +147,9 @@ function blankRow(): WorkerRow {
     days: 0,
     otHours: 0,
     holidayPay: 0,
-    sssManual: null,
-    pagIbigManual: null,
-    philHealthManual: null,
+    sssManual: 0,
+    pagIbigManual: 0,
+    philHealthManual: 0,
     sssLoan: 0,
     tax: 0,
     additionalDeduction: 0,
@@ -163,44 +164,34 @@ function blankRow(): WorkerRow {
   };
 }
 
-function computeStatutoryDeductions(
-  governmentContributionBasis: number,
-  frequency: PayFrequency,
-  deductionsEnabled?: { sss?: boolean; pagIbig?: boolean; philHealth?: boolean },
-) {
-  const periodsPerMonth = frequencyConfig[frequency].periodsPerMonth;
-  const estimatedMonthlyCompensation = Math.max(0, governmentContributionBasis * periodsPerMonth);
-
-  const sssMonthlyCredit = clamp(estimatedMonthlyCompensation, 5000, 35000);
-  const sssMonthlyEmployee = sssMonthlyCredit * 0.05;
-
-  const philHealthMonthlyBase = clamp(estimatedMonthlyCompensation, 10000, 100000);
-  const philHealthMonthlyEmployee = (philHealthMonthlyBase * 0.05) / 2;
-
-  const pagIbigMonthlyBase = Math.min(estimatedMonthlyCompensation, 10000);
-  const pagIbigEmployeeRate = estimatedMonthlyCompensation <= 1500 ? 0.01 : 0.02;
-  const pagIbigMonthlyEmployee = Math.min(pagIbigMonthlyBase * pagIbigEmployeeRate, 200);
-
+function normalizeRow(row: Partial<WorkerRow>): WorkerRow {
   return {
-    sss: deductionsEnabled?.sss === false ? 0 : roundMoney(sssMonthlyEmployee / periodsPerMonth),
-    philHealth: deductionsEnabled?.philHealth === false ? 0 : roundMoney(philHealthMonthlyEmployee / periodsPerMonth),
-    pagIbig: deductionsEnabled?.pagIbig === false ? 0 : roundMoney(pagIbigMonthlyEmployee / periodsPerMonth),
+    ...blankRow(),
+    ...row,
+    sssManual: row.sssManual ?? 0,
+    pagIbigManual: row.pagIbigManual ?? 0,
+    philHealthManual: row.philHealthManual ?? 0,
+    dailyRate: Number(row.dailyRate) || 0,
+    days: Number(row.days) || 0,
+    otHours: Number(row.otHours) || 0,
+    holidayPay: Number(row.holidayPay) || 0,
+    sssLoan: Number(row.sssLoan) || 0,
+    tax: Number(row.tax) || 0,
+    additionalDeduction: Number(row.additionalDeduction) || 0,
+    cashAdvance: Number(row.cashAdvance) || 0,
   };
 }
+
+
 
 function computeRow(row: WorkerRow, frequency: PayFrequency) {
   const amount = row.dailyRate * row.days;
   const otPay = (row.dailyRate / 8) * 1.25 * row.otHours;
   const holidayPay = row.holidayPay;
   const totalSalary = amount + otPay + holidayPay;
-  const statutory = computeStatutoryDeductions(amount, frequency, {
-    sss: row.hasSss,
-    pagIbig: row.hasPagIbig,
-    philHealth: row.hasPhilHealth,
-  });
-  const sss = row.hasSss ? (row.sssManual !== null ? row.sssManual : statutory.sss) : 0;
-  const pagIbig = row.hasPagIbig ? (row.pagIbigManual !== null ? row.pagIbigManual : statutory.pagIbig) : 0;
-  const philHealth = row.hasPhilHealth ? (row.philHealthManual !== null ? row.philHealthManual : statutory.philHealth) : 0;
+  const sss = row.hasSss ? (row.sssManual ?? 0) : 0;
+  const pagIbig = row.hasPagIbig ? (row.pagIbigManual ?? 0) : 0;
+  const philHealth = row.hasPhilHealth ? (row.philHealthManual ?? 0) : 0;
   const sssLoan = row.hasSssLoan ? row.sssLoan : 0;
   const tax = row.hasTax ? row.tax : 0;
   const additionalDeduction = row.additionalDeduction;
@@ -259,6 +250,7 @@ const readonlyMoneyClass = "px-3 py-3 text-right text-sm font-black tabular-nums
 const toolButtonClass = "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700";
 
 export default function NewPayrollPage() {
+  const searchParams = useSearchParams();
   const defaultWeek = currentWeekDates();
   const [isWorksheetOpen, setIsWorksheetOpen] = useState(false);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
@@ -269,7 +261,8 @@ export default function NewPayrollPage() {
   const [payrollDate, setPayrollDate] = useState(todayLabel());
   const [projectName, setProjectName] = useState("");
   const [exportFileName, setExportFileName] = useState("weekly-payroll");
-  const [selectedProject, setSelectedProject] = useState("");
+  const [selectedProject, setSelectedProject] = useState(searchParams.get("projectSite") || "");
+  const [selectedDepartment, setSelectedDepartment] = useState(searchParams.get("department") || "");
   const [projects, setProjects] = useState<string[]>([]);
   const tableSectionRef = useRef<HTMLDivElement | null>(null);
   const lastSyncKeyRef = useRef<string | null>(null);
@@ -281,6 +274,7 @@ export default function NewPayrollPage() {
   const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [syncingAttendance, setSyncingAttendance] = useState(false);
   const [savingOverrides, setSavingOverrides] = useState(false);
+  const [savingPayrollTable, setSavingPayrollTable] = useState(false);
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { notify } = useNotification();
@@ -296,53 +290,81 @@ export default function NewPayrollPage() {
   }, [selectedProject]);
 
   useEffect(() => {
+    if (!selectedProject.trim() || loadingEmployees || syncingAttendance || !periodStart || !periodEnd) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void syncPayrollFromAttendance();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedProject, periodStart, periodEnd]);
+
+  const loadEmployees = useCallback(async () => {
+    setLoadingEmployees(true);
+    setError(null);
+    lastSyncKeyRef.current = null;
+
+    try {
+      const token = localStorage.getItem("hr_token");
+      const [employeesResponse, projectsResponse] = await Promise.all([
+        fetch(`${API_BASE}/employees`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        }),
+        fetch(`${API_BASE}/attendance/projects`),
+      ]);
+      const data = await employeesResponse.json().catch(() => null);
+      const projectsData = await projectsResponse.json().catch(() => null);
+
+      if (!employeesResponse.ok) {
+        throw new Error(data?.error || data?.message || "Failed to load employees");
+      }
+
+      if (projectsResponse.ok && Array.isArray(projectsData?.projects)) {
+        const loadedProjects = projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean);
+        if (loadedProjects.length > 0) {
+          setProjects(loadedProjects);
+          setSelectedProject((current) => (current.trim() && loadedProjects.includes(current) ? current : loadedProjects[0]));
+        }
+      }
+
+      setEmployees(data?.employees || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoadingEmployees(false);
+    }
+  }, []);
+
+  useEffect(() => {
     try {
       const storedRows = JSON.parse(localStorage.getItem(PAYROLL_ROWS_STORAGE_KEY) || "null");
       if (Array.isArray(storedRows) && storedRows.length > 0) {
-        setRows(storedRows);
+        setRows(storedRows.map((row: Partial<WorkerRow>) => normalizeRow(row)));
       }
     } catch {
       // ignore invalid browser cache
     }
 
-    async function loadEmployees() {
-      setLoadingEmployees(true);
-      setError(null);
-      lastSyncKeyRef.current = null;
+    void loadEmployees();
 
-      try {
-        const token = localStorage.getItem("hr_token");
-        const [employeesResponse, projectsResponse] = await Promise.all([
-          fetch(`${API_BASE}/employees`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          }),
-          fetch(`${API_BASE}/attendance/projects`),
-        ]);
-        const data = await employeesResponse.json().catch(() => null);
-        const projectsData = await projectsResponse.json().catch(() => null);
+    const interval = window.setInterval(() => {
+      void loadEmployees();
+    }, 30000);
 
-        if (!employeesResponse.ok) {
-          throw new Error(data?.error || data?.message || "Failed to load employees");
-        }
+    const onFocus = () => {
+      void loadEmployees();
+    };
 
-        if (projectsResponse.ok && Array.isArray(projectsData?.projects)) {
-          const loadedProjects = projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean);
-          if (loadedProjects.length > 0) {
-            setProjects(loadedProjects);
-            setSelectedProject((current) => (current.trim() && loadedProjects.includes(current) ? current : loadedProjects[0]));
-          }
-        }
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [loadEmployees]);
 
-        setEmployees(data?.employees || []);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoadingEmployees(false);
-      }
-    }
 
-    loadEmployees();
-  }, []);
 
   useEffect(() => {
     try {
@@ -352,16 +374,7 @@ export default function NewPayrollPage() {
     }
   }, [rows]);
 
-  useEffect(() => {
-    if (loadingEmployees) return;
-    if (!selectedProject.trim()) return;
 
-    const syncKey = `${selectedProject}__${periodStart}__${periodEnd}`;
-    if (lastSyncKeyRef.current === syncKey) return;
-
-    lastSyncKeyRef.current = syncKey;
-    void syncPayrollFromAttendance();
-  }, [loadingEmployees, selectedProject, periodStart, periodEnd]);
 
   const totals = useMemo(() => {
     return rows.reduce(
@@ -391,46 +404,13 @@ export default function NewPayrollPage() {
   const previewRows = rows.filter((row) => row.name.trim()).slice(0, 3);
   const activeRow = rows.find((row) => row.id === activeRowId) || null;
 
-  useEffect(() => {
-    if (!activeRow?.employeeId) return;
 
-    const timer = setTimeout(() => {
-      void saveRowToSupabase(activeRow).catch((err) => {
-        setError((err as Error).message);
-      });
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, [
-    activeRow?.employeeId,
-    activeRow?.supervisor,
-    activeRow?.name,
-    activeRow?.position,
-    activeRow?.dailyRate,
-    activeRow?.days,
-    activeRow?.otHours,
-    activeRow?.holidayPay,
-    activeRow?.cashAdvance,
-    activeRow?.tax,
-    activeRow?.additionalDeduction,
-    activeRow?.sssLoan,
-    activeRow?.remarks,
-    activeRow?.hasSss,
-    activeRow?.hasPagIbig,
-    activeRow?.hasPhilHealth,
-    activeRow?.hasSssLoan,
-    activeRow?.hasTax,
-    activeRow?.hasAdditionalDeduction,
-    activeRow?.sssManual,
-    activeRow?.pagIbigManual,
-    activeRow?.philHealthManual,
-  ]);
 
   const stats = [
     { label: "Workers", value: filledRows || rows.length, detail: "Rows in this payroll", tone: "bg-blue-50 text-blue-700" },
     { label: "Attendance-linked", value: syncedRows, detail: "Rows synced from attendance", tone: "bg-cyan-50 text-cyan-700" },
     { label: "Gross salary", value: money(totals.totalSalary), detail: "Days + overtime pay", tone: "bg-emerald-50 text-emerald-700" },
-    { label: "Net release", value: money(totals.netSalary), detail: "Total payable after deductions", tone: "bg-violet-50 text-violet-700" },
+    { label: "Net release", value: moneyWhole(totals.netSalary), detail: "Total payable after deductions", tone: "bg-violet-50 text-violet-700" },
   ];
 
   function updateRow(id: string, patch: Partial<WorkerRow>) {
@@ -492,6 +472,27 @@ export default function NewPayrollPage() {
     }
   }
 
+  async function savePayrollTable() {
+    setError(null);
+
+    const rowsToSave = rows.filter((row) => row.name.trim());
+    if (rowsToSave.length === 0) {
+      notify("Add at least one worker row before saving");
+      return;
+    }
+
+    setSavingPayrollTable(true);
+    try {
+      localStorage.setItem(PAYROLL_ROWS_STORAGE_KEY, JSON.stringify(rows));
+      await Promise.all(rowsToSave.map((row) => saveRowToSupabase(row)));
+      notify("Payroll table saved");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSavingPayrollTable(false);
+    }
+  }
+
   function selectEmployee(rowId: string, employeeName: string) {
     const employee = employees.find((item) => item.fullName === employeeName);
     const employeeSalary = employee?.salary ? Number(employee.salary) : 0;
@@ -513,9 +514,9 @@ export default function NewPayrollPage() {
     hasSssLoan: employee?.hasSssLoan ?? true,
     hasTax: employee?.hasTax ?? true,
     hasAdditionalDeduction: employee?.hasAdditionalDeduction ?? true,
-    sssManual: employee?.sssAmount ?? null,
-    pagIbigManual: employee?.pagIbigAmount ?? null,
-    philHealthManual: employee?.philHealthAmount ?? null,
+    sssManual: employee?.sssAmount ?? 0,
+    pagIbigManual: employee?.pagIbigAmount ?? 0,
+    philHealthManual: employee?.philHealthAmount ?? 0,
     sssLoan: employee?.sssLoanAmount ?? 0,
     tax: employee?.taxAmount ?? 0,
     additionalDeduction: employee?.additionalDeductionAmount ?? 0,
@@ -548,7 +549,7 @@ export default function NewPayrollPage() {
 
       const workers = Array.isArray(data?.workers) ? (data.workers as ProjectWorkerSync[]) : [];
       if (workers.length === 0) {
-        setRows([blankRow()]);
+        setRows([]);
         notify("No workers with active deployment found for this project and period");
         return;
       }
@@ -566,9 +567,9 @@ export default function NewPayrollPage() {
             days: worker.attendance.paidDays || 0,
             otHours: worker.attendance.overtimeHours || 0,
             holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
-            sssManual: employee?.sssAmount ?? null,
-            pagIbigManual: employee?.pagIbigAmount ?? null,
-            philHealthManual: employee?.philHealthAmount ?? null,
+            sssManual: employee?.sssAmount ?? 0,
+            pagIbigManual: employee?.pagIbigAmount ?? 0,
+            philHealthManual: employee?.philHealthAmount ?? 0,
             sssLoan: employee?.sssLoanAmount ?? 0,
             tax: employee?.taxAmount ?? 0,
             additionalDeduction: employee?.additionalDeductionAmount ?? 0,
@@ -649,7 +650,7 @@ export default function NewPayrollPage() {
   }
 
   function duplicateRow(row: WorkerRow) {
-    setRows((current) => [...current, { ...row, id: crypto.randomUUID(), name: `${row.name}` }]);
+    setRows((current) => [...current, normalizeRow({ ...row, id: crypto.randomUUID(), name: `${row.name}` })]);
   }
 
   function removeRow(id: string) {
@@ -723,7 +724,7 @@ export default function NewPayrollPage() {
           roundMoney(snapshot?.pagIbigAmount ?? computed.pagIbig),
           roundMoney(snapshot?.additionalDeduction ?? row.additionalDeduction),
           roundMoney(snapshot?.totalDeduction ?? computed.totalDeduction),
-          roundMoney(snapshot?.netSalary ?? computed.netSalary),
+          Math.round(snapshot?.netSalary ?? computed.netSalary),
         ];
 
         return `<tr>${cells.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`;
@@ -749,7 +750,7 @@ export default function NewPayrollPage() {
       roundMoney(totals.pagIbig),
       roundMoney(totals.additionalDeduction),
       roundMoney(totals.totalDeduction),
-      roundMoney(totals.netSalary),
+      Math.round(totals.netSalary),
     ];
 
     const worksheetHtml = `
@@ -807,6 +808,9 @@ export default function NewPayrollPage() {
                   <h3 className="mt-2 break-words text-2xl font-black text-slate-950">{selectedProject} payroll workspace</h3>
                   <p className="mt-2 max-w-3xl text-sm text-slate-500">
                     Review project workers, payroll dates, and attendance-linked values before editing the table below.
+                  </p>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    {selectedDepartment ? `Department: ${selectedDepartment}` : "Department not selected"}
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
@@ -924,7 +928,7 @@ export default function NewPayrollPage() {
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net release</p>
-            <p className="mt-1 text-sm font-black text-emerald-700">{money(totals.netSalary)}</p>
+            <p className="mt-1 text-sm font-black text-emerald-700">{moneyWhole(totals.netSalary)}</p>
             <p className="mt-1 text-xs font-semibold text-emerald-600">Ready for payroll release</p>
           </div>
         </div>
@@ -1099,15 +1103,15 @@ export default function NewPayrollPage() {
                         </label>
                         <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">PhilHealth</span>
-                          <input type="number" value={row.philHealthManual ?? ""} onChange={(event) => updateRow(row.id, { philHealthManual: event.target.value === "" ? null : numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} placeholder="Auto" />
+                          <input type="number" value={row.philHealthManual ?? 0} onChange={(event) => updateRow(row.id, { philHealthManual: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
                         </label>
                         <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">Pag-IBIG</span>
-                          <input type="number" value={row.pagIbigManual ?? ""} onChange={(event) => updateRow(row.id, { pagIbigManual: event.target.value === "" ? null : numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} placeholder="Auto" />
+                          <input type="number" value={row.pagIbigManual ?? 0} onChange={(event) => updateRow(row.id, { pagIbigManual: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
                         </label>
                         <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">SSS</span>
-                          <input type="number" value={row.sssManual ?? ""} onChange={(event) => updateRow(row.id, { sssManual: event.target.value === "" ? null : numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} placeholder="Auto" />
+                          <input type="number" value={row.sssManual ?? 0} onChange={(event) => updateRow(row.id, { sssManual: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
                         </label>
                         <label className="block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:col-span-2 xl:col-span-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">SSS loan</span>
@@ -1201,7 +1205,7 @@ export default function NewPayrollPage() {
                     <td className="px-3 py-3 text-right text-sm font-black">{money(computed.sss)}</td>
                     <td className="px-3 py-3 text-right text-sm font-black">{money(row.additionalDeduction)}</td>
                     <td className="px-3 py-3 text-right text-sm font-black text-red-700">{money(computed.totalDeduction)}</td>
-                    <td className="px-3 py-3 text-right text-sm font-black text-emerald-700">{money(computed.netSalary)}</td>
+                    <td className="px-3 py-3 text-right text-sm font-black text-emerald-700">{moneyWhole(computed.netSalary)}</td>
                     <td className="px-3 py-3"><div className="h-10 rounded-lg border border-dashed border-slate-300 bg-slate-50" /></td>
                     <td className="px-3 py-3 text-sm font-semibold text-slate-700">{row.remarks || "-"}</td>
                   </tr>
@@ -1270,7 +1274,8 @@ export default function NewPayrollPage() {
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
-              <button onClick={syncPayrollFromAttendance} className="secondary-button" type="button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+              <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+              <button onClick={savePayrollTable} type="button" className="secondary-button" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
               <button onClick={applyPayrollEditsToAttendance} className="secondary-button" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
               <button onClick={addRow} className="secondary-button" type="button">Add worker row</button>
               <Link href="/payroll" className="secondary-button">Back to payroll center</Link>
@@ -1282,7 +1287,7 @@ export default function NewPayrollPage() {
               <p className="text-sm font-bold text-slate-300">Net salary for release</p>
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">Live</span>
             </div>
-            <p className="mt-5 break-words text-4xl font-black sm:text-5xl">{money(totals.netSalary)}</p>
+            <p className="mt-5 break-words text-4xl font-black sm:text-5xl">{moneyWhole(totals.netSalary)}</p>
             <p className="mt-3 text-sm leading-6 text-slate-300">
               Project: {selectedProject}. Deduction schedule: {frequencyConfig[payFrequency].label}. Employee records loaded: {loadingEmployees ? "..." : employees.length}.
             </p>
@@ -1329,6 +1334,7 @@ export default function NewPayrollPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end 2xl:justify-end">
             <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Open full-detail editor</button>
             <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button" disabled={!canSyncAttendance}>{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+            <button onClick={savePayrollTable} type="button" className="secondary-button" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
             <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
             <label className="flex min-w-[240px] flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm">
               <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Export file name</span>
@@ -1374,7 +1380,7 @@ export default function NewPayrollPage() {
                         </div>
                         <div className="text-left sm:text-right">
                           <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Net salary</p>
-                          <p className="mt-1 text-lg font-black text-emerald-700">{money(computed.netSalary)}</p>
+                          <p className="mt-1 text-lg font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
                         </div>
                       </div>
                     </div>
@@ -1472,6 +1478,7 @@ export default function NewPayrollPage() {
               <div className="flex flex-wrap gap-1.5">
                 <button onClick={jumpToTable} type="button" className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700">Go to rows</button>
                 <button onClick={syncPayrollFromAttendance} type="button" className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm">{syncingAttendance ? "Syncing..." : "Sync attendance"}</button>
+                <button onClick={savePayrollTable} type="button" className={toolButtonClass}>{savingPayrollTable ? "Saving..." : "Save table"}</button>
                 <button onClick={applyPayrollEditsToAttendance} type="button" className={toolButtonClass}>{savingOverrides ? "Applying..." : "Apply to attendance"}</button>
                 <button onClick={addRow} type="button" className={toolButtonClass}>Add row</button>
                 <button onClick={exportExcel} type="button" className={toolButtonClass}>Export Excel</button>

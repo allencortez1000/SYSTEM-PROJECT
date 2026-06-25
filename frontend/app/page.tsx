@@ -1,7 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useSupabaseTableRefresh } from "../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -46,48 +48,66 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem("hr_token");
-        const fetchOptions = token
-          ? ({ headers: { Authorization: `Bearer ${token}` } } as const)
-          : undefined;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("hr_token");
+      const fetchOptions = token
+        ? ({ headers: { Authorization: `Bearer ${token}` } } as const)
+        : undefined;
 
-        const [empRes, attRes] = await Promise.all([
-          fetch(`${API_BASE}/employees`, fetchOptions),
-          fetch(`${API_BASE}/attendance`, fetchOptions),
-        ]);
+      const [empRes, attRes] = await Promise.all([
+        fetch(`${API_BASE}/employees`, fetchOptions),
+        fetch(`${API_BASE}/attendance`, fetchOptions),
+      ]);
 
-        if (!empRes.ok) {
-          const details = await empRes.json().catch(() => null);
-          if (empRes.status === 401) {
-            localStorage.removeItem("hr_token");
-            localStorage.removeItem("hr_user");
-            window.location.reload();
-            return;
-          }
-          throw new Error(details?.error || details?.message || "Failed to load employees from Supabase");
+      if (!empRes.ok) {
+        const details = await empRes.json().catch(() => null);
+        if (empRes.status === 401) {
+          localStorage.removeItem("hr_token");
+          localStorage.removeItem("hr_user");
+          window.location.reload();
+          return;
         }
-
-        const empData = await empRes.json();
-        setEmployees(empData.employees || []);
-
-        if (attRes.ok) {
-          const attData = await attRes.json();
-          setAttendance(attData.attendance || []);
-        }
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
+        throw new Error(details?.error || details?.message || "Failed to load employees from Supabase");
       }
-    }
 
-    load();
+      const empData = await empRes.json();
+      setEmployees(empData.employees || []);
+
+      if (attRes.ok) {
+        const attData = await attRes.json();
+        setAttendance(attData.attendance || []);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+
+    const interval = window.setInterval(() => {
+      void load();
+    }, 30000);
+
+    const onFocus = () => {
+      void load();
+    };
+
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [load]);
+
+  useSupabaseTableRefresh(["employees", "attendance_records"].map((table) => ({ table })), () => {
+    void load();
+  });
 
   const stats = useMemo(() => {
     const totalEmployees = employees.length;

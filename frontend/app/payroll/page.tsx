@@ -1,11 +1,15 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const API_BASE = "/api";
 
 type Row = Record<string, unknown>;
+
+type Department = { id: string; name: string };
+type ProjectSite = { id: string; name: string };
 
 function pick(row: Row, keys: string[]): string {
   for (const key of keys) {
@@ -26,45 +30,68 @@ function pesos(value: number) {
 }
 
 export default function PayrollIndex() {
+  const router = useRouter();
   const [runs, setRuns] = useState<Row[]>([]);
   const [employeeCount, setEmployeeCount] = useState(0);
   const [payrollCost, setPayrollCost] = useState(0);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [projectSites, setProjectSites] = useState<ProjectSite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedProjectSite, setSelectedProjectSite] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("hr_token");
+      const fetchOptions = token
+        ? ({ headers: { Authorization: `Bearer ${token}` } } as const)
+        : undefined;
+
+      const [runsRes, empRes, departmentsRes, projectsRes] = await Promise.all([
+        fetch(`${API_BASE}/data/payroll-runs`, fetchOptions),
+        fetch(`${API_BASE}/employees`, fetchOptions),
+        fetch(`${API_BASE}/admin-users/departments`, fetchOptions),
+        fetch(`${API_BASE}/attendance/projects`, fetchOptions),
+      ]);
+      if (runsRes.ok) {
+        const runsData = await runsRes.json();
+        setRuns(runsData.payrollRuns || []);
+      }
+      if (empRes.ok) {
+        const empData = await empRes.json();
+        const employees = empData.employees || [];
+        setEmployeeCount(employees.length);
+        setPayrollCost(
+          employees.reduce((sum: number, e: { salary?: number }) => sum + (Number(e.salary) || 0), 0),
+        );
+      }
+      if (departmentsRes.ok) {
+        const departmentsData = await departmentsRes.json();
+        const nextDepartments = departmentsData.departments || [];
+        setDepartments(nextDepartments);
+        setSelectedDepartment((current) => current || "");
+      }
+      if (projectsRes.ok) {
+        const projectsData = await projectsRes.json();
+        const nextProjects = projectsData.projects || [];
+        setProjectSites(nextProjects);
+        setSelectedProjectSite((current) => current || "");
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem("hr_token");
-        const fetchOptions = token
-          ? ({ headers: { Authorization: `Bearer ${token}` } } as const)
-          : undefined;
+    void load();
+  }, [load]);
 
-        const [runsRes, empRes] = await Promise.all([
-          fetch(`${API_BASE}/data/payroll-runs`, fetchOptions),
-          fetch(`${API_BASE}/employees`, fetchOptions),
-        ]);
-        if (runsRes.ok) {
-          const runsData = await runsRes.json();
-          setRuns(runsData.payrollRuns || []);
-        }
-        if (empRes.ok) {
-          const empData = await empRes.json();
-          const employees = empData.employees || [];
-          setEmployeeCount(employees.length);
-          setPayrollCost(
-            employees.reduce((sum: number, e: { salary?: number }) => sum + (Number(e.salary) || 0), 0),
-          );
-        }
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+
 
   const stats = useMemo(
     () => [
@@ -89,9 +116,9 @@ export default function PayrollIndex() {
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href="/payroll/new" className="primary-button">
+              <button onClick={() => setCalculatorOpen(true)} className="primary-button" type="button">
                 Start payroll calculation
-              </Link>
+              </button>
               <Link href="/reports" className="secondary-button">
                 View payroll reports
               </Link>
@@ -180,6 +207,57 @@ export default function PayrollIndex() {
           </div>
         )}
       </section>
-    </div>
+    {calculatorOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+        <div className="w-full max-w-xl rounded-[1.75rem] bg-white p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="eyebrow">Start payroll calculation</p>
+              <h3 className="mt-2 text-2xl font-black text-slate-950">Choose department and project site</h3>
+              <p className="mt-2 text-sm text-slate-500">Select the department and project site before opening the payroll editor.</p>
+            </div>
+            <button type="button" className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500" onClick={() => setCalculatorOpen(false)}>✕</button>
+          </div>
+
+          <div className="mt-6 grid gap-4">
+            <label className="block">
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Department</span>
+              <select value={selectedDepartment} onChange={(event) => setSelectedDepartment(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                <option value="">Select department</option>
+                {departments.map((department) => <option key={department.id} value={department.name}>{department.name}</option>)}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Project site</span>
+              <select value={selectedProjectSite} onChange={(event) => setSelectedProjectSite(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                <option value="">Select project site</option>
+                {projectSites.map((project) => <option key={project.id} value={project.name}>{project.name}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <p className="mt-4 text-sm font-semibold text-slate-500">Both fields are required before proceeding.</p>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button type="button" className="secondary-button" onClick={() => setCalculatorOpen(false)}>Cancel</button>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={!selectedDepartment || !selectedProjectSite}
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set("department", selectedDepartment);
+                params.set("projectSite", selectedProjectSite);
+                router.push(`/payroll/new?${params.toString()}`);
+              }}
+            >
+              Continue to payroll
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 }

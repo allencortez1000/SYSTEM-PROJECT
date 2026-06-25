@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -23,22 +24,27 @@ export default function CompliancePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeRow, setActiveRow] = useState<Row | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/data/compliance`);
-        if (!res.ok) throw new Error("Failed to load compliance requirements");
-        const data = await res.json();
-        setRows(data.compliance || []);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/data/compliance`);
+      if (!res.ok) throw new Error("Failed to load compliance requirements");
+      const data = await res.json();
+      setRows(data.compliance || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useSupabaseTableRefresh([{ table: "compliance_requirements" }], () => {
+    void load();
+  });
 
   return (
     <div className="page-shell">

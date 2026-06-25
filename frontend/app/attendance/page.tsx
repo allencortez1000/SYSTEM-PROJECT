@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNotification } from "../components/notification";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
 type AttendanceStatus = (typeof statusOptions)[number];
@@ -78,12 +79,16 @@ const statusClass: Record<string, string> = {
 };
 
 function isoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function parseIsoDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
 }
 
 function formatDateLabel(value: string) {
@@ -134,23 +139,19 @@ function periodStartDate(anchorDate: string, periodMode: PeriodMode) {
   return isoDate(new Date(year, month, day <= 15 ? 1 : 16));
 }
 
-function getPeriodDates(anchorDate: string, periodMode: PeriodMode) {
-  const anchor = parseIsoDate(anchorDate);
+function getPeriodDates(startDate: string, endDate: string) {
+  const start = parseIsoDate(startDate);
+  const end = parseIsoDate(endDate);
 
-  if (periodMode === "weekly") {
-    const start = weekStart(anchor);
-    return Array.from({ length: 7 }, (_, index) => isoDate(addDays(start, index))).filter((date) => parseIsoDate(date).getDay() !== 0);
+  if (end < start) return [isoDate(start)];
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(isoDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
   }
-
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
-  const day = anchor.getDate();
-  const startDay = day <= 15 ? 1 : 16;
-  const lastDay = day <= 15 ? 15 : new Date(year, month + 1, 0).getDate();
-
-  return Array.from({ length: lastDay - startDay + 1 }, (_, index) =>
-    isoDate(new Date(year, month, startDay + index)),
-  ).filter((date) => parseIsoDate(date).getDay() !== 0);
+  return dates;
 }
 
 function describePeriod(dates: string[], mode: PeriodMode) {
@@ -165,8 +166,25 @@ function getDraftKey(employeeId: string, date: string) {
 }
 
 function parseTimeToMinutes(value: string) {
-  if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
-  const [hours, minutes] = value.split(":").map(Number);
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  const meridiemMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)$/i);
+  if (meridiemMatch) {
+    let hours = Number(meridiemMatch[1]);
+    const minutes = Number(meridiemMatch[2]);
+    const meridiem = meridiemMatch[3].toLowerCase();
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    if (hours === 12) hours = 0;
+    if (meridiem === "pm") hours += 12;
+    return hours * 60 + minutes;
+  }
+
+  const twentyFourHourMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!twentyFourHourMatch) return null;
+
+  const hours = Number(twentyFourHourMatch[1]);
+  const minutes = Number(twentyFourHourMatch[2]);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
   return hours * 60 + minutes;
 }
@@ -233,7 +251,8 @@ export default function AttendancePage() {
   const [drafts, setDrafts] = useState<DraftMap>({});
   const [selectedProject, setSelectedProject] = useState(defaultProjects[0]);
   const [periodMode, setPeriodMode] = useState<PeriodMode>("weekly");
-  const [anchorDate, setAnchorDate] = useState(isoDate(new Date()));
+  const [rangeStartDate, setRangeStartDate] = useState(isoDate(new Date()));
+  const [rangeEndDate, setRangeEndDate] = useState(isoDate(new Date()));
   const [newProjectName, setNewProjectName] = useState("");
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [activeCell, setActiveCell] = useState<ActiveCell>(null);
@@ -243,6 +262,7 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [assignmentSavingId, setAssignmentSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const anchorDateInitializedRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -278,90 +298,114 @@ export default function AttendancePage() {
     }
   }, [projects, selectedProject]);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        const token = localStorage.getItem("hr_token");
-        const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    try {
+      const token = localStorage.getItem("hr_token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
-        const [attendanceRes, employeesRes, projectsRes, assignmentsRes] = await Promise.all([
-          fetch("/api/attendance", { headers }),
-          fetch("/api/employees", { headers }),
-          fetch("/api/attendance/projects", { headers }),
-          fetch("/api/attendance/assignments", { headers }),
-        ]);
+      const [attendanceRes, employeesRes, projectsRes, assignmentsRes] = await Promise.all([
+        fetch("/api/attendance", { headers }),
+        fetch("/api/employees", { headers }),
+        fetch("/api/attendance/projects", { headers }),
+        fetch("/api/attendance/assignments", { headers }),
+      ]);
 
-        const attendanceData = await attendanceRes.json().catch(() => ({}));
-        const employeesData = await employeesRes.json().catch(() => ({}));
-        const projectsData = await projectsRes.json().catch(() => ({}));
-        const assignmentsData = await assignmentsRes.json().catch(() => ({}));
+      const attendanceData = await attendanceRes.json().catch(() => ({}));
+      const employeesData = await employeesRes.json().catch(() => ({}));
+      const projectsData = await projectsRes.json().catch(() => ({}));
+      const assignmentsData = await assignmentsRes.json().catch(() => ({}));
 
-        if (!attendanceRes.ok) {
-          throw new Error(attendanceData?.message || "Failed to load attendance");
-        }
-
-        if (!employeesRes.ok) {
-          throw new Error(employeesData?.message || "Failed to load employees");
-        }
-
-        const uniqueEmployees = uniqueByName(employeesData?.employees || []);
-        const loadedRecords = attendanceData?.attendance || [];
-        setRecords(loadedRecords);
-        setEmployees(uniqueEmployees);
-
-        const latestRecordDate = loadedRecords
-          .map((record: AttendanceRecord) => record.date)
-          .filter(Boolean)
-          .sort((a: string, b: string) => b.localeCompare(a))[0];
-        if (latestRecordDate) {
-          setAnchorDate(latestRecordDate);
-        }
-
-        const latestRecordProject = loadedRecords
-          .slice()
-          .sort((a: AttendanceRecord, b: AttendanceRecord) => String(b.date || "").localeCompare(String(a.date || "")))[0]?.projectSite
-          ?.trim();
-
-        const dbProjects = Array.isArray(projectsData?.projects)
-          ? projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean)
-          : [];
-        const mergedProjects = Array.from(new Set([...defaultProjects, ...dbProjects]));
-        setProjects(mergedProjects);
-        setSelectedProject((current) => {
-          const currentMatch = mergedProjects.find((project) => project.toLowerCase() === String(current || "").toLowerCase());
-          const latestMatch = latestRecordProject
-            ? mergedProjects.find((project) => project.toLowerCase() === latestRecordProject.toLowerCase())
-            : undefined;
-          return currentMatch || latestMatch || mergedProjects[0] || "";
-        });
-
-        setAssignments((current) => {
-          const dbAssignments = assignmentsData?.assignments && typeof assignmentsData.assignments === "object"
-            ? (assignmentsData.assignments as ProjectAssignmentMap)
-            : {};
-          const next = { ...current, ...dbAssignments };
-          const fallbackProject = mergedProjects[0] || defaultProjects[0];
-          uniqueEmployees.forEach((employee: Employee) => {
-            if (!next[employee.id] || !mergedProjects.includes(next[employee.id])) {
-              next[employee.id] = fallbackProject;
-            }
-          });
-          return next;
-        });
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
+      if (!attendanceRes.ok) {
+        throw new Error(attendanceData?.message || "Failed to load attendance");
       }
-    }
 
-    load();
+      if (!employeesRes.ok) {
+        throw new Error(employeesData?.message || "Failed to load employees");
+      }
+
+      const uniqueEmployees = uniqueByName(employeesData?.employees || []);
+      const loadedRecords = attendanceData?.attendance || [];
+      setRecords(loadedRecords);
+      setEmployees(uniqueEmployees);
+
+      const latestRecordDate = loadedRecords
+        .map((record: AttendanceRecord) => record.date)
+        .filter(Boolean)
+        .sort((a: string, b: string) => b.localeCompare(a))[0];
+      if (latestRecordDate && !anchorDateInitializedRef.current) {
+        setRangeStartDate(latestRecordDate);
+        setRangeEndDate(latestRecordDate);
+        anchorDateInitializedRef.current = true;
+      }
+
+      const latestRecordProject = loadedRecords
+        .slice()
+        .sort((a: AttendanceRecord, b: AttendanceRecord) => String(b.date || "").localeCompare(String(a.date || "")))[0]?.projectSite
+        ?.trim();
+
+      const dbProjects = Array.isArray(projectsData?.projects)
+        ? projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean)
+        : [];
+      const mergedProjects = Array.from(new Set([...defaultProjects, ...dbProjects]));
+      setProjects(mergedProjects);
+      setSelectedProject((current) => {
+        const currentMatch = mergedProjects.find((project) => project.toLowerCase() === String(current || "").toLowerCase());
+        const latestMatch = latestRecordProject
+          ? mergedProjects.find((project) => project.toLowerCase() === latestRecordProject.toLowerCase())
+          : undefined;
+        return currentMatch || latestMatch || mergedProjects[0] || "";
+      });
+
+      setAssignments((current) => {
+        const dbAssignments = assignmentsData?.assignments && typeof assignmentsData.assignments === "object"
+          ? (assignmentsData.assignments as ProjectAssignmentMap)
+          : {};
+        const next = { ...current, ...dbAssignments };
+        const fallbackProject = mergedProjects[0] || defaultProjects[0];
+        uniqueEmployees.forEach((employee: Employee) => {
+          if (!next[employee.id] || !mergedProjects.includes(next[employee.id])) {
+            next[employee.id] = fallbackProject;
+          }
+        });
+        return next;
+      });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const periodDates = useMemo(() => getPeriodDates(anchorDate, periodMode), [anchorDate, periodMode]);
+  useEffect(() => {
+    void loadData();
+
+    const interval = window.setInterval(() => {
+      void loadData();
+    }, 30000);
+
+    const onFocus = () => {
+      void loadData();
+    };
+
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [loadData]);
+
+  useSupabaseTableRefresh([
+    { table: "attendance_records" },
+    { table: "employees" },
+    { table: "employee_project_deployments" },
+  ], () => {
+    void loadData();
+  });
+
+  const periodDates = useMemo(() => getPeriodDates(rangeStartDate, rangeEndDate), [rangeStartDate, rangeEndDate]);
 
   const assignedEmployees = useMemo(() => {
     if (!selectedProject) return [];
@@ -809,22 +853,31 @@ export default function AttendancePage() {
               <div>
                 <p className="eyebrow">Attendance workspace</p>
                 <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">{selectedProject} attendance planner</h3>
-                <p className="mt-2 text-sm text-slate-500">{describePeriod(periodDates, periodMode)} · Mon–Sat only</p>
+                <p className="mt-2 text-sm text-slate-500">{describePeriod(periodDates, periodMode)} · Sunday is always rest day</p>
               </div>
 
               <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:max-w-5xl">
                 <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance date</p>
                   <label className="mt-3 block">
-                    <span className="text-sm font-bold text-slate-600">Choose attendance day</span>
+                    <span className="text-sm font-bold text-slate-600">Start date</span>
                     <input
                       type="date"
-                      value={anchorDate}
-                      onChange={(event) => setAnchorDate(event.target.value)}
+                      value={rangeStartDate}
+                      onChange={(event) => setRangeStartDate(event.target.value)}
                       className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                     />
                   </label>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">Pick the exact day you want to work on, then the table below will reflect that attendance period.</p>
+                  <label className="mt-3 block">
+                    <span className="text-sm font-bold text-slate-600">End date</span>
+                    <input
+                      type="date"
+                      value={rangeEndDate}
+                      onChange={(event) => setRangeEndDate(event.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    />
+                  </label>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Pick the exact range you want, like June 18 to June 24, and the table below will follow it.</p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
@@ -842,7 +895,7 @@ export default function AttendancePage() {
 
                   <div className="flex items-end">
                     <button type="button" onClick={saveAttendance} disabled={saving || loading} className="primary-button w-full">
-                      {saving ? "Saving..." : `Save ${periodMode === "weekly" ? "weekly" : "semi-monthly"} attendance`}
+                      {saving ? "Saving..." : "Save attendance range"}
                     </button>
                   </div>
                 </div>
@@ -1003,7 +1056,7 @@ export default function AttendancePage() {
                     {selectedProject} daily time and overtime table
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {assignedEmployees.length} assigned workers · {periodDates.length} day columns · Mon–Sat only
+                    {assignedEmployees.length} assigned workers · {periodDates.length} day columns · Sunday is rest day
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -1020,31 +1073,49 @@ export default function AttendancePage() {
                 <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance range</p>
                   <label className="mt-3 block">
-                    <span className="text-sm font-bold text-slate-600">Choose range anchor date</span>
+                    <span className="text-sm font-bold text-slate-600">Start date</span>
                     <input
                       type="date"
-                      value={anchorDate}
-                      onChange={(event) => setAnchorDate(event.target.value)}
+                      value={rangeStartDate}
+                      onChange={(event) => setRangeStartDate(event.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    />
+                  </label>
+                  <label className="mt-3 block">
+                    <span className="text-sm font-bold text-slate-600">End date</span>
+                    <input
+                      type="date"
+                      value={rangeEndDate}
+                      onChange={(event) => setRangeEndDate(event.target.value)}
                       className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
                     />
                   </label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setAnchorDate(periodStartDate(anchorDate, "weekly"))}
+                      onClick={() => {
+                        setRangeStartDate(periodStartDate(rangeStartDate, "weekly"));
+                        setRangeEndDate(isoDate(addDays(parseIsoDate(periodStartDate(rangeStartDate, "weekly")), 6)));
+                      }}
                       className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
                     >
                       This week
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAnchorDate(periodStartDate(anchorDate, "semi-monthly"))}
+                      onClick={() => {
+                        const start = periodStartDate(rangeStartDate, "semi-monthly");
+                        const startDate = parseIsoDate(start);
+                        const endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() === 1 ? 15 : new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate());
+                        setRangeStartDate(start);
+                        setRangeEndDate(isoDate(endDate));
+                      }}
                       className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
                     >
                       First half / Second half
                     </button>
                   </div>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">Select a date, then switch between a 1-week or half-month attendance period.</p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Select a custom range, or use the quick buttons to snap to a week or half-month.</p>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
@@ -1085,7 +1156,7 @@ export default function AttendancePage() {
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Day columns</p>
-                  <p className="mt-1 text-sm font-black text-slate-950">{periodDates.length} (Mon–Sat)</p>
+                  <p className="mt-1 text-sm font-black text-slate-950">{periodDates.length} (includes Sunday rest day)</p>
                 </div>
               </div>
             </div>
@@ -1111,6 +1182,7 @@ export default function AttendancePage() {
 
                       <div className="mt-4 grid gap-3">
                         {periodDates.map((date) => {
+                          const isSunday = parseIsoDate(date).getDay() === 0;
                           const draft = ensureDraft(employee.id, date);
                           const savedRecord = getSavedRecord(employee.id, date);
                           const hasSavedRecord = Boolean(savedRecord);
@@ -1198,6 +1270,7 @@ export default function AttendancePage() {
                         <td className="sticky left-0 z-10 min-w-[260px] bg-white px-4 py-4 font-black text-slate-950">{employee.fullName}</td>
                         <td className="sticky left-[260px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.position || "Employee"}</td>
                         {periodDates.map((date) => {
+                          const isSunday = parseIsoDate(date).getDay() === 0;
                           const draft = ensureDraft(employee.id, date);
                           const savedRecord = getSavedRecord(employee.id, date);
                           const hasSavedRecord = Boolean(savedRecord);
@@ -1224,20 +1297,28 @@ export default function AttendancePage() {
                             <td key={date} className="px-3 py-3">
                               <button
                                 type="button"
-                                onClick={() => setActiveCell({ employeeId: employee.id, date })}
-                                className="w-full rounded-[1.25rem] border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
+                                onClick={() => {
+                                  if (isSunday) return;
+                                  setActiveCell({ employeeId: employee.id, date });
+                                }}
+                                disabled={isSunday}
+                                className={`rounded-[1.25rem] border bg-gradient-to-br p-4 text-left shadow-sm transition ${
+                                  isSunday
+                                    ? "cursor-not-allowed border-amber-200 from-amber-50 to-white opacity-80"
+                                    : "border-slate-200 from-slate-50 to-white hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
+                                }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    <p className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${statusClass[displayStatus] || "bg-slate-100 text-slate-700"}`}>
-                                      {displayStatus}
+                                    <p className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${isSunday ? "bg-amber-100 text-amber-800" : statusClass[displayStatus] || "bg-slate-100 text-slate-700"}`}>
+                                      {isSunday ? "Rest day" : displayStatus}
                                     </p>
                                     <p className="mt-3 text-xs font-semibold text-slate-500">{formatDateLabel(date)}</p>
                                     {savedRecord?.projectSite ? <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-blue-600">{savedRecord.projectSite}</p> : null}
                                   </div>
                                   <div className="flex flex-col items-end gap-2">
-                                    <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>
-                                    <button
+                                    {isSunday ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Rest day</span> : <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>}
+                                    {!isSunday ? <button
                                       type="button"
                                       onClick={(event) => {
                                         event.stopPropagation();
@@ -1246,7 +1327,7 @@ export default function AttendancePage() {
                                       className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-700 transition hover:bg-rose-100"
                                     >
                                       Delete
-                                    </button>
+                                    </button> : null}
                                   </div>
                                 </div>
                                 <div className="mt-3 space-y-1 text-xs text-slate-600">

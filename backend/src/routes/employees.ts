@@ -78,6 +78,12 @@ function splitFullName(fullName: string) {
   };
 }
 
+function normalizeAmount(value: unknown) {
+  if (value === undefined || value === null || value === '') return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps) {
   const fallbackFullName = [row.first_name, row.middle_name, row.last_name]
     .filter(Boolean)
@@ -101,12 +107,12 @@ function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps) {
     hasSssLoan: row.has_sss_loan ?? true,
     hasTax: row.has_tax ?? true,
     hasAdditionalDeduction: row.has_additional_deduction ?? true,
-    sssAmount: row.sss_amount == null ? null : Number(row.sss_amount),
-    pagIbigAmount: row.pagibig_amount == null ? null : Number(row.pagibig_amount),
-    philHealthAmount: row.philhealth_amount == null ? null : Number(row.philhealth_amount),
-    sssLoanAmount: row.sss_loan_amount == null ? null : Number(row.sss_loan_amount),
-    taxAmount: row.tax_amount == null ? null : Number(row.tax_amount),
-    additionalDeductionAmount: row.additional_deduction_amount == null ? null : Number(row.additional_deduction_amount),
+    sssAmount: row.sss_amount == null ? 0 : Number(row.sss_amount),
+    pagIbigAmount: row.pagibig_amount == null ? 0 : Number(row.pagibig_amount),
+    philHealthAmount: row.philhealth_amount == null ? 0 : Number(row.philhealth_amount),
+    sssLoanAmount: row.sss_loan_amount == null ? 0 : Number(row.sss_loan_amount),
+    taxAmount: row.tax_amount == null ? 0 : Number(row.tax_amount),
+    additionalDeductionAmount: row.additional_deduction_amount == null ? 0 : Number(row.additional_deduction_amount),
   };
 }
 
@@ -395,8 +401,8 @@ router.post('/', async (req, res) => {
   try {
     const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
 
-    if (!fullName || !email) {
-      return res.status(400).json({ message: 'fullName and email are required' });
+    if (!fullName) {
+      return res.status(400).json({ message: 'fullName is required' });
     }
 
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
@@ -436,12 +442,12 @@ router.post('/', async (req, res) => {
         has_sss_loan: hasSssLoan ?? true,
         has_tax: hasTax ?? true,
         has_additional_deduction: hasAdditionalDeduction ?? true,
-        sss_amount: sssAmount ?? null,
-        pagibig_amount: pagIbigAmount ?? null,
-        philhealth_amount: philHealthAmount ?? null,
-        sss_loan_amount: sssLoanAmount ?? null,
-        tax_amount: taxAmount ?? null,
-        additional_deduction_amount: additionalDeductionAmount ?? null,
+        sss_amount: normalizeAmount(sssAmount),
+        pagibig_amount: normalizeAmount(pagIbigAmount),
+        philhealth_amount: normalizeAmount(philHealthAmount),
+        sss_loan_amount: normalizeAmount(sssLoanAmount),
+        tax_amount: normalizeAmount(taxAmount),
+        additional_deduction_amount: normalizeAmount(additionalDeductionAmount),
       })
       .select(EMPLOYEE_SELECT)
       .single();
@@ -537,12 +543,12 @@ router.patch('/:id', async (req, res) => {
         has_sss_loan: hasSssLoan === undefined ? existing.has_sss_loan ?? true : Boolean(hasSssLoan),
         has_tax: hasTax === undefined ? existing.has_tax ?? true : Boolean(hasTax),
         has_additional_deduction: hasAdditionalDeduction === undefined ? existing.has_additional_deduction ?? true : Boolean(hasAdditionalDeduction),
-        sss_amount: sssAmount === undefined ? existing.sss_amount ?? null : sssAmount,
-        pagibig_amount: pagIbigAmount === undefined ? existing.pagibig_amount ?? null : pagIbigAmount,
-        philhealth_amount: philHealthAmount === undefined ? existing.philhealth_amount ?? null : philHealthAmount,
-        sss_loan_amount: sssLoanAmount === undefined ? existing.sss_loan_amount ?? null : sssLoanAmount,
-        tax_amount: taxAmount === undefined ? existing.tax_amount ?? null : taxAmount,
-        additional_deduction_amount: additionalDeductionAmount === undefined ? existing.additional_deduction_amount ?? null : additionalDeductionAmount,
+        sss_amount: normalizeAmount(sssAmount === undefined ? existing.sss_amount : sssAmount),
+        pagibig_amount: normalizeAmount(pagIbigAmount === undefined ? existing.pagibig_amount : pagIbigAmount),
+        philhealth_amount: normalizeAmount(philHealthAmount === undefined ? existing.philhealth_amount : philHealthAmount),
+        sss_loan_amount: normalizeAmount(sssLoanAmount === undefined ? existing.sss_loan_amount : sssLoanAmount),
+        tax_amount: normalizeAmount(taxAmount === undefined ? existing.tax_amount : taxAmount),
+        additional_deduction_amount: normalizeAmount(additionalDeductionAmount === undefined ? existing.additional_deduction_amount : additionalDeductionAmount),
       })
       .eq('id', req.params.id)
       .select(EMPLOYEE_SELECT)

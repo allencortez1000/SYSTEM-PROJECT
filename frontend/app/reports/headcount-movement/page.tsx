@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -48,6 +49,13 @@ export default function HeadcountMovementReportPage() {
 
     load();
   }, []);
+
+  useSupabaseTableRefresh([{ table: "employees" }, { table: "employee_project_deployments" }], () => {
+    void fetch(`${API_BASE}/data/reports/headcount-movement`, { cache: "no-store" }).then(async (res) => {
+      const payload = await res.json();
+      if (res.ok) setData(payload);
+    });
+  });
 
   const metrics = useMemo(() => {
     const values = data.metrics || {};

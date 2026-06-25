@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 type Employee = {
   id: number;
@@ -51,6 +52,14 @@ export default function EmployeeDetail() {
 
     if (id) load();
   }, [id]);
+
+  useSupabaseTableRefresh([{ table: "employees" }], () => {
+    if (!id) return;
+    void fetch(`/api/employees/${id}`).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setEmployee(data.employee || null);
+    });
+  });
 
   return (
     <div className="page-shell">

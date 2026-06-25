@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNotification } from "../components/notification";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 type Employee = {
   id: string;
@@ -34,31 +35,35 @@ export default function EmployeesPage() {
     };
   }, [employeeList]);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const token = localStorage.getItem("hr_token");
-        const res = await fetch("/api/employees", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json().catch(() => ({}));
+  const load = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch("/api/employees", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json().catch(() => ({}));
 
-        if (!res.ok) {
-          throw new Error(data?.error || data?.message || "Failed to fetch employees");
-        }
-
-        setEmployees(data.employees || []);
-        setError(null);
-        notify("Employees loaded");
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Failed to fetch employees");
       }
-    }
 
-    load();
+      setEmployees(data.employees || []);
+      setError(null);
+      notify("Employees loaded");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }, [notify]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useSupabaseTableRefresh([{ table: "employees" }], () => {
+    void load();
+  });
 
   return (
     <div className="page-shell">

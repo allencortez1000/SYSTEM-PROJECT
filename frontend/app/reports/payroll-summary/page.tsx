@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -56,6 +57,17 @@ export default function PayrollSummaryReportPage() {
 
     load();
   }, []);
+
+  useSupabaseTableRefresh([
+    { table: "employees" },
+    { table: "payroll_runs" },
+    { table: "payroll_items" },
+  ], () => {
+    void fetch(`${API_BASE}/data/reports/payroll-summary`, { cache: "no-store" }).then(async (res) => {
+      const payload = await res.json();
+      if (res.ok) setData(payload);
+    });
+  });
 
   const metrics = useMemo(() => {
     const values = data.metrics || {};

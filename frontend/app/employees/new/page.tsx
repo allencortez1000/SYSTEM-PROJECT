@@ -25,8 +25,8 @@ export default function NewEmployeePage() {
     setError(null);
     setFieldErrors(null);
 
-    if (!fullName.trim() || !email.trim()) {
-      setError("Name and email are required");
+    if (!fullName.trim()) {
+      setError("Name is required");
       return;
     }
 
@@ -39,7 +39,7 @@ export default function NewEmployeePage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ fullName, email, department, position, salary, manager, status }),
+        body: JSON.stringify({ fullName, email: email.trim() || null, department, position, salary, manager, status }),
       });
 
       const data = await res.json();
@@ -100,7 +100,6 @@ export default function NewEmployeePage() {
             value={email}
             onChange={setEmail}
             error={fieldErrors?.email}
-            required
           />
 
           <TextField

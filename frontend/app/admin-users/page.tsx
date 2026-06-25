@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNotification } from "../components/notification";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 type SessionUser = {
   role?: string;
@@ -103,9 +104,9 @@ export default function AdminUsersPage() {
   const [workerHasSssLoan, setWorkerHasSssLoan] = useState(true);
   const [workerHasTax, setWorkerHasTax] = useState(true);
   const [workerHasAdditionalDeduction, setWorkerHasAdditionalDeduction] = useState(true);
-  const [workerSssAmount, setWorkerSssAmount] = useState("");
-  const [workerPagIbigAmount, setWorkerPagIbigAmount] = useState("");
-  const [workerPhilHealthAmount, setWorkerPhilHealthAmount] = useState("");
+  const [workerSssAmount, setWorkerSssAmount] = useState("0");
+  const [workerPagIbigAmount, setWorkerPagIbigAmount] = useState("0");
+  const [workerPhilHealthAmount, setWorkerPhilHealthAmount] = useState("0");
   const [workerSssLoanAmount, setWorkerSssLoanAmount] = useState("");
   const [workerTaxAmount, setWorkerTaxAmount] = useState("");
   const [workerAdditionalDeductionAmount, setWorkerAdditionalDeductionAmount] = useState("");
@@ -146,7 +147,7 @@ export default function AdminUsersPage() {
 
   const totalPages = Math.ceil(filteredEmployees.length / employeesPerPage);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -218,11 +219,32 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedDepartmentIds.length]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+
+    const interval = window.setInterval(() => {
+      void loadData();
+    }, 30000);
+
+    const onFocus = () => {
+      void loadData();
+    };
+
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [loadData]);
+
+  useSupabaseTableRefresh([
+    { table: "employees" },
+    { table: "employee_project_deployments" },
+  ], () => {
+    void loadData();
+  });
 
   function togglePermission(permission: string) {
     setSelectedPermissions((current) =>
@@ -256,8 +278,8 @@ export default function AdminUsersPage() {
     try {
       const token = localStorage.getItem("hr_token");
       if (!token) throw new Error("Missing login token. Please sign in again.");
-      if (!workerFullName.trim() || !workerEmail.trim()) {
-        throw new Error("Worker full name and email are required.");
+      if (!workerFullName.trim()) {
+        throw new Error("Worker full name is required.");
       }
       if (!workerProjectSite.trim()) {
         throw new Error("Project site is required.");
@@ -265,7 +287,7 @@ export default function AdminUsersPage() {
 
       const payload = {
         fullName: workerFullName,
-        email: workerEmail,
+        email: workerEmail.trim() || null,
         department: workerDepartment || "Unassigned",
         position: workerPosition || "Worker",
         salary: Number(workerSalary) || 0,
@@ -342,9 +364,9 @@ export default function AdminUsersPage() {
       setWorkerHasSssLoan(true);
       setWorkerHasTax(true);
       setWorkerHasAdditionalDeduction(true);
-      setWorkerSssAmount("");
-      setWorkerPagIbigAmount("");
-      setWorkerPhilHealthAmount("");
+      setWorkerSssAmount("0");
+      setWorkerPagIbigAmount("0");
+      setWorkerPhilHealthAmount("0");
       setWorkerSssLoanAmount("");
       setWorkerTaxAmount("");
       setWorkerAdditionalDeductionAmount("");
@@ -375,9 +397,9 @@ export default function AdminUsersPage() {
     setWorkerHasSssLoan(employee.hasSssLoan ?? true);
     setWorkerHasTax(employee.hasTax ?? true);
     setWorkerHasAdditionalDeduction(employee.hasAdditionalDeduction ?? true);
-    setWorkerSssAmount(employee.sssAmount == null ? "" : String(employee.sssAmount));
-    setWorkerPagIbigAmount(employee.pagIbigAmount == null ? "" : String(employee.pagIbigAmount));
-    setWorkerPhilHealthAmount(employee.philHealthAmount == null ? "" : String(employee.philHealthAmount));
+    setWorkerSssAmount(employee.sssAmount == null ? "0" : String(employee.sssAmount));
+    setWorkerPagIbigAmount(employee.pagIbigAmount == null ? "0" : String(employee.pagIbigAmount));
+    setWorkerPhilHealthAmount(employee.philHealthAmount == null ? "0" : String(employee.philHealthAmount));
     setWorkerSssLoanAmount(employee.sssLoanAmount == null ? "" : String(employee.sssLoanAmount));
     setWorkerTaxAmount(employee.taxAmount == null ? "" : String(employee.taxAmount));
     setWorkerAdditionalDeductionAmount(employee.additionalDeductionAmount == null ? "" : String(employee.additionalDeductionAmount));
@@ -678,7 +700,6 @@ export default function AdminUsersPage() {
                     onChange={(event) => setWorkerEmail(event.target.value)}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
                     placeholder="maria@company.com"
-                    required
                   />
                 </label>
 

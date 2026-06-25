@@ -70,6 +70,12 @@ function roundCurrency(value: number) {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 }
 
+function isSunday(dateValue?: string | null) {
+  if (!dateValue) return false;
+  const date = new Date(`${dateValue}T00:00:00`);
+  return Number.isFinite(date.getTime()) && date.getDay() === 0;
+}
+
 function workedHoursFromRecord(record: AttendanceRecord) {
   if (record.worked_hours !== null && record.worked_hours !== undefined) {
     const worked = Number(record.worked_hours);
@@ -77,8 +83,23 @@ function workedHoursFromRecord(record: AttendanceRecord) {
   }
 
   const parseTime = (value?: string | null) => {
-    if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
-    const [hours, minutes] = value.split(':').map(Number);
+    if (!value) return null;
+    const trimmed = value.trim();
+    const meridiemMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)$/i);
+    if (meridiemMatch) {
+      let hours = Number(meridiemMatch[1]);
+      const minutes = Number(meridiemMatch[2]);
+      const meridiem = meridiemMatch[3].toLowerCase();
+      if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+      if (hours === 12) hours = 0;
+      if (meridiem === 'pm') hours += 12;
+      return hours * 60 + minutes;
+    }
+
+    const twentyFourHourMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!twentyFourHourMatch) return null;
+    const hours = Number(twentyFourHourMatch[1]);
+    const minutes = Number(twentyFourHourMatch[2]);
     if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
     return hours * 60 + minutes;
   };
@@ -529,26 +550,34 @@ function summarizeAttendance(
   for (const record of records) {
     const status = String(record.status || '').toLowerCase();
     const workedHours = workedHoursFromRecord(record);
+    const sunday = isSunday(record.attendance_date);
 
-    if (status === 'present') summary.presentDays += 1;
+    if (sunday) {
+      summary.overtimeHours += overtimeHoursFromRecord(record);
+      continue;
+    }
+
+    const isPresent = status === 'present' || status === 'remote' || status === 'late';
+
+    if (isPresent) summary.presentDays += 1;
     if (status === 'remote') summary.remoteDays += 1;
     if (status === 'leave') summary.leaveDays += 1;
     if (status === 'absent') summary.absentDays += 1;
     if (status === 'late') summary.lateDays += 1;
     summary.overtimeHours += overtimeHoursFromRecord(record);
 
-    if (hasPayrollPeriodRows) {
+    if (hasPayrollPeriodRows || isPresent) {
       summary.regularHours += workedHours;
     }
   }
 
   summary.paidDays = hasPayrollPeriodRows
     ? roundCurrency(summary.regularHours / 8)
-    : summary.presentDays + summary.remoteDays + summary.leaveDays + summary.lateDays;
+    : summary.presentDays + summary.remoteDays + summary.lateDays;
   summary.basePaidDays = summary.paidDays;
   summary.baseOvertimeHours = roundCurrency(summary.overtimeHours);
   summary.overtimeHours = roundCurrency(summary.overtimeHours);
-  summary.regularHours = hasPayrollPeriodRows ? roundCurrency(summary.regularHours) : roundCurrency(summary.paidDays * 8);
+  summary.regularHours = roundCurrency(summary.regularHours);
 
   return summary;
 }

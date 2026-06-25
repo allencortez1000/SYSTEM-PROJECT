@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -31,22 +32,27 @@ export default function LeavePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeRow, setActiveRow] = useState<LeaveRow | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/data/leave`);
-        if (!res.ok) throw new Error("Failed to load leave requests");
-        const data = await res.json();
-        setRows(data.leave || []);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/data/leave`);
+      if (!res.ok) throw new Error("Failed to load leave requests");
+      const data = await res.json();
+      setRows(data.leave || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useSupabaseTableRefresh([{ table: "leave_requests" }, { table: "employees" }], () => {
+    void load();
+  });
 
   const summary = useMemo(() => {
     const pending = rows.filter((r) => pick(r, ["status"]).toLowerCase() === "pending").length;

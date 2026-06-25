@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -48,6 +49,13 @@ export default function AttendanceInsightsReportPage() {
 
     load();
   }, []);
+
+  useSupabaseTableRefresh([{ table: "attendance_records" }, { table: "employees" }], () => {
+    void fetch(`${API_BASE}/data/reports/attendance-insights`, { cache: "no-store" }).then(async (res) => {
+      const payload = await res.json();
+      if (res.ok) setData(payload);
+    });
+  });
 
   const metrics = useMemo(() => {
     const values = data.metrics || {};
