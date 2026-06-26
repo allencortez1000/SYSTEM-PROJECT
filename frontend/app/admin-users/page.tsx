@@ -555,7 +555,7 @@ export default function AdminUsersPage() {
   return (
     <div className="page-shell">
       {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 text-white shadow-2xl">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative">
           <div className="flex items-center gap-3">
@@ -580,7 +580,7 @@ export default function AdminUsersPage() {
         <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 shadow-xl">
           <div className="flex flex-col items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center">
-              <svg className="h-12 w-12 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
+              <svg className="h-12 w-12 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -612,7 +612,7 @@ export default function AdminUsersPage() {
           <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
                   <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
@@ -739,17 +739,17 @@ export default function AdminUsersPage() {
           <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-lg">
                   <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-purple-600">Workforce</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-cyan-600">Workforce</p>
                   <h3 className="mt-1 text-2xl font-black text-slate-950">Add worker</h3>
                 </div>
               </div>
-              <span className="rounded-full bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 text-xs font-bold text-purple-700">
+              <span className="rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1 text-xs font-bold text-blue-700">
                 Super Admin
               </span>
             </div>
@@ -761,7 +761,7 @@ export default function AdminUsersPage() {
                   <input
                     value={workerFullName}
                     onChange={(event) => setWorkerFullName(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="Maria Santos"
                     required
                   />
@@ -773,7 +773,7 @@ export default function AdminUsersPage() {
                     type="email"
                     value={workerEmail}
                     onChange={(event) => setWorkerEmail(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="maria@company.com"
                   />
                 </label>
@@ -785,7 +785,7 @@ export default function AdminUsersPage() {
                     min="0"
                     value={workerSalary}
                     onChange={(event) => setWorkerSalary(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="32000"
                   />
                 </label>
@@ -795,7 +795,7 @@ export default function AdminUsersPage() {
                   <select
                     value={workerSalaryBasis}
                     onChange={(event) => setWorkerSalaryBasis(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                   >
                     <option value="monthly">Per month</option>
                     <option value="daily">Per day</option>
@@ -808,45 +808,45 @@ export default function AdminUsersPage() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20" />
                         SSS
                       </label>
-                      <input type="number" value={workerSssAmount} onChange={(event) => setWorkerSssAmount(event.target.value)} disabled={!workerHasSss} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                      <input type="number" value={workerSssAmount} onChange={(event) => setWorkerSssAmount(event.target.value)} disabled={!workerHasSss} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20" />
                         Pag-IBIG
                       </label>
-                      <input type="number" value={workerPagIbigAmount} onChange={(event) => setWorkerPagIbigAmount(event.target.value)} disabled={!workerHasPagIbig} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                      <input type="number" value={workerPagIbigAmount} onChange={(event) => setWorkerPagIbigAmount(event.target.value)} disabled={!workerHasPagIbig} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20" />
                         PhilHealth
                       </label>
-                      <input type="number" value={workerPhilHealthAmount} onChange={(event) => setWorkerPhilHealthAmount(event.target.value)} disabled={!workerHasPhilHealth} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                      <input type="number" value={workerPhilHealthAmount} onChange={(event) => setWorkerPhilHealthAmount(event.target.value)} disabled={!workerHasPhilHealth} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        <input type="checkbox" checked={workerHasSssLoan} onChange={(event) => setWorkerHasSssLoan(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        <input type="checkbox" checked={workerHasSssLoan} onChange={(event) => setWorkerHasSssLoan(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20" />
                         SSS Loan
                       </label>
-                      <input type="number" value={workerSssLoanAmount} onChange={(event) => setWorkerSssLoanAmount(event.target.value)} disabled={!workerHasSssLoan} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                      <input type="number" value={workerSssLoanAmount} onChange={(event) => setWorkerSssLoanAmount(event.target.value)} disabled={!workerHasSssLoan} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        <input type="checkbox" checked={workerHasTax} onChange={(event) => setWorkerHasTax(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        <input type="checkbox" checked={workerHasTax} onChange={(event) => setWorkerHasTax(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20" />
                         Tax
                       </label>
-                      <input type="number" value={workerTaxAmount} onChange={(event) => setWorkerTaxAmount(event.target.value)} disabled={!workerHasTax} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                      <input type="number" value={workerTaxAmount} onChange={(event) => setWorkerTaxAmount(event.target.value)} disabled={!workerHasTax} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        <input type="checkbox" checked={workerHasAdditionalDeduction} onChange={(event) => setWorkerHasAdditionalDeduction(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        <input type="checkbox" checked={workerHasAdditionalDeduction} onChange={(event) => setWorkerHasAdditionalDeduction(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20" />
                         Additional
                       </label>
-                      <input type="number" value={workerAdditionalDeductionAmount} onChange={(event) => setWorkerAdditionalDeductionAmount(event.target.value)} disabled={!workerHasAdditionalDeduction} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                      <input type="number" value={workerAdditionalDeductionAmount} onChange={(event) => setWorkerAdditionalDeductionAmount(event.target.value)} disabled={!workerHasAdditionalDeduction} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
                     </div>
                   </div>
                 </div>
@@ -857,7 +857,7 @@ export default function AdminUsersPage() {
                     list="worker-departments"
                     value={workerDepartment}
                     onChange={(event) => setWorkerDepartment(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="Select or type department"
                   />
                   <datalist id="worker-departments">
@@ -872,7 +872,7 @@ export default function AdminUsersPage() {
                   <input
                     value={workerPosition}
                     onChange={(event) => setWorkerPosition(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="Worker"
                   />
                 </label>
@@ -883,7 +883,7 @@ export default function AdminUsersPage() {
                     list="worker-project-sites"
                     value={workerProjectSite}
                     onChange={(event) => setWorkerProjectSite(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="Select or type project site"
                   />
                   <datalist id="worker-project-sites">
@@ -899,7 +899,7 @@ export default function AdminUsersPage() {
                 <select
                   value={workerStatus}
                   onChange={(event) => setWorkerStatus(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                 >
                   <option value="Active">Active</option>
                   <option value="Onboarding">Onboarding</option>
@@ -911,7 +911,7 @@ export default function AdminUsersPage() {
               <button
                 type="submit"
                 disabled={saving || loading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3.5 font-bold text-white shadow-lg transition hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3.5 font-bold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -1035,7 +1035,7 @@ export default function AdminUsersPage() {
                                   type="checkbox"
                                   checked={(assignmentDrafts[user.id] || []).includes(option.value)}
                                   onChange={() => toggleDraftDepartment(user.id, option.value)}
-                                  className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20"
+                                  className="h-4 w-4 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20"
                                 />
                                 <span className="truncate font-semibold">{option.label}</span>
                               </label>
@@ -1047,7 +1047,7 @@ export default function AdminUsersPage() {
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-bold text-white shadow-lg transition hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={assignmentSavingUserId === user.id}
                           onClick={() => saveAssignments(user.id)}
                         >

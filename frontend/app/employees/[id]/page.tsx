@@ -65,7 +65,7 @@ export default function EmployeeDetail() {
   return (
     <div className="page-shell">
       {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-600 p-8 text-white shadow-2xl">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -130,9 +130,9 @@ export default function EmployeeDetail() {
           <div className="grid gap-8 lg:grid-cols-[0.6fr_1.4fr]">
             {/* Profile Card */}
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-2xl">
-              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 blur-3xl"></div>
+              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-gradient-to-br from-blue-600/20 to-cyan-400/20 blur-3xl"></div>
               <div className="relative">
-                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-tr from-blue-600 via-purple-600 to-pink-600 text-3xl font-black shadow-2xl">
+                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-tr from-blue-600 to-cyan-400 text-3xl font-black shadow-2xl">
                   {employee.fullName.split(" ").map((name) => name[0]).slice(0, 2).join("")}
                 </div>
                 <h3 className="mt-6 break-words text-3xl font-black">{employee.fullName}</h3>
@@ -169,7 +169,7 @@ export default function EmployeeDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 }
-                gradient="from-purple-500 to-pink-500"
+                gradient="from-blue-600 to-cyan-500"
               />
               <InfoCard
                 label="Project site"
@@ -180,7 +180,7 @@ export default function EmployeeDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 }
-                gradient="from-orange-500 to-red-500"
+                gradient="from-cyan-500 to-blue-600"
               />
               <InfoCard
                 label="Manager"

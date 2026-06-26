@@ -101,9 +101,9 @@ export default function AttendanceInsightsReportPage() {
         value: String(values.leaveRecords || 0),
         detail: "Attendance marked as leave",
         icon: DocumentCheckIcon,
-        gradient: "from-purple-500 to-pink-500",
-        iconBg: "bg-gradient-to-br from-purple-50 to-pink-50",
-        iconColor: "text-purple-600",
+        gradient: "from-blue-600 to-cyan-500",
+        iconBg: "bg-gradient-to-br from-blue-50 to-cyan-50",
+        iconColor: "text-blue-600",
       },
     ];
   }, [data.metrics]);
@@ -120,7 +120,7 @@ export default function AttendanceInsightsReportPage() {
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 shadow-lg">
                 <ClockIcon className="h-6 w-6 text-white" />
               </div>
               <p className="eyebrow">Attendance report</p>

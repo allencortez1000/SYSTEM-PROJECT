@@ -94,9 +94,9 @@ export default function CompliancePacketReportPage() {
         value: values.policyAcknowledgements || "0 active",
         detail: "Active Supabase requirements",
         icon: ClipboardDocumentCheckIcon,
-        gradient: "from-purple-500 to-pink-500",
-        iconBg: "bg-gradient-to-br from-purple-50 to-pink-50",
-        iconColor: "text-purple-600",
+        gradient: "from-blue-600 to-cyan-500",
+        iconBg: "bg-gradient-to-br from-blue-50 to-cyan-50",
+        iconColor: "text-blue-600",
       },
       {
         label: "Payroll evidence",
@@ -112,9 +112,9 @@ export default function CompliancePacketReportPage() {
         value: String(values.openRisks || 0),
         detail: "Active compliance items",
         icon: ExclamationTriangleIcon,
-        gradient: "from-amber-500 to-orange-500",
-        iconBg: "bg-gradient-to-br from-amber-50 to-orange-50",
-        iconColor: "text-amber-600",
+        gradient: "from-cyan-500 to-blue-600",
+        iconBg: "bg-gradient-to-br from-cyan-50 to-blue-50",
+        iconColor: "text-cyan-600",
       },
     ];
   }, [data.metrics]);
@@ -125,13 +125,13 @@ export default function CompliancePacketReportPage() {
     <div className="page-shell">
       <section className="hero-panel relative overflow-hidden">
         {/* Gradient background decoration */}
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 opacity-50 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-to-tr from-orange-100 to-amber-100 opacity-50 blur-3xl" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-cyan-100 to-blue-100 opacity-50 blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-to-tr from-blue-100 to-cyan-100 opacity-50 blur-3xl" />
 
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600 shadow-lg">
                 <ShieldCheckIcon className="h-6 w-6 text-white" />
               </div>
               <p className="eyebrow">Compliance report</p>
@@ -147,7 +147,7 @@ export default function CompliancePacketReportPage() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/compliance"
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
             >
               Open compliance
             </Link>
@@ -206,12 +206,12 @@ export default function CompliancePacketReportPage() {
 
       <section className="section-card relative overflow-hidden">
         {/* Gradient decoration */}
-        <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 opacity-30 blur-3xl" />
+        <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full bg-gradient-to-br from-cyan-100 to-blue-100 opacity-30 blur-3xl" />
 
         <div className="relative">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-50 to-orange-50">
-              <CheckCircleIcon className="h-5 w-5 text-amber-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50">
+              <CheckCircleIcon className="h-5 w-5 text-cyan-600" />
             </div>
             <div>
               <p className="eyebrow">Audit checklist</p>

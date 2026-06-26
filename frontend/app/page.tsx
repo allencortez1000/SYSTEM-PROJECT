@@ -26,12 +26,12 @@ type AttendanceRecord = {
 };
 
 const deptColors = [
-  "from-blue-500 to-blue-600",
-  "from-cyan-500 to-cyan-600",
-  "from-violet-500 to-violet-600",
+  "from-blue-600 to-cyan-400",
+  "from-cyan-500 to-blue-500",
+  "from-blue-500 to-cyan-600",
   "from-emerald-500 to-emerald-600",
-  "from-amber-500 to-amber-600",
-  "from-rose-500 to-rose-600",
+  "from-slate-700 to-slate-900",
+  "from-cyan-400 to-blue-600",
 ];
 
 function pesos(value: number) {
@@ -144,7 +144,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Hero Section */}
-        <div className="mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-blue-700 p-8 text-white shadow-2xl shadow-blue-600/20 sm:p-12">
+        <div className="mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl shadow-slate-900/20 sm:p-12">
           <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold backdrop-blur-sm">
@@ -157,13 +157,13 @@ export default function Home() {
               <h1 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
                 HR Command Center
               </h1>
-              <p className="mt-4 text-lg text-blue-100">
+              <p className="mt-4 text-lg text-slate-300">
                 Manage payroll, people operations, and compliance with real-time workforce data from Supabase.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/employees"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-blue-600 shadow-lg shadow-white/30 transition-all hover:bg-blue-50 hover:shadow-xl"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -185,26 +185,26 @@ export default function Home() {
             {/* Live Stats Widget */}
             <div className="rounded-2xl bg-white/10 p-6 backdrop-blur-md">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-blue-100">Workforce Overview</h3>
+                <h3 className="text-sm font-semibold text-slate-300">Workforce Overview</h3>
                 <span className="flex h-2 w-2">
                   <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400"></span>
                 </span>
               </div>
               <div className="mt-4 text-5xl font-black">{stats.totalEmployees}</div>
-              <p className="mt-1 text-sm text-blue-100">Total Employees</p>
+              <p className="mt-1 text-sm text-slate-300">Total Employees</p>
               <div className="mt-6 grid grid-cols-3 gap-3">
                 <div className="rounded-xl bg-white/10 p-3 text-center backdrop-blur-sm">
                   <div className="text-2xl font-bold">{stats.activeEmployees}</div>
-                  <div className="mt-1 text-xs text-blue-100">Active</div>
+                  <div className="mt-1 text-xs text-slate-300">Active</div>
                 </div>
                 <div className="rounded-xl bg-white/10 p-3 text-center backdrop-blur-sm">
                   <div className="text-2xl font-bold">{stats.presentToday}</div>
-                  <div className="mt-1 text-xs text-blue-100">Present</div>
+                  <div className="mt-1 text-xs text-slate-300">Present</div>
                 </div>
                 <div className="rounded-xl bg-white/10 p-3 text-center backdrop-blur-sm">
                   <div className="text-2xl font-bold">{stats.onLeave}</div>
-                  <div className="mt-1 text-xs text-blue-100">On Leave</div>
+                  <div className="mt-1 text-xs text-slate-300">On Leave</div>
                 </div>
               </div>
             </div>
@@ -245,7 +245,7 @@ export default function Home() {
                 <p className="mt-2 text-3xl font-bold text-slate-900">{stats.totalEmployees}</p>
                 <p className="mt-1 text-sm font-medium text-green-600">{stats.activeEmployees} active</p>
               </div>
-              <div className="rounded-xl bg-blue-100 p-3">
+              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 p-3">
                 <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -277,8 +277,8 @@ export default function Home() {
                 <p className="mt-2 text-3xl font-bold text-slate-900">{stats.presentToday}</p>
                 <p className="mt-1 text-sm font-medium text-slate-600">Attendance records</p>
               </div>
-              <div className="rounded-xl bg-amber-100 p-3">
-                <svg className="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 p-3">
+                <svg className="h-8 w-8 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -293,8 +293,8 @@ export default function Home() {
                 <p className="mt-2 text-3xl font-bold text-slate-900">{stats.onLeave}</p>
                 <p className="mt-1 text-sm font-medium text-slate-600">Leave entries</p>
               </div>
-              <div className="rounded-xl bg-violet-100 p-3">
-                <svg className="h-8 w-8 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 p-3">
+                <svg className="h-8 w-8 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>

@@ -106,18 +106,18 @@ export default function PayrollSummaryReportPage() {
         value: pesos(values.sssTotal || 0),
         detail: "Employee statutory contributions",
         icon: ShieldCheckIcon,
-        gradient: "from-purple-500 to-pink-500",
-        iconBg: "bg-gradient-to-br from-purple-50 to-pink-50",
-        iconColor: "text-purple-600",
+        gradient: "from-blue-600 to-cyan-500",
+        iconBg: "bg-gradient-to-br from-blue-50 to-cyan-50",
+        iconColor: "text-blue-600",
       },
       {
         label: "Pag-IBIG total",
         value: pesos(values.pagIbigTotal || 0),
         detail: "Pag-IBIG deductions",
         icon: HomeIcon,
-        gradient: "from-amber-500 to-orange-500",
-        iconBg: "bg-gradient-to-br from-amber-50 to-orange-50",
-        iconColor: "text-amber-600",
+        gradient: "from-cyan-500 to-blue-600",
+        iconBg: "bg-gradient-to-br from-cyan-50 to-blue-50",
+        iconColor: "text-cyan-600",
       },
       {
         label: "PhilHealth total",
@@ -152,7 +152,7 @@ export default function PayrollSummaryReportPage() {
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-lg">
                 <CreditCardIcon className="h-6 w-6 text-white" />
               </div>
               <p className="eyebrow">Payroll report</p>
@@ -168,7 +168,7 @@ export default function PayrollSummaryReportPage() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/payroll"
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
             >
               Open payroll center
             </Link>

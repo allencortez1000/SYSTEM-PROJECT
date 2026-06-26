@@ -109,11 +109,11 @@ export default function LeavePage() {
   return (
     <div className="page-shell">
       <section className="hero-panel">
-        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 px-4 py-1.5">
-          <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-4 py-1.5">
+          <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
           </svg>
-          <span className="text-sm font-bold text-purple-700">Leave Management</span>
+          <span className="text-sm font-bold text-blue-700">Leave Management</span>
         </div>
         <h2 className="mt-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent">
           Balance time off and coverage
@@ -145,13 +145,13 @@ export default function LeavePage() {
 
       <section className="section-card">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 p-2.5 text-white shadow-lg">
+          <div className="rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 p-2.5 text-white shadow-lg">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
             </svg>
           </div>
           <div>
-            <p className="text-sm font-bold uppercase tracking-wider text-indigo-600">Requests</p>
+            <p className="text-sm font-bold uppercase tracking-wider text-blue-600">Requests</p>
             <h3 className="text-2xl font-black text-slate-950">Leave requests</h3>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function LeavePage() {
                             event.stopPropagation();
                             setActiveRow(row);
                           }}
-                          className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-900 to-slate-700 px-4 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-blue-600 hover:to-indigo-600 hover:shadow-lg"
+                          className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-950 to-slate-800 px-4 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-blue-600 hover:to-cyan-500 hover:shadow-lg"
                         >
                           <svg className="h-3.5 w-3.5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />

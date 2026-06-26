@@ -24,9 +24,9 @@ const reportCards = [
     description: "Hiring, exits, transfers, and department growth.",
     href: "/reports/headcount-movement",
     icon: UsersIcon,
-    gradient: "from-purple-500 to-pink-500",
-    iconBg: "bg-gradient-to-br from-purple-50 to-pink-50",
-    iconColor: "text-purple-600",
+    gradient: "from-blue-600 to-cyan-500",
+    iconBg: "bg-gradient-to-br from-blue-50 to-cyan-50",
+    iconColor: "text-blue-600",
     action: "Open headcount report",
   },
   {
@@ -44,9 +44,9 @@ const reportCards = [
     description: "Labor reports and audit-ready filing exports.",
     href: "/reports/compliance-packet",
     icon: ShieldCheckIcon,
-    gradient: "from-amber-500 to-orange-500",
-    iconBg: "bg-gradient-to-br from-amber-50 to-orange-50",
-    iconColor: "text-amber-600",
+    gradient: "from-cyan-500 to-blue-600",
+    iconBg: "bg-gradient-to-br from-cyan-50 to-blue-50",
+    iconColor: "text-cyan-600",
     action: "Open compliance report",
   },
 ];
@@ -56,13 +56,13 @@ export default function ReportsPage() {
     <div className="page-shell">
       <section className="hero-panel relative overflow-hidden">
         {/* Gradient background decoration */}
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 opacity-50 blur-3xl" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 opacity-50 blur-3xl" />
         <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-to-tr from-cyan-100 to-blue-100 opacity-50 blur-3xl" />
 
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-lg">
                 <ChartBarIcon className="h-6 w-6 text-white" />
               </div>
               <p className="eyebrow">Reports studio</p>
