@@ -98,173 +98,387 @@ export default function PayrollIndex() {
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
-
-
   const stats = useMemo(
     () => [
-      { label: "Estimated gross payroll", value: pesos(payrollCost), detail: "Sum of all salaries", tone: "bg-blue-50 text-blue-700" },
-      { label: "Employees on payroll", value: String(employeeCount), detail: "Active records in Supabase", tone: "bg-emerald-50 text-emerald-700" },
-      { label: "Payroll runs", value: String(runs.length), detail: "Historical runs stored", tone: "bg-amber-50 text-amber-700" },
+      {
+        label: "Total Payroll",
+        value: pesos(payrollCost),
+        detail: "Sum of all employee salaries",
+        icon: (
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        ),
+        bgGradient: "from-emerald-500 to-emerald-600",
+        bgLight: "from-emerald-50 to-white",
+        borderColor: "border-emerald-200",
+        iconBg: "bg-gradient-to-br from-emerald-500 to-emerald-600"
+      },
+      {
+        label: "Active Employees",
+        value: String(employeeCount),
+        detail: "On payroll system",
+        icon: (
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+          </svg>
+        ),
+        bgGradient: "from-blue-500 to-blue-600",
+        bgLight: "from-blue-50 to-white",
+        borderColor: "border-blue-200",
+        iconBg: "bg-gradient-to-br from-blue-500 to-blue-600"
+      },
+      {
+        label: "Payroll Runs",
+        value: String(runs.length),
+        detail: "Payment history records",
+        icon: (
+          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+          </svg>
+        ),
+        bgGradient: "from-purple-500 to-purple-600",
+        bgLight: "from-purple-50 to-white",
+        borderColor: "border-purple-200",
+        iconBg: "bg-gradient-to-br from-purple-500 to-purple-600"
+      },
     ],
     [payrollCost, employeeCount, runs],
   );
 
   return (
-    <div className="page-shell">
-      <section className="hero-panel">
-        <div className="grid min-w-0 gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
-          <div className="min-w-0">
-            <p className="eyebrow">Payroll center</p>
-            <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Prepare Philippine payroll with hourly pay and automatic deductions.
-            </h2>
-            <p className="mt-4 max-w-2xl text-slate-600">
-              Review hourly earnings, overtime, SSS, Pag-IBIG, PhilHealth, and final net pay before releasing payroll.
-            </p>
-
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button onClick={() => setCalculatorOpen(true)} className="primary-button" type="button">
-                Start payroll calculation
-              </button>
-              <Link href="/reports" className="secondary-button">
-                View payroll reports
-              </Link>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-600/30 transition-transform hover:scale-105">
+              <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+              </svg>
             </div>
-          </div>
-
-          <div className="min-w-0 rounded-[1.75rem] bg-slate-950 p-6 text-white shadow-2xl shadow-slate-900/20">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-bold text-slate-300">Estimated monthly payroll</p>
-              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">
-                Live
-              </span>
-            </div>
-            <p className="mt-5 break-words text-4xl font-black sm:text-5xl">{pesos(payrollCost)}</p>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              Computed from {employeeCount} employee salary records stored in Supabase.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {error && (
-        <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700">
-          {error}. Make sure the backend (npm run dev) is running on port 4000.
-        </p>
-      )}
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {stats.map((stat) => (
-          <article key={stat.label} className="metric-card">
-            <div className="flex min-w-0 items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-500">{stat.label}</p>
-                <p className="mt-3 break-words text-2xl font-black text-slate-950 sm:text-3xl">{stat.value}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-500">{stat.detail}</p>
-              </div>
-              <span className={`shrink-0 rounded-2xl px-3 py-2 text-xs font-black ${stat.tone}`}>
-                PHP
-              </span>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="section-card">
-        <div>
-          <p className="eyebrow">Recent payroll runs</p>
-          <h3 className="mt-2 text-2xl font-black text-slate-950">Payment history</h3>
-        </div>
-
-        {loading && <p className="mt-6 text-slate-600">Loading payroll runs...</p>}
-        {!loading && runs.length === 0 && (
-          <p className="mt-6 text-sm text-slate-500">No payroll runs found in Supabase yet.</p>
-        )}
-
-        {runs.length > 0 && (
-          <div className="mt-6 overflow-x-auto rounded-[1.5rem] border border-slate-100">
-            <table className="soft-table">
-              <thead>
-                <tr>
-                  <th>Run code</th>
-                  <th>Period</th>
-                  <th>Payout date</th>
-                  <th>Net pay</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {runs.map((run, index) => (
-                  <tr key={index} className="hover:bg-slate-50">
-                    <td className="font-black text-slate-950">{pick(run, ["run_code"])}</td>
-                    <td className="text-slate-600">
-                      {pick(run, ["pay_period_start"])} → {pick(run, ["pay_period_end"])}
-                    </td>
-                    <td className="text-slate-600">{pick(run, ["payout_date"])}</td>
-                    <td className="font-bold text-slate-700">{pesos(Number(run["total_net_pay"] ?? 0))}</td>
-                    <td>
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
-                        {pick(run, ["status"])}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    {calculatorOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-        <div className="w-full max-w-xl rounded-[1.75rem] bg-white p-6 shadow-2xl">
-          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="eyebrow">Start payroll calculation</p>
-              <h3 className="mt-2 text-2xl font-black text-slate-950">Choose department and project site</h3>
-              <p className="mt-2 text-sm text-slate-500">Select the department and project site before opening the payroll editor.</p>
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                Payroll Center
+              </h1>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                Manage Philippine payroll with automated deductions
+              </p>
             </div>
-            <button type="button" className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500" onClick={() => setCalculatorOpen(false)}>✕</button>
           </div>
+        </div>
 
-          <div className="mt-6 grid gap-4">
-            <label className="block">
-              <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Department</span>
-              <select value={selectedDepartment} onChange={(event) => setSelectedDepartment(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
-                <option value="">Select department</option>
-                {departments.map((department) => <option key={department.id} value={department.name}>{department.name}</option>)}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Project site</span>
-              <select value={selectedProjectSite} onChange={(event) => setSelectedProjectSite(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
-                <option value="">Select project site</option>
-                {projectSites.map((project) => <option key={project.id} value={project.name}>{project.name}</option>)}
-              </select>
-            </label>
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-white p-4 shadow-sm transition-all hover:shadow-md">
+            <svg className="h-5 w-5 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-900">{error}</p>
+              <p className="mt-1 text-xs text-red-700">Make sure the backend is running on port 4000</p>
+            </div>
           </div>
+        )}
 
-          <p className="mt-4 text-sm font-semibold text-slate-500">Both fields are required before proceeding.</p>
-
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <button type="button" className="secondary-button" onClick={() => setCalculatorOpen(false)}>Cancel</button>
-            <button
-              type="button"
-              className="primary-button"
-              disabled={!selectedDepartment || !selectedProjectSite}
-              onClick={() => {
-                const params = new URLSearchParams();
-                params.set("department", selectedDepartment);
-                params.set("projectSite", selectedProjectSite);
-                router.push(`/payroll/new?${params.toString()}`);
-              }}
+        {/* Stats Grid */}
+        <div className="mb-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className={`group relative overflow-hidden rounded-2xl border ${stat.borderColor} bg-gradient-to-br ${stat.bgLight} p-6 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
             >
-              Continue to payroll
-            </button>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-black uppercase tracking-wider text-slate-600">
+                    {stat.label}
+                  </p>
+                  <p className="mt-3 text-3xl font-black text-slate-900">
+                    {stat.value}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                    {stat.detail}
+                  </p>
+                </div>
+                <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${stat.iconBg} text-white shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                  {stat.icon}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main CTA Card */}
+        <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-2xl">
+          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-6 py-8 text-white sm:px-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex-1">
+                <div className="mb-3 flex items-center gap-2">
+                  <svg className="h-6 w-6 text-blue-200" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-200">
+                    Estimated Monthly
+                  </span>
+                </div>
+                <h2 className="text-2xl font-black sm:text-3xl">
+                  Total Payroll Cost
+                </h2>
+                <p className="mt-3 text-4xl font-black sm:text-5xl">
+                  {pesos(payrollCost)}
+                </p>
+                <p className="mt-3 text-sm font-semibold text-blue-100">
+                  Computed from {employeeCount} employee salary records
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={() => setCalculatorOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-black text-blue-700 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Start Payroll
+                </button>
+                <Link
+                  href="/reports"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-white/30 bg-white/10 px-6 py-3.5 text-sm font-black text-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:bg-white/20"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                  </svg>
+                  View Reports
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Payroll Runs Table */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-xl">
+          <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/30 px-6 py-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Payment History</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Recent payroll runs and releases</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+                  <p className="text-sm font-semibold text-slate-600">Loading payroll runs...</p>
+                </div>
+              </div>
+            ) : runs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+                  <svg className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-black text-slate-900">No payroll runs yet</h4>
+                <p className="mt-2 max-w-sm text-sm font-semibold text-slate-600">
+                  Start your first payroll calculation to see payment history here
+                </p>
+                <button
+                  onClick={() => setCalculatorOpen(true)}
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/30 transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Create First Payroll
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/50">
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">
+                        Run Code
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">
+                        Period
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">
+                        Payout Date
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wider text-slate-700">
+                        Net Pay
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {runs.map((run, index) => (
+                      <tr key={index} className="group transition-all duration-200 hover:bg-slate-50">
+                        <td className="px-4 py-4">
+                          <span className="font-black text-slate-900">
+                            {pick(run, ["run_code"])}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600">
+                          <div className="flex items-center gap-2">
+                            <svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                            </svg>
+                            <span className="font-semibold">
+                              {pick(run, ["pay_period_start"])} → {pick(run, ["pay_period_end"])}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm font-semibold text-slate-600">
+                          {pick(run, ["payout_date"])}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="text-base font-black text-emerald-700">
+                            {pesos(Number(run["total_net_pay"] ?? 0))}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm">
+                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
+                              <circle cx={4} cy={4} r={3} />
+                            </svg>
+                            {pick(run, ["status"])}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    )}
-  </div>
+
+      {/* Modal for Starting Payroll */}
+      {calculatorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm transition-all">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-300">
+            <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/50 px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-600/30">
+                    <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Start Payroll</h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">Select department and project site</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-xl p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+                  onClick={() => setCalculatorOpen(false)}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-6">
+              <div className="grid gap-5">
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                    </svg>
+                    Department
+                  </span>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(event) => setSelectedDepartment(event.target.value)}
+                    className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  >
+                    <option value="">Select department</option>
+                    {departments.map((department) => (
+                      <option key={department.id} value={department.name}>
+                        {department.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    </svg>
+                    Project Site
+                  </span>
+                  <select
+                    value={selectedProjectSite}
+                    onChange={(event) => setSelectedProjectSite(event.target.value)}
+                    className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  >
+                    <option value="">Select project site</option>
+                    {projectSites.map((project) => (
+                      <option key={project.id} value={project.name}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {(!selectedDepartment || !selectedProjectSite) && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white px-4 py-3 shadow-sm">
+                  <svg className="h-5 w-5 shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                  </svg>
+                  <p className="text-sm font-bold text-amber-900">
+                    Both fields are required before proceeding
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 border-t border-slate-200 bg-slate-50/50 px-6 py-4">
+              <button
+                type="button"
+                className="flex-1 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50"
+                onClick={() => setCalculatorOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flex-1 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/30 transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                disabled={!selectedDepartment || !selectedProjectSite}
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  params.set("department", selectedDepartment);
+                  params.set("projectSite", selectedProjectSite);
+                  router.push(`/payroll/new?${params.toString()}`);
+                }}
+              >
+                Continue to Payroll
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -84,7 +84,7 @@ function normalizeAmount(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps) {
+function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Unassigned') {
   const fallbackFullName = [row.first_name, row.middle_name, row.last_name]
     .filter(Boolean)
     .join(' ')
@@ -96,6 +96,7 @@ function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps) {
     fullName: row.full_name || fallbackFullName,
     email: row.email,
     department: row.department_id ? lookups.departmentMap.get(row.department_id) || 'Unassigned' : 'Unassigned',
+    projectSite,
     position: row.position_id ? lookups.positionMap.get(row.position_id) || 'Employee' : 'Employee',
     status: row.status || 'Active',
     manager: null,
@@ -138,6 +139,61 @@ async function getLookupMaps(): Promise<LookupMaps> {
       (positionsResult.data || []).map((position) => [position.id as string, position.title as string]),
     ),
   };
+}
+
+async function getEmployeeProjectSite(employeeId: string) {
+  const { data, error } = await supabase
+    .from('employee_project_deployments')
+    .select('project_site_id, project_sites!inner(name)')
+    .eq('employee_id', employeeId)
+    .eq('is_active', true)
+    .order('assigned_at', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  const row = data && data[0] as any;
+  return String(row?.project_sites?.name || 'Unassigned');
+}
+
+async function setEmployeeProjectSite(employeeId: string, projectSite: string) {
+  const siteName = String(projectSite || '').trim() || 'Unassigned';
+  const { data: project } = await supabase
+    .from('project_sites')
+    .select('id, name')
+    .ilike('name', siteName)
+    .limit(1)
+    .maybeSingle();
+
+  const projectId = project?.id
+    ? project.id
+    : await (async () => {
+        const { data: created, error } = await supabase
+          .from('project_sites')
+          .insert({ name: siteName })
+          .select('id')
+          .single();
+        if (error) throw error;
+        return created.id as string;
+      })();
+
+  const { error: deactivateError } = await supabase
+    .from('employee_project_deployments')
+    .update({ is_active: false })
+    .eq('employee_id', employeeId);
+  if (deactivateError) throw deactivateError;
+
+  const { error: upsertError } = await supabase
+    .from('employee_project_deployments')
+    .upsert({
+      employee_id: employeeId,
+      project_site_id: projectId,
+      assigned_at: new Date().toISOString(),
+      is_active: true,
+    });
+  if (upsertError) throw upsertError;
 }
 
 async function getAllowedDepartmentIds(req: AuthRequest): Promise<string[] | null> {
@@ -329,6 +385,24 @@ router.get('/', async (req, res) => {
 
     const rows = (employeesResult.data || []) as EmployeeRow[];
 
+    // Fetch project sites for all employees
+    const projectSitesMap = new Map<string, string>();
+    if (rows.length > 0) {
+      const { data: deployments } = await supabase
+        .from('employee_project_deployments')
+        .select('employee_id, project_sites!inner(name)')
+        .eq('is_active', true)
+        .in('employee_id', rows.map(r => r.id));
+
+      if (deployments) {
+        for (const deployment of deployments as any[]) {
+          if (deployment.employee_id && deployment.project_sites?.name) {
+            projectSitesMap.set(deployment.employee_id, deployment.project_sites.name);
+          }
+        }
+      }
+    }
+
     // Client-side filter to ensure search accuracy
     let filteredRows = rows;
     if (search) {
@@ -342,7 +416,7 @@ router.get('/', async (req, res) => {
     }
 
     res.json({
-      employees: filteredRows.map((row) => toEmployeeApi(row, lookups)),
+      employees: filteredRows.map((row) => toEmployeeApi(row, lookups, projectSitesMap.get(row.id) || 'Unassigned')),
       count: search ? filteredRows.length : (employeesResult.count as number) || rows.length,
     });
   } catch (error) {

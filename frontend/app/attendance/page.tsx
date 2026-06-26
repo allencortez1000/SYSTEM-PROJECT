@@ -758,297 +758,447 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="page-shell">
-      <section className="hero-panel">
-        <p className="eyebrow">Attendance hub</p>
-        <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Project attendance and worker deployment</h2>
-        <p className="mt-3 max-w-3xl text-slate-600">
-          Choose a project site, load its worker roster without duplicate names, encode weekly or semi-monthly attendance,
-          edit daily time in and time out, and rotate workers across active company projects.
-        </p>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {projectCounts.map((item) => (
-          <article key={item.project} className={`metric-card ${selectedProject === item.project ? "ring-2 ring-blue-200" : ""}`}>
-            <p className="text-sm font-bold text-slate-500">{item.project}</p>
-            <p className="mt-3 text-3xl font-black text-slate-950">{item.count}</p>
-            <p className="mt-2 text-sm font-semibold text-slate-500">Assigned workers</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid gap-6 2xl:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <section className="section-card space-y-4">
-            <div>
-              <p className="eyebrow">Projects</p>
-              <h3 className="mt-2 break-words text-2xl font-black text-slate-950">Worker deployment control</h3>
-            </div>
-
-            <label className="block">
-              <span className="text-sm font-bold text-slate-600">Selected project site</span>
-              <select
-                value={selectedProject}
-                onChange={(event) => setSelectedProject(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-              >
-                {projects.map((project) => (
-                  <option key={project} value={project}>{project}</option>
-                ))}
-              </select>
-            </label>
-
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-              <label className="block min-w-0">
-                <span className="text-sm font-bold text-slate-600">Add project site</span>
-                <input
-                  value={newProjectName}
-                  onChange={(event) => setNewProjectName(event.target.value)}
-                  placeholder="Example: Hermosa"
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                />
-              </label>
-              <button type="button" onClick={addProject} className="primary-button mt-0 sm:mt-7 sm:w-auto w-full">Add site</button>
-            </div>
-
-            <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
-              <p className="text-sm font-black text-slate-950">Rotate workers between project sites</p>
-              <p className="mt-2 text-sm text-slate-600">Assignments are now connected to the backend attendance project deployment records so the selected project site is saved, not just kept in the browser.</p>
-            </div>
-          </section>
-
-          <section className="section-card">
-            <div>
-              <p className="eyebrow">Roster</p>
-              <h3 className="mt-2 break-words text-2xl font-black text-slate-950">Assign workers to projects</h3>
-            </div>
-
-            <div className="mt-5 max-h-[540px] space-y-3 overflow-auto pr-1">
-              {employees.map((employee) => (
-                <div key={employee.id} className="rounded-[1.25rem] border border-slate-100 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-slate-950">{employee.fullName}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {employee.position || "Employee"} · {employee.department || "Unassigned"}
-                      </p>
-                    </div>
-                    <select
-                      value={assignments[employee.id] || ""}
-                      onChange={(event) => assignEmployee(employee.id, event.target.value)}
-                      disabled={assignmentSavingId === employee.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {projects.map((project) => (
-                        <option key={project} value={project}>{project}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+            <span className="text-sm font-bold uppercase tracking-wider text-blue-600">Attendance Hub</span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+            Project Attendance & Deployment
+          </h1>
+          <p className="mt-3 max-w-3xl text-lg text-slate-600">
+            Manage worker assignments, track daily attendance, and monitor project deployment across all sites.
+          </p>
         </div>
 
-        <div className="space-y-6">
-          <section className="section-card space-y-4">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <p className="eyebrow">Attendance workspace</p>
-                <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">{selectedProject} attendance planner</h3>
-                <p className="mt-2 text-sm text-slate-500">{describePeriod(periodDates, periodMode)} · Sunday is always rest day</p>
+        {/* Loading State */}
+        {loading && (
+          <div className="rounded-2xl border border-blue-200 bg-white p-8 shadow-sm">
+            <div className="flex items-center justify-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
+              <span className="text-slate-600 font-medium">Loading attendance data...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-900">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Project Stats Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+          {projectCounts.map((item) => (
+            <div
+              key={item.project}
+              className={`group rounded-2xl border bg-white p-5 shadow-sm transition-all hover:shadow-lg ${
+                selectedProject === item.project
+                  ? "border-blue-500 ring-2 ring-blue-100"
+                  : "border-slate-200 hover:border-blue-300"
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                    </svg>
+                    <p className="text-sm font-bold text-slate-600">{item.project}</p>
+                  </div>
+                  <p className="mt-3 text-3xl font-black text-slate-900">{item.count}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">Assigned Workers</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid gap-6 xl:grid-cols-[400px_1fr]">
+          {/* Left Sidebar */}
+          <div className="space-y-6">
+            {/* Project Management Card */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                </svg>
+                <h3 className="text-lg font-black text-slate-900">Project Sites</h3>
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:max-w-5xl">
-                <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance date</p>
-                  <label className="mt-3 block">
-                    <span className="text-sm font-bold text-slate-600">Start date</span>
-                    <input
-                      type="date"
-                      value={rangeStartDate}
-                      onChange={(event) => setRangeStartDate(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
-                    />
-                  </label>
-                  <label className="mt-3 block">
-                    <span className="text-sm font-bold text-slate-600">End date</span>
-                    <input
-                      type="date"
-                      value={rangeEndDate}
-                      onChange={(event) => setRangeEndDate(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
-                    />
-                  </label>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">Pick the exact range you want, like June 18 to June 24, and the table below will follow it.</p>
+              <label className="block mb-4">
+                <span className="text-sm font-bold text-slate-700">Active Project</span>
+                <select
+                  value={selectedProject}
+                  onChange={(event) => setSelectedProject(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  {projects.map((project) => (
+                    <option key={project} value={project}>{project}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="space-y-2">
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-700">New Project Site</span>
+                  <input
+                    value={newProjectName}
+                    onChange={(event) => setNewProjectName(event.target.value)}
+                    placeholder="e.g., Hermosa Site"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={addProject}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-slate-800 hover:shadow-md active:scale-95"
+                >
+                  Add Project Site
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-purple-100 bg-purple-50/50 p-4">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-purple-600 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                  </svg>
+                  <p className="text-xs font-medium text-purple-900">
+                    Project assignments sync with the backend. Changes are saved automatically.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Worker Roster Card */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+                <h3 className="text-lg font-black text-slate-900">Worker Assignments</h3>
+              </div>
+
+              <div className="max-h-[500px] space-y-3 overflow-auto pr-1">
+                {employees.length === 0 ? (
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                    <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                    <p className="mt-3 text-sm font-semibold text-slate-600">No employees found</p>
+                    <p className="mt-1 text-xs text-slate-500">Add employees to get started</p>
+                  </div>
+                ) : (
+                  employees.map((employee) => (
+                    <div key={employee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm">
+                            {employee.fullName.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
+                            <p className="mt-0.5 text-xs font-medium text-slate-500">
+                              {employee.position || "Employee"} · {employee.department || "Unassigned"}
+                            </p>
+                          </div>
+                        </div>
+                        <select
+                          value={assignments[employee.id] || ""}
+                          onChange={(event) => assignEmployee(employee.id, event.target.value)}
+                          disabled={assignmentSavingId === employee.id}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {projects.map((project) => (
+                            <option key={project} value={project}>{project}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Main Content */}
+          <div className="space-y-6">
+            {/* Attendance Workspace Header */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                    <span className="text-sm font-bold uppercase tracking-wider text-blue-600">Attendance Workspace</span>
+                  </div>
+                  <h2 className="text-3xl font-black text-slate-900">{selectedProject}</h2>
+                  <p className="mt-2 text-sm text-slate-600">{describePeriod(periodDates, periodMode)}</p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-                  <label className="block rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-                    <span className="text-sm font-bold text-slate-600">Period type</span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsWorkspaceOpen(true)}
+                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md active:scale-95"
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                      </svg>
+                      Open Table
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveAttendance}
+                    disabled={saving || loading}
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : "Save All"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Range Selector */}
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+                    </svg>
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Date Range</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-bold text-slate-700">Start Date</span>
+                      <input
+                        type="date"
+                        value={rangeStartDate}
+                        onChange={(event) => setRangeStartDate(event.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-bold text-slate-700">End Date</span>
+                      <input
+                        type="date"
+                        value={rangeEndDate}
+                        onChange={(event) => setRangeEndDate(event.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <span className="text-xs font-bold text-slate-700">Period Type</span>
                     <select
                       value={periodMode}
                       onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
-                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="weekly">Weekly</option>
                       <option value="semi-monthly">Semi-monthly</option>
                     </select>
-                  </label>
-
+                  </div>
                   <div className="flex items-end">
-                    <button type="button" onClick={saveAttendance} disabled={saving || loading} className="primary-button w-full">
-                      {saving ? "Saving..." : "Save attendance range"}
+                    <button
+                      type="button"
+                      onClick={saveAttendance}
+                      disabled={saving || loading}
+                      className="w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {saving ? "Saving..." : "Save Range"}
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-              {Object.entries(summary).map(([status, value]) => (
-                <div key={status} className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
-                  <p className="text-sm font-bold text-slate-500">{status}</p>
-                  <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+            {/* Stats Summary Cards */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-slate-900">{summary.Present}</p>
+                    <p className="text-sm font-bold text-slate-600">Present</p>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-green-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 shadow-sm">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-slate-900">{summary.Remote}</p>
+                    <p className="text-sm font-bold text-slate-600">Remote</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-purple-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600 shadow-sm">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-slate-900">{summary.Leave}</p>
+                    <p className="text-sm font-bold text-slate-600">Leave</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-600 shadow-sm">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-slate-900">{summary.Absent}</p>
+                    <p className="text-sm font-bold text-slate-600">Absent</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {error && <p className="rounded-2xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
-          </section>
-
-          <section className="section-card overflow-hidden">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <p className="eyebrow">Project workers</p>
-                <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">Daily time and overtime entry</h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  Open the attendance table, then click each day card button to show all details in a dedicated popup.
-                </p>
+            {/* Info Cards */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                  </svg>
+                  <p className="text-sm font-bold text-slate-600">Current Project</p>
+                </div>
+                <p className="text-xl font-black text-slate-900">{selectedProject}</p>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap 2xl:justify-end">
-                <button type="button" onClick={() => setIsWorkspaceOpen(true)} className="primary-button">
-                  Open attendance table
-                </button>
-                <button type="button" onClick={saveAttendance} disabled={saving || loading} className="secondary-button">
-                  {saving ? "Saving..." : "Save attendance"}
-                </button>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                  <p className="text-sm font-bold text-slate-600">Assigned Workers</p>
+                </div>
+                <p className="text-xl font-black text-slate-900">{assignedEmployees.length}</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                  </svg>
+                  <p className="text-sm font-bold text-slate-600">Day Columns</p>
+                </div>
+                <p className="text-xl font-black text-slate-900">{periodDates.length}</p>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-500">Current project</p>
-                <p className="mt-2 text-xl font-black text-slate-950">{selectedProject}</p>
+            {/* Recent Records */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-5">
+                <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-lg font-black text-slate-900">Recent Attendance Records</h3>
               </div>
-              <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-500">Visible workers</p>
-                <p className="mt-2 text-xl font-black text-slate-950">{assignedEmployees.length}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">Only workers assigned to the selected project appear here</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-500">Day columns</p>
-                <p className="mt-2 text-xl font-black text-slate-950">{periodDates.length}</p>
-              </div>
-            </div>
-          </section>
 
-          <section className="section-card overflow-hidden">
-            <div>
-              <p className="eyebrow">Latest records</p>
-              <h3 className="mt-2 break-words text-2xl font-black text-slate-950 sm:text-3xl">Recent saved attendance for {selectedProject}</h3>
-            </div>
-
-            <div className="mt-6 space-y-4 xl:hidden">
               {loading ? (
-                <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 text-center text-slate-500">Loading attendance...</div>
+                <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                  <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-slate-600"></div>
+                  <p className="mt-4 text-sm font-medium text-slate-600">Loading attendance records...</p>
+                </div>
               ) : latestRecords.length === 0 ? (
-                <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 text-center text-slate-500">No saved attendance records for this project yet.</div>
+                <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                  <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                  </svg>
+                  <p className="mt-4 text-sm font-semibold text-slate-600">No attendance records yet</p>
+                  <p className="mt-1 text-xs text-slate-500">Start by opening the attendance table and adding entries</p>
+                </div>
               ) : (
-                latestRecords.map((record) => (
-                  <article key={record.id} className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-base font-black text-slate-950">
-                          {record.employeeName}
-                          {record.employeeId ? <span className="ml-2 text-xs font-semibold text-slate-400">({record.employeeId})</span> : null}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{record.date}</p>
+                <div className="space-y-3">
+                  {latestRecords.map((record) => (
+                    <div key={record.id} className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm transition-all hover:shadow-md">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-base font-bold text-slate-900">{record.employeeName}</p>
+                            <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass[record.status] || "bg-slate-100 text-slate-700"}`}>
+                              {record.status}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">{formatDateFull(record.date)}</p>
+                        </div>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${statusClass[record.status] || "bg-slate-100 text-slate-700"}`}>
-                        {record.status}
-                      </span>
-                    </div>
 
-                    <div className="mt-4 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                      <div className="rounded-xl bg-slate-50 px-3 py-2">
-                        <p className="font-bold text-slate-500">Check-in</p>
-                        <p className="mt-1 font-black text-slate-950">{record.checkIn || "—"}</p>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="text-xs font-bold text-slate-500">Check-in</p>
+                          <p className="mt-1 text-sm font-black text-slate-900">{record.checkIn || "—"}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="text-xs font-bold text-slate-500">Check-out</p>
+                          <p className="mt-1 text-sm font-black text-slate-900">{record.checkOut || "—"}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="text-xs font-bold text-slate-500">Project</p>
+                          <p className="mt-1 text-sm font-black text-slate-900">{record.projectSite || selectedProject}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-3 shadow-sm">
+                          <p className="text-xs font-bold text-slate-500">Overtime</p>
+                          <p className="mt-1 text-sm font-black text-emerald-700">
+                            {record.overtimeHours !== undefined && record.overtimeHours !== null ? `${record.overtimeHours}h` : "0h"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="rounded-xl bg-slate-50 px-3 py-2">
-                        <p className="font-bold text-slate-500">Check-out</p>
-                        <p className="mt-1 font-black text-slate-950">{record.checkOut || "—"}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 px-3 py-2">
-                        <p className="font-bold text-slate-500">Project</p>
-                        <p className="mt-1 font-black text-slate-950">{record.projectSite || selectedProject}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 px-3 py-2">
-                        <p className="font-bold text-slate-500">OT</p>
-                        <p className="mt-1 font-black text-slate-950">{record.overtimeHours !== undefined && record.overtimeHours !== null ? `${record.overtimeHours}h` : "—"}</p>
-                      </div>
-                    </div>
 
-                    <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                      <p className="font-bold text-slate-500">Notes</p>
-                      <p className="mt-1 font-semibold text-slate-700">{record.notes || "—"}</p>
+                      {record.notes && (
+                        <div className="mt-3 rounded-lg bg-white p-3 shadow-sm">
+                          <p className="text-xs font-bold text-slate-500">Notes</p>
+                          <p className="mt-1 text-sm text-slate-700">{record.notes}</p>
+                        </div>
+                      )}
                     </div>
-                  </article>
-                ))
+                  ))}
+                </div>
               )}
             </div>
-
-            <div className="mt-6 hidden overflow-x-auto rounded-[1.5rem] border border-slate-100 xl:block">
-              <table className="soft-table">
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Check-in</th>
-                    <th>Check-out</th>
-                    <th>Project</th>
-                    <th>OT</th>
-                    <th>Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {loading ? (
-                    <tr><td colSpan={8} className="text-center text-slate-500">Loading attendance...</td></tr>
-                  ) : latestRecords.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center text-slate-500">No saved attendance records for this project yet.</td></tr>
-                  ) : (
-                    latestRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-50">
-                        <td className="font-bold text-slate-950">{record.employeeName}{record.employeeId ? <span className="ml-2 text-xs font-semibold text-slate-400">({record.employeeId})</span> : null}</td>
-                        <td className="text-slate-600">{record.date}</td>
-                        <td><span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass[record.status] || "bg-slate-100 text-slate-700"}`}>{record.status}</span></td>
-                        <td className="text-slate-600">{record.checkIn || "—"}</td>
-                        <td className="text-slate-600">{record.checkOut || "—"}</td>
-                        <td className="text-slate-600">{record.projectSite || selectedProject}</td>
-                        <td className="text-slate-600">{record.overtimeHours !== undefined && record.overtimeHours !== null ? `${record.overtimeHours}h` : "—"}</td>
-                        <td className="text-slate-600">{record.notes || "—"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          </div>
         </div>
-      </section>
+      </div>
 
+      {/* Attendance Table Modal */}
       {isWorkspaceOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 p-2 backdrop-blur-sm">
           <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
@@ -1354,36 +1504,42 @@ export default function AttendancePage() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {deleteTarget && (() => {
         const employee = employees.find((item) => item.id === deleteTarget.employeeId);
         return employee ? (
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
               <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-rose-50/70 px-5 py-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-600">Confirm deletion</p>
-                <h3 className="mt-1 text-xl font-black text-slate-950">Delete attendance record?</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Confirm Deletion</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-950">Delete Attendance Record?</h3>
                 <p className="mt-2 text-sm text-slate-600">
                   {employee.fullName} · {formatDateFull(deleteTarget.date)}
                 </p>
               </div>
               <div className="px-5 py-5">
                 <p className="text-sm text-slate-600">
-                  This will permanently remove the saved attendance entry for this worker and date.
+                  This will permanently remove the saved attendance entry for this worker and date. This action cannot be undone.
                 </p>
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(null)}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition-all hover:bg-slate-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => void confirmDeleteAttendance()}
-                    className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-rose-700"
+                    className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95"
                   >
-                    Delete attendance
+                    Delete Attendance
                   </button>
                 </div>
               </div>
@@ -1392,26 +1548,32 @@ export default function AttendancePage() {
         ) : null;
       })()}
 
+      {/* Edit Attendance Modal */}
       {activeCell && activeEmployee && activeDraft && (
         <div className="fixed inset-0 z-[60] bg-slate-950/70 p-3 backdrop-blur-sm">
           <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance details</p>
-                <h3 className="mt-1 text-xl font-black text-slate-950">{activeEmployee.fullName}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Edit Attendance</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-950">{activeEmployee.fullName}</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-500">{activeEmployee.position || "Employee"} · {selectedProject}</p>
-                <p className="mt-1 text-sm text-slate-500">Source date: {formatDateFull(activeCell.date)}</p>
-                <p className="mt-1 text-sm font-semibold text-blue-600">Editing attendance date: {activeAttendanceDate ? formatDateFull(activeAttendanceDate) : formatDateFull(activeCell.date)}</p>
+                <p className="mt-1 text-sm text-slate-600">Source date: {formatDateFull(activeCell.date)}</p>
+                <p className="mt-1 text-sm font-semibold text-blue-600">Editing: {activeAttendanceDate ? formatDateFull(activeAttendanceDate) : formatDateFull(activeCell.date)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => deleteAttendance(activeCell.employeeId, activeCell.date)}
-                  className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-black text-rose-700"
+                  className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 transition hover:bg-rose-100"
                 >
                   Delete
                 </button>
-                <button type="button" onClick={() => setActiveCell(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">
+                <button type="button" onClick={() => setActiveCell(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-200">
                   Close
                 </button>
               </div>
@@ -1420,22 +1582,22 @@ export default function AttendancePage() {
             <div className="min-h-0 flex-1 overflow-auto p-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block md:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Attendance date</span>
+                  <span className="text-sm font-bold text-slate-700">Attendance Date</span>
                   <input
                     type="date"
                     value={activeAttendanceDate}
                     onChange={(event) => setActiveAttendanceDate(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
-                  <p className="mt-2 text-xs font-semibold text-slate-500">Choose the exact date for this attendance entry before saving.</p>
+                  <p className="mt-2 text-xs font-medium text-slate-500">Choose the exact date for this attendance entry before saving.</p>
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Attendance status</span>
+                  <span className="text-sm font-bold text-slate-700">Status</span>
                   <select
                     value={activeDraft.status}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { status: event.target.value as AttendanceStatus })}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     {statusOptions.map((option) => (
                       <option key={option} value={option}>{option}</option>
@@ -1443,82 +1605,82 @@ export default function AttendancePage() {
                   </select>
                 </label>
 
-                <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
-                  <p className="text-sm font-bold text-slate-500">Project site</p>
-                  <p className="mt-2 text-lg font-black text-slate-950">{selectedProject}</p>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">This worker is currently assigned to this project for the attendance workspace.</p>
+                <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
+                  <p className="text-sm font-bold text-slate-600">Project Site</p>
+                  <p className="mt-2 text-lg font-black text-slate-900">{selectedProject}</p>
+                  <p className="mt-2 text-xs font-medium text-slate-500">Worker assigned to this project</p>
                 </div>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Time in</span>
+                  <span className="text-sm font-bold text-slate-700">Time In</span>
                   <input
                     type="time"
                     value={activeDraft.checkIn}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { checkIn: event.target.value })}
                     disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Time out</span>
+                  <span className="text-sm font-bold text-slate-700">Time Out</span>
                   <input
                     type="time"
                     value={activeDraft.checkOut}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { checkOut: event.target.value })}
                     disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                 </label>
 
-                <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4 md:col-span-2">
+                <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-blue-50 to-white p-4 md:col-span-2">
                   <div className="grid gap-4 md:grid-cols-3">
                     <div>
-                      <p className="text-sm font-bold text-slate-500">Worked hours</p>
-                      <p className="mt-2 text-2xl font-black text-slate-950">{computeWorkedHours(activeDraft.checkIn, activeDraft.checkOut).toFixed(2)}h</p>
+                      <p className="text-sm font-bold text-slate-600">Worked Hours</p>
+                      <p className="mt-2 text-2xl font-black text-slate-900">{computeWorkedHours(activeDraft.checkIn, activeDraft.checkOut).toFixed(2)}h</p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-500">Manual OT</p>
+                      <p className="text-sm font-bold text-slate-600">Overtime</p>
                       <p className="mt-2 text-2xl font-black text-emerald-700">{activeDraft.overtimeHours}h</p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-500">Shift</p>
-                      <p className="mt-2 text-2xl font-black text-slate-950">7:00 AM - 4:00 PM</p>
+                      <p className="text-sm font-bold text-slate-600">Shift</p>
+                      <p className="mt-2 text-lg font-black text-slate-900">7:00 AM - 4:00 PM</p>
                     </div>
                   </div>
                 </div>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Overtime mode</span>
+                  <span className="text-sm font-bold text-slate-700">Overtime Mode</span>
                   <select
                     value={activeDraft.overtimeMode}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { overtimeMode: event.target.value as OvertimeMode })}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="manual">Manual OT</option>
                   </select>
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Overtime hours</span>
+                  <span className="text-sm font-bold text-slate-700">Overtime Hours</span>
                   <input
                     type="number"
                     min="0"
                     step="0.25"
                     value={activeDraft.overtimeHours}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { overtimeHours: event.target.value })}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
 
                 <label className="block md:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Notes</span>
+                  <span className="text-sm font-bold text-slate-700">Notes</span>
                   <textarea
                     value={activeDraft.notes}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { notes: event.target.value })}
                     rows={5}
                     placeholder="Add attendance notes, deployment notes, approved undertime, approved overtime, etc."
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </label>
               </div>
@@ -1528,14 +1690,14 @@ export default function AttendancePage() {
                   type="button"
                   onClick={() => void saveCurrentAttendance()}
                   disabled={saving || loading}
-                  className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition-all hover:bg-slate-800 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? "Saving..." : "Save attendance"}
+                  {saving ? "Saving..." : "Save Attendance"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveCell(null)}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700"
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition-all hover:bg-slate-50"
                 >
                   Close
                 </button>

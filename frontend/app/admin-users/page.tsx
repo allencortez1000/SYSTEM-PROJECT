@@ -498,7 +498,6 @@ export default function AdminUsersPage() {
   }
 
 
-
   async function saveAssignments(userId: string) {
     setAssignmentSavingUserId(userId);
     setError(null);
@@ -537,87 +536,140 @@ export default function AdminUsersPage() {
   if (!loading && !canViewAdmins) {
     return (
       <div className="page-shell">
-        <section className="section-card">
-          <p className="eyebrow">Restricted</p>
-          <h2 className="mt-3 text-3xl font-black text-slate-950">Access Denied</h2>
-          <p className="mt-3 text-slate-600">You do not have permission to access this page.</p>
-        </section>
+        <div className="flex min-h-[60vh] items-center justify-center rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-12 shadow-xl">
+          <div className="text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-red-100">
+              <svg className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <p className="mt-4 text-sm font-bold uppercase tracking-wider text-red-600">Restricted</p>
+            <h2 className="mt-3 text-3xl font-black text-slate-950">Access Denied</h2>
+            <p className="mt-3 text-slate-600">You do not have permission to access this page.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="page-shell">
-      <section className="hero-panel">
-        <p className="eyebrow">System administration</p>
-        <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-          Admin Access Control
-        </h2>
-        <p className="mt-3 max-w-3xl text-slate-600">
-          Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.
-        </p>
+      {/* Hero Section with Gradient */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 text-white shadow-2xl">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <p className="text-sm font-bold uppercase tracking-wider text-white/90">System administration</p>
+          </div>
+          <h2 className="mt-4 break-words text-3xl font-black tracking-tight sm:text-5xl">
+            Admin Access Control
+          </h2>
+          <p className="mt-3 max-w-3xl text-lg text-white/90">
+            Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.
+          </p>
+        </div>
       </section>
 
-      {loading && <p className="section-card text-sm font-semibold text-slate-600">Loading admin data...</p>}
-      {error && <p className="section-card text-sm font-semibold text-red-700">Error: {error}</p>}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 shadow-xl">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center">
+              <svg className="h-12 w-12 animate-spin text-purple-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-slate-600">Loading admin data...</p>
+          </div>
+        </div>
+      )}
 
-      {/* Sub-Admin Creation Section */}
+      {/* Error State */}
+      {error && (
+        <div className="flex items-start gap-3 rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+            <svg className="h-6 w-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-bold text-red-900">Error</p>
+            <p className="mt-1 text-sm font-semibold text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-Admin & Worker Creation Section */}
       {canCreateAdmins && (
         <section className="grid gap-6 xl:grid-cols-2">
-          <article className="section-card min-w-0">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="eyebrow">Create account</p>
-                <h3 className="mt-2 text-2xl font-black text-slate-950">Add sub-admin</h3>
+          {/* Sub-Admin Creation Card */}
+          <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg">
+                  <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Create account</p>
+                  <h3 className="mt-1 text-2xl font-black text-slate-950">Add sub-admin</h3>
+                </div>
               </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                Super Admin Action
+              <span className="rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1 text-xs font-bold text-blue-700">
+                Super Admin
               </span>
             </div>
 
             <form onSubmit={handleCreateSubAdmin} className="mt-6 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block sm:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Full name</span>
+                  <span className="text-sm font-bold text-slate-700">Full name</span>
                   <input
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="Juan Dela Cruz"
                     required
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Username</span>
+                  <span className="text-sm font-bold text-slate-700">Username</span>
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="juan.admin"
                     required
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Password</span>
+                  <span className="text-sm font-bold text-slate-700">Password</span>
                   <input
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="minimum 4 characters"
                     required
                   />
                 </label>
 
                 <label className="block sm:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Email</span>
+                  <span className="text-sm font-bold text-slate-700">Email</span>
                   <input
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                     placeholder="juan@company.com"
                     required
                   />
@@ -626,11 +678,11 @@ export default function AdminUsersPage() {
 
               <div className="block">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-slate-600">Permissions</span>
+                  <span className="text-sm font-bold text-slate-700">Permissions</span>
                   <button
                     type="button"
                     onClick={toggleAllPermissions}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                    className="text-xs font-bold text-blue-600 transition hover:text-blue-700"
                   >
                     {selectedPermissions.length === PERMISSION_OPTIONS.length
                       ? "Deselect All"
@@ -638,19 +690,20 @@ export default function AdminUsersPage() {
                   </button>
                 </div>
 
-                <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="mt-2 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 shadow-sm">
                   <div className="space-y-2">
                     {PERMISSION_OPTIONS.map((option) => (
                       <label
                         key={option.id}
-                        className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        className="flex cursor-pointer items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition hover:shadow-md"
                       >
                         <input
                           type="checkbox"
                           checked={selectedPermissions.includes(option.id)}
                           onChange={() => togglePermission(option.id)}
+                          className="h-5 w-5 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500/20"
                         />
-                        <span>{option.label}</span>
+                        <span className="font-semibold">{option.label}</span>
                       </label>
                     ))}
                   </div>
@@ -660,125 +713,151 @@ export default function AdminUsersPage() {
               <button
                 type="submit"
                 disabled={saving || loading || selectedPermissions.length === 0}
-                className="primary-button w-full"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3.5 font-bold text-white shadow-lg transition hover:from-blue-700 hover:to-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {saving ? "Creating..." : "Create sub-admin"}
+                {saving ? (
+                  <>
+                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create sub-admin
+                  </>
+                )}
               </button>
             </form>
           </article>
 
-          {/* Department Head Creation Section */}
-          <article className="section-card min-w-0">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="eyebrow">Workforce</p>
-                <h3 className="mt-2 text-2xl font-black text-slate-950">Add worker</h3>
+          {/* Worker Creation Card */}
+          <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
+                  <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-purple-600">Workforce</p>
+                  <h3 className="mt-1 text-2xl font-black text-slate-950">Add worker</h3>
+                </div>
               </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                Super Admin Action
+              <span className="rounded-full bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 text-xs font-bold text-purple-700">
+                Super Admin
               </span>
             </div>
 
             <form onSubmit={handleCreateWorker} className="mt-6 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block sm:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Full name</span>
+                  <span className="text-sm font-bold text-slate-700">Full name</span>
                   <input
                     value={workerFullName}
                     onChange={(event) => setWorkerFullName(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                     placeholder="Maria Santos"
                     required
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Email</span>
+                  <span className="text-sm font-bold text-slate-700">Email</span>
                   <input
                     type="email"
                     value={workerEmail}
                     onChange={(event) => setWorkerEmail(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                     placeholder="maria@company.com"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Salary amount</span>
+                  <span className="text-sm font-bold text-slate-700">Salary amount</span>
                   <input
                     type="number"
                     min="0"
                     value={workerSalary}
                     onChange={(event) => setWorkerSalary(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                     placeholder="32000"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Salary basis</span>
+                  <span className="text-sm font-bold text-slate-700">Salary basis</span>
                   <select
                     value={workerSalaryBasis}
                     onChange={(event) => setWorkerSalaryBasis(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                   >
                     <option value="monthly">Per month</option>
                     <option value="daily">Per day</option>
                   </select>
                 </label>
 
-                <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                      <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                      SSS
-                    </label>
-                    <input type="number" value={workerSssAmount} onChange={(event) => setWorkerSssAmount(event.target.value)} disabled={!workerHasSss} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                      <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                      Pag-IBIG
-                    </label>
-                    <input type="number" value={workerPagIbigAmount} onChange={(event) => setWorkerPagIbigAmount(event.target.value)} disabled={!workerHasPagIbig} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                      <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                      PhilHealth
-                    </label>
-                    <input type="number" value={workerPhilHealthAmount} onChange={(event) => setWorkerPhilHealthAmount(event.target.value)} disabled={!workerHasPhilHealth} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                      <input type="checkbox" checked={workerHasSssLoan} onChange={(event) => setWorkerHasSssLoan(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                      SSS Loan
-                    </label>
-                    <input type="number" value={workerSssLoanAmount} onChange={(event) => setWorkerSssLoanAmount(event.target.value)} disabled={!workerHasSssLoan} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                      <input type="checkbox" checked={workerHasTax} onChange={(event) => setWorkerHasTax(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                      Tax
-                    </label>
-                    <input type="number" value={workerTaxAmount} onChange={(event) => setWorkerTaxAmount(event.target.value)} disabled={!workerHasTax} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                      <input type="checkbox" checked={workerHasAdditionalDeduction} onChange={(event) => setWorkerHasAdditionalDeduction(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                      Additional Deduction
-                    </label>
-                    <input type="number" value={workerAdditionalDeductionAmount} onChange={(event) => setWorkerAdditionalDeductionAmount(event.target.value)} disabled={!workerHasAdditionalDeduction} className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm disabled:bg-slate-100" placeholder="Amount (₱)" />
+                {/* Deductions Section */}
+                <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-purple-50/30 p-4 shadow-sm sm:col-span-2">
+                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600">Deductions</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input type="checkbox" checked={workerHasSss} onChange={(event) => setWorkerHasSss(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        SSS
+                      </label>
+                      <input type="number" value={workerSssAmount} onChange={(event) => setWorkerSssAmount(event.target.value)} disabled={!workerHasSss} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input type="checkbox" checked={workerHasPagIbig} onChange={(event) => setWorkerHasPagIbig(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        Pag-IBIG
+                      </label>
+                      <input type="number" value={workerPagIbigAmount} onChange={(event) => setWorkerPagIbigAmount(event.target.value)} disabled={!workerHasPagIbig} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input type="checkbox" checked={workerHasPhilHealth} onChange={(event) => setWorkerHasPhilHealth(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        PhilHealth
+                      </label>
+                      <input type="number" value={workerPhilHealthAmount} onChange={(event) => setWorkerPhilHealthAmount(event.target.value)} disabled={!workerHasPhilHealth} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input type="checkbox" checked={workerHasSssLoan} onChange={(event) => setWorkerHasSssLoan(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        SSS Loan
+                      </label>
+                      <input type="number" value={workerSssLoanAmount} onChange={(event) => setWorkerSssLoanAmount(event.target.value)} disabled={!workerHasSssLoan} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input type="checkbox" checked={workerHasTax} onChange={(event) => setWorkerHasTax(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        Tax
+                      </label>
+                      <input type="number" value={workerTaxAmount} onChange={(event) => setWorkerTaxAmount(event.target.value)} disabled={!workerHasTax} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <input type="checkbox" checked={workerHasAdditionalDeduction} onChange={(event) => setWorkerHasAdditionalDeduction(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20" />
+                        Additional
+                      </label>
+                      <input type="number" value={workerAdditionalDeductionAmount} onChange={(event) => setWorkerAdditionalDeductionAmount(event.target.value)} disabled={!workerHasAdditionalDeduction} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/10 disabled:bg-slate-100" placeholder="Amount (₱)" />
+                    </div>
                   </div>
                 </div>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Department</span>
+                  <span className="text-sm font-bold text-slate-700">Department</span>
                   <input
                     list="worker-departments"
                     value={workerDepartment}
                     onChange={(event) => setWorkerDepartment(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                     placeholder="Select or type department"
                   />
                   <datalist id="worker-departments">
@@ -789,22 +868,22 @@ export default function AdminUsersPage() {
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Position</span>
+                  <span className="text-sm font-bold text-slate-700">Position</span>
                   <input
                     value={workerPosition}
                     onChange={(event) => setWorkerPosition(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                     placeholder="Worker"
                   />
                 </label>
 
                 <label className="block sm:col-span-2">
-                  <span className="text-sm font-bold text-slate-600">Project site</span>
+                  <span className="text-sm font-bold text-slate-700">Project site</span>
                   <input
                     list="worker-project-sites"
                     value={workerProjectSite}
                     onChange={(event) => setWorkerProjectSite(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                     placeholder="Select or type project site"
                   />
                   <datalist id="worker-project-sites">
@@ -816,11 +895,11 @@ export default function AdminUsersPage() {
               </div>
 
               <label className="block">
-                <span className="text-sm font-bold text-slate-600">Status</span>
+                <span className="text-sm font-bold text-slate-700">Status</span>
                 <select
                   value={workerStatus}
                   onChange={(event) => setWorkerStatus(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-purple-500 focus:outline-none focus:ring-4 focus:ring-purple-500/10"
                 >
                   <option value="Active">Active</option>
                   <option value="Onboarding">Onboarding</option>
@@ -832,9 +911,24 @@ export default function AdminUsersPage() {
               <button
                 type="submit"
                 disabled={saving || loading}
-                className="primary-button w-full"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3.5 font-bold text-white shadow-lg transition hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {saving ? "Creating..." : "Create worker"}
+                {saving ? (
+                  <>
+                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {editingEmployeeId ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {editingEmployeeId ? "Update worker" : "Create worker"}
+                  </>
+                )}
               </button>
             </form>
           </article>
@@ -843,111 +937,141 @@ export default function AdminUsersPage() {
 
       {/* Admin Users List */}
       {canViewAdmins && (
-        <section className="section-card">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="eyebrow">Access list</p>
-              <h3 className="mt-2 text-2xl font-black text-slate-950">Current admin users</h3>
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">Access list</p>
+                <h3 className="mt-1 text-2xl font-black text-slate-950">Current admin users</h3>
+              </div>
             </div>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+            <span className="rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 px-4 py-2 text-sm font-bold text-emerald-700">
               {users.length} user{users.length === 1 ? "" : "s"}
             </span>
           </div>
 
           <div className="mt-6 space-y-4">
             {users.length === 0 && !loading && (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                No admin users found.
+              <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+                <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p className="mt-4 text-sm font-semibold text-slate-500">No admin users found.</p>
               </div>
             )}
 
             {users.map((user) => (
-              <div key={user.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-black text-slate-900">{user.fullName}</p>
-                    <p className="truncate text-xs text-slate-500">
-                      {user.username} · {user.email}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-slate-600">{roleLabel(user.role)}</p>
-                  </div>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      user.isActive
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {user.isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-
-                {/* Sub-admin permissions display */}
-                {user.role === "sub-admin" && user.permissions && user.permissions.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Permissions
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {user.permissions.map((perm) => (
-                        <span
-                          key={perm}
-                          className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
-                        >
-                          {perm}
-                        </span>
-                      ))}
+              <div key={user.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 shadow-lg transition hover:shadow-xl">
+                <div className="p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xl font-black text-slate-900">{user.fullName}</p>
+                      <p className="mt-1 truncate text-sm text-slate-500">
+                        {user.username} · {user.email}
+                      </p>
+                      <p className="mt-2 inline-block rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1 text-xs font-bold text-blue-700">{roleLabel(user.role)}</p>
                     </div>
+
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold ${
+                        user.isActive
+                          ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700"
+                          : "bg-gradient-to-r from-slate-100 to-gray-100 text-slate-600"
+                      }`}
+                    >
+                      <div className={`h-2 w-2 rounded-full ${user.isActive ? "bg-emerald-500" : "bg-slate-400"}`}></div>
+                      {user.isActive ? "Active" : "Inactive"}
+                    </span>
                   </div>
-                )}
 
-                {/* Department head department assignment */}
-                {user.role === "department-head-admin" && (
-                  <>
-                    <div className="mt-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Department assignment
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(assignmentDrafts[user.id] || []).length} selected
-                        </p>
+                  {/* Sub-admin permissions display */}
+                  {user.role === "sub-admin" && user.permissions && user.permissions.length > 0 && (
+                    <div className="mt-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50/50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                        Permissions
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {user.permissions.map((perm) => (
+                          <span
+                            key={perm}
+                            className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-3 py-1 text-xs font-bold text-white shadow-sm"
+                          >
+                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            {perm}
+                          </span>
+                        ))}
                       </div>
+                    </div>
+                  )}
 
-                      <div className="mt-2 max-h-44 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {departmentOptions.map((option) => (
-                            <label
-                              key={`${user.id}-${option.value}`}
-                              className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-700 hover:bg-white"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={(assignmentDrafts[user.id] || []).includes(option.value)}
-                                onChange={() => toggleDraftDepartment(user.id, option.value)}
-                              />
-                              <span className="truncate">{option.label}</span>
-                            </label>
-                          ))}
+                  {/* Department head department assignment */}
+                  {user.role === "department-head-admin" && (
+                    <>
+                      <div className="mt-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50/50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                            Department assignment
+                          </p>
+                          <p className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm">
+                            {(assignmentDrafts[user.id] || []).length} selected
+                          </p>
+                        </div>
+
+                        <div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {departmentOptions.map((option) => (
+                              <label
+                                key={`${user.id}-${option.value}`}
+                                className="flex cursor-pointer items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={(assignmentDrafts[user.id] || []).includes(option.value)}
+                                  onChange={() => toggleDraftDepartment(user.id, option.value)}
+                                  className="h-4 w-4 rounded border-slate-300 text-purple-600 transition focus:ring-2 focus:ring-purple-500/20"
+                                />
+                                <span className="truncate font-semibold">{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={assignmentSavingUserId === user.id}
-                        onClick={() => saveAssignments(user.id)}
-                      >
-                        {assignmentSavingUserId === user.id
-                          ? "Saving..."
-                          : "Save assignments"}
-                      </button>
-                    </div>
-                  </>
-                )}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-bold text-white shadow-lg transition hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={assignmentSavingUserId === user.id}
+                          onClick={() => saveAssignments(user.id)}
+                        >
+                          {assignmentSavingUserId === user.id ? (
+                            <>
+                              <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Save assignments
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -956,13 +1080,20 @@ export default function AdminUsersPage() {
 
       {/* Worker Management Section */}
       {canViewAdmins && (
-        <section className="section-card">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="eyebrow">Workforce</p>
-              <h3 className="mt-2 text-2xl font-black text-slate-950">Employee Management</h3>
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-orange-600">Workforce</p>
+                <h3 className="mt-1 text-2xl font-black text-slate-950">Employee Management</h3>
+              </div>
             </div>
-            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
+            <span className="rounded-full bg-gradient-to-r from-orange-100 to-red-100 px-4 py-2 text-sm font-bold text-orange-700">
               {employees.length} employee{employees.length === 1 ? "" : "s"}
             </span>
           </div>
@@ -970,57 +1101,86 @@ export default function AdminUsersPage() {
           {/* Employee Search */}
           <div className="mt-6">
             <label className="block">
-              <span className="text-sm font-bold text-slate-600">Search employees</span>
-              <input
-                type="text"
-                value={employeeSearch}
-                onChange={(event) => {
-                  setEmployeeSearch(event.target.value);
-                  setEmployeePage(1);
-                }}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                placeholder="Search by name or email..."
-              />
+              <span className="text-sm font-bold text-slate-700">Search employees</span>
+              <div className="relative mt-2">
+                <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
+                  <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={employeeSearch}
+                  onChange={(event) => {
+                    setEmployeeSearch(event.target.value);
+                    setEmployeePage(1);
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm shadow-sm transition focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10"
+                  placeholder="Search by name or email..."
+                />
+              </div>
             </label>
           </div>
 
           {/* Employee List with Pagination */}
           <div className="mt-6 space-y-3">
             {filteredEmployees.length === 0 && !loading && (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                {employeeSearch ? "No employees match your search." : "No employees found."}
+              <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+                <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p className="mt-4 text-sm font-semibold text-slate-500">
+                  {employeeSearch ? "No employees match your search." : "No employees found."}
+                </p>
               </div>
             )}
 
             {paginatedEmployees.map((employee) => (
               <div
                 key={employee.id}
-                className="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                className="flex items-start justify-between gap-3 rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 p-6 shadow-lg transition hover:shadow-xl"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-black text-slate-900">{employee.fullName}</p>
-                  <p className="truncate text-xs text-slate-500">{employee.email}</p>
-                  <p className="mt-2 text-xs text-slate-600">
-                    <span className="font-semibold">{employee.position}</span> • {employee.department}
+                  <p className="truncate text-lg font-black text-slate-900">{employee.fullName}</p>
+                  <p className="mt-1 truncate text-sm text-slate-500">{employee.email}</p>
+                  <p className="mt-3 flex items-center gap-2 text-sm text-slate-600">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      {employee.position}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      {employee.department}
+                    </span>
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Salary: {employee.salaryBasis === "daily" ? "Per day" : "Per month"} • {employee.salary ?? 0}
+                  <p className="mt-2 text-xs text-slate-500">
+                    Salary: <span className="font-semibold">{employee.salaryBasis === "daily" ? "Per day" : "Per month"}</span> • ₱{employee.salary ?? 0}
                   </p>
                 </div>
 
                 <div className="flex shrink-0 gap-2">
                   <button
                     type="button"
-                    className="secondary-button"
+                    className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                     onClick={() => startEditWorker(employee)}
                   >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
                     Edit
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700"
+                    className="inline-flex items-center gap-2 rounded-2xl border-2 border-red-200 bg-red-50 px-5 py-2.5 font-bold text-red-700 transition hover:border-red-300 hover:bg-red-100"
                     onClick={() => deleteWorker(employee.id)}
                   >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                     Delete
                   </button>
                 </div>
@@ -1030,30 +1190,33 @@ export default function AdminUsersPage() {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <p className="text-xs font-semibold text-slate-600">
+            <div className="mt-6 flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-semibold text-slate-600">
                 Showing {paginatedEmployees.length > 0 ? (employeePage - 1) * employeesPerPage + 1 : 0} to{" "}
                 {Math.min(employeePage * employeesPerPage, filteredEmployees.length)} of{" "}
                 {filteredEmployees.length}
               </p>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setEmployeePage((p) => Math.max(1, p - 1))}
                   disabled={employeePage === 1}
-                  className="secondary-button"
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                   Previous
                 </button>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => setEmployeePage(page)}
-                      className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                      className={`rounded-xl px-4 py-2 font-bold shadow-sm transition ${
                         page === employeePage
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg"
+                          : "border-2 border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                       }`}
                     >
                       {page}
@@ -1063,9 +1226,12 @@ export default function AdminUsersPage() {
                 <button
                   onClick={() => setEmployeePage((p) => Math.min(totalPages, p + 1))}
                   disabled={employeePage === totalPages}
-                  className="secondary-button"
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
             </div>

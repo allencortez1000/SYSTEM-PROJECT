@@ -1,32 +1,52 @@
 ﻿import Link from "next/link";
+import {
+  CreditCardIcon,
+  UsersIcon,
+  ClockIcon,
+  ShieldCheckIcon,
+  ChartBarIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 
 const reportCards = [
   {
     title: "Payroll summary",
     description: "Monthly payroll totals, taxes, deductions, and net pay.",
     href: "/reports/payroll-summary",
-    icon: "💳",
+    icon: CreditCardIcon,
+    gradient: "from-blue-500 to-cyan-500",
+    iconBg: "bg-gradient-to-br from-blue-50 to-cyan-50",
+    iconColor: "text-blue-600",
     action: "Open payroll report",
   },
   {
     title: "Headcount movement",
     description: "Hiring, exits, transfers, and department growth.",
     href: "/reports/headcount-movement",
-    icon: "👥",
+    icon: UsersIcon,
+    gradient: "from-purple-500 to-pink-500",
+    iconBg: "bg-gradient-to-br from-purple-50 to-pink-50",
+    iconColor: "text-purple-600",
     action: "Open headcount report",
   },
   {
     title: "Attendance insights",
     description: "Absence trends, remote work, overtime, and punctuality.",
     href: "/reports/attendance-insights",
-    icon: "⏱",
+    icon: ClockIcon,
+    gradient: "from-emerald-500 to-teal-500",
+    iconBg: "bg-gradient-to-br from-emerald-50 to-teal-50",
+    iconColor: "text-emerald-600",
     action: "Open attendance report",
   },
   {
     title: "Compliance packet",
     description: "Labor reports and audit-ready filing exports.",
     href: "/reports/compliance-packet",
-    icon: "🛡",
+    icon: ShieldCheckIcon,
+    gradient: "from-amber-500 to-orange-500",
+    iconBg: "bg-gradient-to-br from-amber-50 to-orange-50",
+    iconColor: "text-amber-600",
     action: "Open compliance report",
   },
 ];
@@ -34,10 +54,19 @@ const reportCards = [
 export default function ReportsPage() {
   return (
     <div className="page-shell">
-      <section className="hero-panel">
-        <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <section className="hero-panel relative overflow-hidden">
+        {/* Gradient background decoration */}
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 opacity-50 blur-3xl" />
+        <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-to-tr from-cyan-100 to-blue-100 opacity-50 blur-3xl" />
+
+        <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <p className="eyebrow">Reports studio</p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
+                <ChartBarIcon className="h-6 w-6 text-white" />
+              </div>
+              <p className="eyebrow">Reports studio</p>
+            </div>
             <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Choose a report section
             </h2>
@@ -46,36 +75,49 @@ export default function ReportsPage() {
             </p>
           </div>
 
-          <Link href="/" className="secondary-button">
+          <Link
+            href="/"
+            className="group inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
+          >
             Back to dashboard
           </Link>
         </div>
       </section>
 
-      <section className="grid min-w-0 gap-4 md:grid-cols-2">
-        {reportCards.map((card) => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className="section-card group block transition hover:-translate-y-1 hover:shadow-xl"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-700">
-              {card.icon}
-            </div>
+      <section className="grid min-w-0 gap-6 md:grid-cols-2">
+        {reportCards.map((card) => {
+          const IconComponent = card.icon;
+          return (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-2xl"
+            >
+              {/* Gradient border effect on hover */}
+              <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${card.gradient} opacity-0 transition-opacity group-hover:opacity-5`} />
 
-            <h3 className="mt-6 break-words text-xl font-black text-slate-950 group-hover:text-blue-700">
-              {card.title}
-            </h3>
+              {/* Icon */}
+              <div className={`relative flex h-14 w-14 items-center justify-center rounded-2xl ${card.iconBg} shadow-sm transition-all group-hover:scale-110 group-hover:shadow-md`}>
+                <IconComponent className={`h-7 w-7 ${card.iconColor}`} />
+              </div>
 
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              {card.description}
-            </p>
+              {/* Content */}
+              <h3 className="relative mt-6 break-words text-xl font-black text-slate-950 transition-colors group-hover:bg-gradient-to-r group-hover:from-slate-950 group-hover:to-slate-700 group-hover:bg-clip-text group-hover:text-transparent">
+                {card.title}
+              </h3>
 
-            <span className="secondary-button mt-6">
-              {card.action}
-            </span>
-          </Link>
-        ))}
+              <p className="relative mt-3 text-sm leading-6 text-slate-600">
+                {card.description}
+              </p>
+
+              {/* Action button */}
+              <div className="relative mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 transition-all group-hover:bg-gradient-to-r group-hover:from-slate-100 group-hover:to-slate-50">
+                {card.action}
+                <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </div>
+            </Link>
+          );
+        })}
       </section>
     </div>
   );

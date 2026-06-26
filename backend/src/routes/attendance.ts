@@ -192,6 +192,43 @@ async function findOrCreateProjectSite(projectName: string) {
   return created as ProjectSiteRow;
 }
 
+async function syncEmployeeProjectSite(employeeId: string, projectSiteName: string) {
+  if (!projectSiteName || !projectSiteName.trim()) {
+    return;
+  }
+
+  const project = await findOrCreateProjectSite(projectSiteName);
+
+  const { data: currentAssignments } = await supabase
+    .from('employee_project_deployments')
+    .select('id, project_site_id')
+    .eq('employee_id', employeeId)
+    .eq('is_active', true);
+
+  const alreadyAssigned = (currentAssignments || []).some(
+    (assignment) => assignment.project_site_id === project.id
+  );
+
+  if (!alreadyAssigned) {
+    if (currentAssignments && currentAssignments.length > 0) {
+      await supabase
+        .from('employee_project_deployments')
+        .update({ is_active: false })
+        .eq('employee_id', employeeId)
+        .eq('is_active', true);
+    }
+
+    await supabase
+      .from('employee_project_deployments')
+      .insert({
+        employee_id: employeeId,
+        project_site_id: project.id,
+        assigned_at: new Date().toISOString(),
+        is_active: true,
+      });
+  }
+}
+
 router.get('/projects', async (_, res) => {
   try {
     const { data, error } = await supabase
@@ -422,6 +459,10 @@ router.post('/', async (req, res) => {
 
     if (error) {
       throw error;
+    }
+
+    if (projectSite && projectSite.trim()) {
+      await syncEmployeeProjectSite(employeeId, projectSite);
     }
 
     if (!employeeIdFromBody) {
