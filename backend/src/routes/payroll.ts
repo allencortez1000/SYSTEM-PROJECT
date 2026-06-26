@@ -258,8 +258,9 @@ router.get('/project-sync', async (req, res) => {
       .eq('is_active', true);
 
     const normalizedProjectSite = projectSite.toLowerCase();
+    const matchesProjectSite = (value: unknown) => String(value || '').trim().toLowerCase() === normalizedProjectSite;
     const matchingAssignments = (assignments || []).filter((row: any) =>
-      String(row?.project_sites?.name || '').trim().toLowerCase() === normalizedProjectSite,
+      matchesProjectSite(row?.project_sites?.name),
     );
 
     if (assignmentsError) throw assignmentsError;
@@ -270,15 +271,21 @@ router.get('/project-sync', async (req, res) => {
       ? { data: null, error: null }
       : await supabase
           .from('attendance_records')
-          .select('employee_id')
-          .eq('project_site', projectSite)
+          .select('employee_id, project_site')
           .gte('attendance_date', startDate)
           .lte('attendance_date', endDate)
           .order('attendance_date', { ascending: true });
 
     if (attendanceIdResult.error) throw attendanceIdResult.error;
 
-    const attendanceEmployeeIds = Array.from(new Set(((attendanceIdResult.data || []) as any[]).map((row) => String(row.employee_id)).filter(Boolean)));
+    const attendanceEmployeeIds = Array.from(
+      new Set(
+        ((attendanceIdResult.data || []) as any[])
+          .filter((row) => matchesProjectSite(row.project_site))
+          .map((row) => String(row.employee_id))
+          .filter(Boolean),
+      ),
+    );
     const employeeIds = Array.from(new Set([...deploymentEmployeeIds, ...attendanceEmployeeIds]));
 
     if (deploymentEmployeeIds.length === 0 && attendanceEmployeeIds.length > 0) {
@@ -322,7 +329,6 @@ router.get('/project-sync', async (req, res) => {
         .from('attendance_records')
         .select('id, employee_id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
         .in('employee_id', employeeIds)
-        .eq('project_site', projectSite)
         .gte('attendance_date', startDate)
         .lte('attendance_date', endDate)
         .order('attendance_date', { ascending: true }),

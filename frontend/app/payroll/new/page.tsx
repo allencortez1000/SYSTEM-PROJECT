@@ -98,7 +98,7 @@ type ProjectWorkerSync = {
   remarks?: string;
 };
 
-const API_BASE = "/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
 const PAYROLL_ROWS_STORAGE_KEY = "payroll_worker_rows_v1";
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -294,17 +294,22 @@ export default function NewPayrollPage() {
 
 
 
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem("hr_token");
+    return token ? { Authorization: `Bearer ${token}` } : null;
+  }, []);
+
   const loadEmployees = useCallback(async () => {
     setLoadingEmployees(true);
     setError(null);
     lastSyncKeyRef.current = null;
 
     try {
-      const token = localStorage.getItem("hr_token");
+      const authHeaders = getAuthHeaders();
       const [employeesResponse, projectsResponse] = await Promise.all([
-        token
+        authHeaders
           ? fetch(`${API_BASE}/employees`, {
-              headers: { Authorization: `Bearer ${token}` },
+              headers: authHeaders,
             })
           : Promise.resolve(null),
         fetch(`${API_BASE}/attendance/projects`),
@@ -429,7 +434,10 @@ export default function NewPayrollPage() {
 
     const res = await fetch(`${API_BASE}/payroll/attendance-overrides`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAuthHeaders() || {}),
+      },
       body: JSON.stringify({
         employeeId: row.employeeId,
         projectSite: selectedProject,
@@ -525,7 +533,10 @@ export default function NewPayrollPage() {
 
       const response = await fetch(`${API_BASE}/payroll/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(getAuthHeaders() || {}),
+        },
         body: JSON.stringify(payrollSummaryPayload),
       });
       const data = await response.json().catch(() => null);
@@ -607,7 +618,9 @@ export default function NewPayrollPage() {
         startDate: periodStart,
         endDate: periodEnd,
       });
-      const response = await fetch(`${API_BASE}/payroll/project-sync?${query.toString()}`);
+      const response = await fetch(`${API_BASE}/payroll/project-sync?${query.toString()}`, {
+        headers: getAuthHeaders() || undefined,
+      });
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
@@ -676,7 +689,10 @@ export default function NewPayrollPage() {
       for (const row of syncedRows) {
         const response = await fetch(`${API_BASE}/payroll/attendance-overrides`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(getAuthHeaders() || {}),
+          },
           body: JSON.stringify({
             employeeId: row.employeeId,
             projectSite: selectedProject,
