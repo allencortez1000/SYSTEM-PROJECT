@@ -106,14 +106,6 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               })}
             </nav>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-black text-red-100 transition hover:bg-red-400/20"
-            >
-              Logout
-            </button>
-
             <div className="mt-auto rounded-[1.75rem] border border-emerald-400/20 bg-emerald-400/10 p-5">
               <div className="flex items-center gap-3">
                 <span className="flex h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.9)]" />
