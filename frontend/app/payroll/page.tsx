@@ -89,6 +89,13 @@ export default function PayrollIndex() {
 
   useEffect(() => {
     void load();
+
+    const onFocus = () => {
+      void load();
+    };
+
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
 
@@ -182,7 +189,7 @@ export default function PayrollIndex() {
                   <th>Run code</th>
                   <th>Period</th>
                   <th>Payout date</th>
-                  <th>Gross pay</th>
+                  <th>Net pay</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -194,7 +201,7 @@ export default function PayrollIndex() {
                       {pick(run, ["pay_period_start"])} → {pick(run, ["pay_period_end"])}
                     </td>
                     <td className="text-slate-600">{pick(run, ["payout_date"])}</td>
-                    <td className="font-bold text-slate-700">{pesos(Number(run["total_net_pay"] ?? run["total_gross_pay"] ?? 0))}</td>
+                    <td className="font-bold text-slate-700">{pesos(Number(run["total_net_pay"] ?? 0))}</td>
                     <td>
                       <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
                         {pick(run, ["status"])}

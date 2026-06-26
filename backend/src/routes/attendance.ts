@@ -95,7 +95,10 @@ async function getDefaultOrganizationId() {
   return newOrg.id as string;
 }
 
-async function findOrCreateEmployeeByName(employeeName: string) {
+async function findOrCreateEmployeeByName(employeeName: string, patch?: {
+  salary?: number | null;
+  projectSite?: string | null;
+}) {
   const name = employeeName.trim();
 
   const { data: existing, error: existingError } = await supabase
@@ -110,6 +113,19 @@ async function findOrCreateEmployeeByName(employeeName: string) {
   }
 
   if (existing?.id) {
+    if (patch) {
+      const { error: updateError } = await supabase
+        .from('employees')
+        .update({
+          salary: patch.salary ?? null,
+        })
+        .eq('id', existing.id as string);
+
+      if (updateError) {
+        throw updateError;
+      }
+    }
+
     return existing.id as string;
   }
 
@@ -125,7 +141,7 @@ async function findOrCreateEmployeeByName(employeeName: string) {
       last_name: lastName,
       email: `${Date.now()}@placeholder.local`,
       status: 'Active',
-      salary: 0,
+      salary: patch?.salary ?? 0,
     })
     .select('id')
     .single();
@@ -372,7 +388,10 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ message: 'Employee not found for attendance save' });
       }
     } else {
-      employeeId = await findOrCreateEmployeeByName(employeeName);
+      employeeId = await findOrCreateEmployeeByName(employeeName, {
+        salary: Number(req.body?.salaryAmount ?? 0) || 0,
+        projectSite: projectSite || null,
+      });
     }
 
     const { data, error } = await supabase
@@ -403,6 +422,13 @@ router.post('/', async (req, res) => {
 
     if (error) {
       throw error;
+    }
+
+    if (!employeeIdFromBody) {
+      await findOrCreateEmployeeByName(employeeName, {
+        salary: Number(req.body?.salaryAmount ?? 0) || 0,
+        projectSite: projectSite || null,
+      });
     }
 
     res.status(201).json({

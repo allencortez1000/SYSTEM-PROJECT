@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { calculatePayroll, computeGovernmentContributions } from '../controllers/payroll';
 import { supabase } from '../lib/supabase';
+import { verifyToken } from '../middleware/auth';
 
 const router = Router();
+
+router.use(verifyToken);
 
 router.post('/calculate', (req, res) => {
   try {
@@ -119,6 +122,53 @@ function overtimeHoursFromRecord(record: AttendanceRecord) {
   return Math.max(0, roundCurrency(workedHoursFromRecord(record) - 8));
 }
 
+async function findOrCreateProjectSite(projectName: string) {
+  const name = projectName.trim();
+  if (!name) {
+    throw new Error('Project site name is required');
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('project_sites')
+    .select('id, name')
+    .ilike('name', name)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existing?.id) {
+    return existing as { id: string; name: string };
+  }
+
+  const { data: orgs, error: orgError } = await supabase
+    .from('organizations')
+    .select('id')
+    .limit(1)
+    .maybeSingle();
+
+  if (orgError) throw orgError;
+  if (!orgs?.id) throw new Error('No organization found');
+
+  const { data: created, error: createError } = await supabase
+    .from('project_sites')
+    .insert({
+      organization_id: orgs.id,
+      name,
+      is_active: true,
+    })
+    .select('id, name')
+    .single();
+
+  if (createError) {
+    throw createError;
+  }
+
+  return created as { id: string; name: string };
+}
+
 router.get('/attendance-summary', async (req, res) => {
   try {
     const employeeName = String(req.query.employeeName || '').trim();
@@ -214,7 +264,53 @@ router.get('/project-sync', async (req, res) => {
 
     if (assignmentsError) throw assignmentsError;
 
-    const employeeIds = Array.from(new Set(matchingAssignments.map((row: any) => String(row.employee_id)).filter(Boolean)));
+    const deploymentEmployeeIds = Array.from(new Set(matchingAssignments.map((row: any) => String(row.employee_id)).filter(Boolean)));
+
+    const attendanceIdResult = deploymentEmployeeIds.length > 0
+      ? { data: null, error: null }
+      : await supabase
+          .from('attendance_records')
+          .select('employee_id')
+          .eq('project_site', projectSite)
+          .gte('attendance_date', startDate)
+          .lte('attendance_date', endDate)
+          .order('attendance_date', { ascending: true });
+
+    if (attendanceIdResult.error) throw attendanceIdResult.error;
+
+    const attendanceEmployeeIds = Array.from(new Set(((attendanceIdResult.data || []) as any[]).map((row) => String(row.employee_id)).filter(Boolean)));
+    const employeeIds = Array.from(new Set([...deploymentEmployeeIds, ...attendanceEmployeeIds]));
+
+    if (deploymentEmployeeIds.length === 0 && attendanceEmployeeIds.length > 0) {
+      const project = await findOrCreateProjectSite(projectSite);
+      const existingDeploymentRows = await supabase
+        .from('employee_project_deployments')
+        .select('employee_id')
+        .eq('project_site_id', project.id)
+        .eq('is_active', true)
+        .in('employee_id', attendanceEmployeeIds);
+
+      if (existingDeploymentRows.error) throw existingDeploymentRows.error;
+
+      const existingIds = new Set((existingDeploymentRows.data || []).map((row) => String(row.employee_id)));
+      const missingIds = attendanceEmployeeIds.filter((employeeId) => !existingIds.has(employeeId));
+
+      if (missingIds.length > 0) {
+        const insertRows = missingIds.map((employeeId) => ({
+          employee_id: employeeId,
+          project_site_id: project.id,
+          assigned_at: new Date().toISOString(),
+          is_active: true,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('employee_project_deployments')
+          .insert(insertRows);
+
+        if (insertError) throw insertError;
+      }
+    }
+
     if (employeeIds.length === 0) {
       return res.json({ workers: [] });
     }
@@ -307,6 +403,28 @@ router.get('/project-sync', async (req, res) => {
   }
 });
 
+async function syncEmployeeFromPayrollOverride(employeeId: string, payload: {
+  salaryAmount?: number | string | null;
+  sssAmount?: number | string | null;
+  pagibigAmount?: number | string | null;
+  philhealthAmount?: number | string | null;
+  remarks?: string | null;
+}) {
+  const { error } = await supabase
+    .from('employees')
+    .update({
+      salary: payload.salaryAmount ?? null,
+      sss_amount: payload.sssAmount ?? null,
+      pagibig_amount: payload.pagibigAmount ?? null,
+      philhealth_amount: payload.philhealthAmount ?? null,
+    })
+    .eq('id', employeeId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 router.post('/attendance-overrides', async (req, res) => {
   try {
     const {
@@ -362,6 +480,14 @@ router.post('/attendance-overrides', async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    await syncEmployeeFromPayrollOverride(String(employeeId), {
+      salaryAmount,
+      sssAmount,
+      pagibigAmount,
+      philhealthAmount,
+      remarks,
+    });
 
     res.status(201).json({ override: data });
   } catch (error) {

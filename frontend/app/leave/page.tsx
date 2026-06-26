@@ -50,6 +50,15 @@ export default function LeavePage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    function handleClose() {
+      setActiveRow(null);
+    }
+
+    window.addEventListener("record-details-modal-close", handleClose);
+    return () => window.removeEventListener("record-details-modal-close", handleClose);
+  }, []);
+
   useSupabaseTableRefresh([{ table: "leave_requests" }, { table: "employees" }], () => {
     void load();
   });
@@ -148,9 +157,9 @@ export default function LeavePage() {
 
       <RecordDetailsModal
         title={activeRow ? nested(activeRow, "employees", "full_name") : "Leave request"}
-        subtitle={activeRow ? `${nested(activeRow, "leave_types", "name")} · ${pick(activeRow, ["status"])}` : undefined}
+        subtitle={activeRow ? `${nested(activeRow, "leave_types", "name")} · ${pick(activeRow, ["status"])} ` : undefined}
         row={activeRow}
-        onClose={() => setActiveRow(null)}
+        isOpen={Boolean(activeRow)}
       />
     </div>
   );

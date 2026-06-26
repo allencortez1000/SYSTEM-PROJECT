@@ -628,6 +628,7 @@ export default function AttendancePage() {
         setRecords(refreshedData?.attendance || []);
       }
 
+      window.dispatchEvent(new CustomEvent("attendance-updated", { detail: { projectSite: selectedProject } }));
       notify("Attendance period saved");
     } catch (err) {
       setError((err as Error).message);
@@ -693,6 +694,7 @@ export default function AttendancePage() {
         setRecords(refreshedData?.attendance || []);
       }
 
+      window.dispatchEvent(new CustomEvent("attendance-updated", { detail: { projectSite: selectedProject, date: targetDate } }));
       notify(sourceDate !== targetDate ? "Attendance date updated" : "Attendance saved");
       setActiveCell(null);
     } catch (err) {
@@ -742,6 +744,8 @@ export default function AttendancePage() {
       if (refreshed.ok) {
         setRecords(refreshedData?.attendance || []);
       }
+
+      window.dispatchEvent(new CustomEvent("attendance-updated", { detail: { projectSite: selectedProject, date } }));
 
       if (activeCell?.employeeId === employeeId && activeCell.date === date) {
         setActiveCell(null);

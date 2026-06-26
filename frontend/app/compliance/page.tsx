@@ -42,7 +42,16 @@ export default function CompliancePage() {
     void load();
   }, [load]);
 
-  useSupabaseTableRefresh([{ table: "compliance_requirements" }], () => {
+  useEffect(() => {
+    function handleClose() {
+      setActiveRow(null);
+    }
+
+    window.addEventListener("record-details-modal-close", handleClose);
+    return () => window.removeEventListener("record-details-modal-close", handleClose);
+  }, []);
+
+  useSupabaseTableRefresh([{ table: "compliance_records" }], () => {
     void load();
   });
 
@@ -108,7 +117,7 @@ export default function CompliancePage() {
         title={activeRow ? pick(activeRow, ["title"]) : "Compliance requirement"}
         subtitle={activeRow ? `${pick(activeRow, ["category"])} · ${pick(activeRow, ["frequency"])}` : undefined}
         row={activeRow}
-        onClose={() => setActiveRow(null)}
+        isOpen={Boolean(activeRow)}
       />
     </div>
   );

@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import * as XLSX from "xlsx";
 import { useNotification } from "../../components/notification";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
@@ -250,6 +251,7 @@ const readonlyMoneyClass = "px-3 py-3 text-right text-sm font-black tabular-nums
 const toolButtonClass = "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700";
 
 export default function NewPayrollPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const defaultWeek = currentWeekDates();
   const [isWorksheetOpen, setIsWorksheetOpen] = useState(false);
@@ -277,6 +279,7 @@ export default function NewPayrollPage() {
   const [savingPayrollTable, setSavingPayrollTable] = useState(false);
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const { notify } = useNotification();
 
   useEffect(() => {
@@ -289,17 +292,7 @@ export default function NewPayrollPage() {
     }
   }, [selectedProject]);
 
-  useEffect(() => {
-    if (!selectedProject.trim() || loadingEmployees || syncingAttendance || !periodStart || !periodEnd) {
-      return;
-    }
 
-    const timer = window.setTimeout(() => {
-      void syncPayrollFromAttendance();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [selectedProject, periodStart, periodEnd]);
 
   const loadEmployees = useCallback(async () => {
     setLoadingEmployees(true);
@@ -309,27 +302,34 @@ export default function NewPayrollPage() {
     try {
       const token = localStorage.getItem("hr_token");
       const [employeesResponse, projectsResponse] = await Promise.all([
-        fetch(`${API_BASE}/employees`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }),
+        token
+          ? fetch(`${API_BASE}/employees`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          : Promise.resolve(null),
         fetch(`${API_BASE}/attendance/projects`),
       ]);
-      const data = await employeesResponse.json().catch(() => null);
+      const data = employeesResponse ? await employeesResponse.json().catch(() => null) : null;
       const projectsData = await projectsResponse.json().catch(() => null);
 
-      if (!employeesResponse.ok) {
-        throw new Error(data?.error || data?.message || "Failed to load employees");
+      if (employeesResponse?.ok) {
+        setEmployees(data?.employees || []);
+      } else {
+        setEmployees([]);
       }
 
       if (projectsResponse.ok && Array.isArray(projectsData?.projects)) {
         const loadedProjects = projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean);
         if (loadedProjects.length > 0) {
           setProjects(loadedProjects);
-          setSelectedProject((current) => (current.trim() && loadedProjects.includes(current) ? current : loadedProjects[0]));
+          setSelectedProject((current) => {
+            const trimmed = current.trim();
+            if (trimmed && loadedProjects.includes(trimmed)) return trimmed;
+            return trimmed || "";
+          });
         }
       }
 
-      setEmployees(data?.employees || []);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -337,14 +337,23 @@ export default function NewPayrollPage() {
     }
   }, []);
 
+  const payrollStorageKey = useMemo(() => {
+    const projectKey = selectedProject.trim() || "unselected-project";
+    const periodKey = `${periodStart || "no-start"}_${periodEnd || "no-end"}`;
+    return `${PAYROLL_ROWS_STORAGE_KEY}_${projectKey}_${periodKey}`;
+  }, [selectedProject, periodStart, periodEnd]);
+
   useEffect(() => {
     try {
-      const storedRows = JSON.parse(localStorage.getItem(PAYROLL_ROWS_STORAGE_KEY) || "null");
+      const storedRows = JSON.parse(localStorage.getItem(payrollStorageKey) || "null");
       if (Array.isArray(storedRows) && storedRows.length > 0) {
         setRows(storedRows.map((row: Partial<WorkerRow>) => normalizeRow(row)));
+      } else {
+        setRows([]);
       }
     } catch {
       // ignore invalid browser cache
+      setRows([]);
     }
 
     void loadEmployees();
@@ -362,17 +371,15 @@ export default function NewPayrollPage() {
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
-  }, [loadEmployees]);
-
-
+  }, [loadEmployees, payrollStorageKey]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(PAYROLL_ROWS_STORAGE_KEY, JSON.stringify(rows));
+      localStorage.setItem(payrollStorageKey, JSON.stringify(rows));
     } catch {
       // ignore storage failures
     }
-  }, [rows]);
+  }, [rows, payrollStorageKey]);
 
 
 
@@ -456,12 +463,12 @@ export default function NewPayrollPage() {
     setError(null);
 
     try {
-      const current = JSON.parse(localStorage.getItem(PAYROLL_ROWS_STORAGE_KEY) || "[]");
+      const current = JSON.parse(localStorage.getItem(payrollStorageKey) || "[]");
       const next = Array.isArray(current)
         ? current.map((row: WorkerRow) => (row.id === activeRow.id ? activeRow : row))
         : [activeRow];
       if (!next.some((row: WorkerRow) => row.id === activeRow.id)) next.push(activeRow);
-      localStorage.setItem(PAYROLL_ROWS_STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(payrollStorageKey, JSON.stringify(next));
       setRows(next);
       await saveRowToSupabase(activeRow);
       notify("Worker information saved");
@@ -481,11 +488,53 @@ export default function NewPayrollPage() {
       return;
     }
 
+    const paidDays = rowsToSave.reduce((sum, row) => sum + (Number(row.days) || 0), 0);
+    const overtimeHours = rowsToSave.reduce((sum, row) => sum + (Number(row.otHours) || 0), 0);
+
     setSavingPayrollTable(true);
     try {
-      localStorage.setItem(PAYROLL_ROWS_STORAGE_KEY, JSON.stringify(rows));
+      localStorage.setItem(payrollStorageKey, JSON.stringify(rows));
       await Promise.all(rowsToSave.map((row) => saveRowToSupabase(row)));
-      notify("Payroll table saved");
+
+      const payrollSummaryPayload = {
+        employeeName: selectedDepartment || projectName || selectedProject,
+        payPeriod: coveredPeriod,
+        payBasis: "daily",
+        payFrequency,
+        payoutDay: periodEnd,
+        firstCutoffDay: periodStart,
+        secondCutoffDay: periodEnd,
+        rate: 0,
+        units: paidDays,
+        overtimeHours,
+        overtimeRate: 0,
+        bonus: 0,
+        allowances: 0,
+        loanDeduction: rowsToSave.reduce((sum, row) => sum + (Number(row.sssLoan) || 0), 0),
+        basicSalary: rowsToSave.reduce((sum, row) => sum + (Number(row.dailyRate) || 0) * (Number(row.days) || 0), 0),
+        grossEarnings: totals.totalSalary,
+        attendanceSummary: {
+          startDate: periodStart,
+          endDate: periodEnd,
+          projectSite: selectedProject,
+          employeeCount: rowsToSave.length,
+          paidDays,
+          overtimeHours,
+        },
+      };
+
+      const response = await fetch(`${API_BASE}/payroll/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payrollSummaryPayload),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to save payroll run");
+      }
+
+      notify("Saved — opening payroll records...");
+      router.push("/payroll");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -523,6 +572,24 @@ export default function NewPayrollPage() {
   });
   }
 
+  useEffect(() => {
+    function handleAttendanceUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ projectSite?: string }>).detail;
+      if (detail?.projectSite && detail.projectSite !== selectedProject) {
+        return;
+      }
+
+      void loadEmployees().then(() => {
+        if (selectedProject.trim() && periodStart && periodEnd) {
+          void syncPayrollFromAttendance();
+        }
+      });
+    }
+
+    window.addEventListener("attendance-updated", handleAttendanceUpdated as EventListener);
+    return () => window.removeEventListener("attendance-updated", handleAttendanceUpdated as EventListener);
+  }, [loadEmployees, selectedProject, periodStart, periodEnd]);
+
   const canSyncAttendance = Boolean(selectedProject.trim() && periodStart && periodEnd && !loadingEmployees && !syncingAttendance);
 
   async function syncPayrollFromAttendance() {
@@ -550,7 +617,7 @@ export default function NewPayrollPage() {
       const workers = Array.isArray(data?.workers) ? (data.workers as ProjectWorkerSync[]) : [];
       if (workers.length === 0) {
         setRows([]);
-        notify("No workers with active deployment found for this project and period");
+        notify("No workers found for this project and period");
         return;
       }
 
@@ -662,6 +729,82 @@ export default function NewPayrollPage() {
     notify("Payroll worksheet reset");
   }
 
+
+  function triggerExcelImport() {
+    importInputRef.current?.click();
+  }
+
+  async function handleExcelImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+    const getCell = (row: Record<string, unknown>, keys: string[], fallback = "") => {
+      for (const key of keys) {
+        const normalized = normalizeKey(key);
+        for (const [cellKey, cellValue] of Object.entries(row)) {
+          if (normalizeKey(cellKey) === normalized && cellValue !== undefined && cellValue !== null && cellValue !== "") {
+            return cellValue;
+          }
+        }
+      }
+      return fallback;
+    };
+    const getNumber = (row: Record<string, unknown>, keys: string[], fallback = 0) => {
+      const value = getCell(row, keys, String(fallback));
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    const getBoolean = (row: Record<string, unknown>, keys: string[], fallback = true) => {
+      const value = String(getCell(row, keys, fallback ? "true" : "false")).trim().toLowerCase();
+      if (["true", "yes", "1", "y", "enabled"].includes(value)) return true;
+      if (["false", "no", "0", "n", "disabled"].includes(value)) return false;
+      return fallback;
+    };
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error("Excel file has no worksheet");
+
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      if (json.length === 0) throw new Error("No rows found in the Excel file");
+
+      const importedRows = json.map((row) => normalizeRow({
+        id: crypto.randomUUID(),
+        employeeId: String(getCell(row, ["Employee ID", "EMPLOYEE ID", "employeeId", "employee_id"], "")).trim() || undefined,
+        supervisor: String(getCell(row, ["Supervisor / Lead", "SUPERVISOR / LEAD", "Supervisor", "Lead", "SUPERVISOR"], "")).trim(),
+        name: String(getCell(row, ["Worker name", "EMPLOYEE", "Employee", "Name", "FULL NAME", "Full Name"], "")).trim(),
+        position: String(getCell(row, ["Position", "POSITION", "Job Position", "JOB POSITION"], "Labor")).trim() || "Labor",
+        dailyRate: getNumber(row, ["Salary", "SALARY", "Daily Rate", "DAILY RATE", "Rate", "RATE"], 0),
+        days: getNumber(row, ["Days", "DAYS", "Days worked", "NO. OF DAYS", "Days Worked", "PAID DAYS"], 0),
+        otHours: getNumber(row, ["OT hrs", "OT HRS", "OT hours", "OT HOURS", "Overtime Hours", "OVERTIME HOURS"], 0),
+        holidayPay: getNumber(row, ["Holiday pay", "HOLIDAY PAY", "Holiday", "HOLIDAY"], 0),
+        cashAdvance: getNumber(row, ["CA", "Cash advance", "CASH ADVANCE", "Cash Advance"], 0),
+        tax: getNumber(row, ["Tax", "TAX"], 0),
+        sssLoan: getNumber(row, ["SSS LOAN", "Sss loan", "SSS Loan"], 0),
+        philHealthManual: getNumber(row, ["PhilHealth", "PHILHEALTH", "Phil Health"], 0),
+        pagIbigManual: getNumber(row, ["Pag-IBIG", "PAG-IBIG", "Pagibig", "PAGIBIG"], 0),
+        sssManual: getNumber(row, ["SSS"], 0),
+        additionalDeduction: getNumber(row, ["ADDITIONAL DEDUCTION", "Additional deduction", "OTHER DEDUCTION", "Other Deduction"], 0),
+        remarks: String(getCell(row, ["Remarks", "REMARKS", "Notes", "NOTES"], "")).trim(),
+        hasSss: getBoolean(row, ["Has SSS", "hasSss"], true),
+        hasPagIbig: getBoolean(row, ["Has Pag-IBIG", "hasPagIbig"], true),
+        hasPhilHealth: getBoolean(row, ["Has PhilHealth", "hasPhilHealth"], true),
+        hasSssLoan: getBoolean(row, ["Has SSS Loan", "hasSssLoan"], true),
+        hasTax: getBoolean(row, ["Has Tax", "hasTax"], true),
+        hasAdditionalDeduction: getBoolean(row, ["Has Additional Deduction", "hasAdditionalDeduction"], true),
+      }));
+
+      setRows(importedRows);
+      notify(`Imported ${importedRows.length} payroll row(s) from Excel`);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
 
   function handlePrint() {
     window.print();
@@ -1276,6 +1419,8 @@ export default function NewPayrollPage() {
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
               <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
               <button onClick={savePayrollTable} type="button" className="secondary-button" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
+              <button onClick={triggerExcelImport} type="button" className="secondary-button">Insert Excel</button>
+              <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
               <button onClick={applyPayrollEditsToAttendance} className="secondary-button" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
               <button onClick={addRow} className="secondary-button" type="button">Add worker row</button>
               <Link href="/payroll" className="secondary-button">Back to payroll center</Link>
@@ -1335,6 +1480,8 @@ export default function NewPayrollPage() {
             <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button">Open full-detail editor</button>
             <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button" disabled={!canSyncAttendance}>{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
             <button onClick={savePayrollTable} type="button" className="secondary-button" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
+            <button onClick={triggerExcelImport} type="button" className="secondary-button">Insert Excel</button>
+            <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
             <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
             <label className="flex min-w-[240px] flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm">
               <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Export file name</span>
@@ -1479,6 +1626,8 @@ export default function NewPayrollPage() {
                 <button onClick={jumpToTable} type="button" className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700">Go to rows</button>
                 <button onClick={syncPayrollFromAttendance} type="button" className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm">{syncingAttendance ? "Syncing..." : "Sync attendance"}</button>
                 <button onClick={savePayrollTable} type="button" className={toolButtonClass}>{savingPayrollTable ? "Saving..." : "Save table"}</button>
+                <button onClick={triggerExcelImport} type="button" className={toolButtonClass}>Insert Excel</button>
+                <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
                 <button onClick={applyPayrollEditsToAttendance} type="button" className={toolButtonClass}>{savingOverrides ? "Applying..." : "Apply to attendance"}</button>
                 <button onClick={addRow} type="button" className={toolButtonClass}>Add row</button>
                 <button onClick={exportExcel} type="button" className={toolButtonClass}>Export Excel</button>

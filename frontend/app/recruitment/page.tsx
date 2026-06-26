@@ -25,6 +25,15 @@ export default function RecruitmentPage() {
   const [activeRow, setActiveRow] = useState<Row | null>(null);
 
   useEffect(() => {
+    function handleClose() {
+      setActiveRow(null);
+    }
+
+    window.addEventListener("record-details-modal-close", handleClose);
+    return () => window.removeEventListener("record-details-modal-close", handleClose);
+  }, []);
+
+  useEffect(() => {
     async function load() {
       setLoading(true);
       try {
@@ -118,7 +127,7 @@ export default function RecruitmentPage() {
         title={activeRow ? pick(activeRow, ["full_name", "name", "first_name"]) : "Candidate"}
         subtitle={activeRow ? `${pick(activeRow, ["source"])} · ${pick(activeRow, ["email", "phone"])}` : undefined}
         row={activeRow}
-        onClose={() => setActiveRow(null)}
+        isOpen={Boolean(activeRow)}
       />
     </div>
   );
