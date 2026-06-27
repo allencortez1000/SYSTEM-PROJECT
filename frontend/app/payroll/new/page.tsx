@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import * as XLSX from "xlsx";
+import { filterInputClassName } from "../../components/filter-config";
 import { useNotification } from "../../components/notification";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
@@ -1003,7 +1004,7 @@ export default function NewPayrollPage() {
               <input
                 value={projectName}
                 onChange={(event) => setProjectName(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-slate-600 print:border-0 print:bg-white print:px-0"
+                className={`${filterInputClassName} mt-1 print:border-0 print:bg-white print:px-0`}
               />
             </label>
             </div>

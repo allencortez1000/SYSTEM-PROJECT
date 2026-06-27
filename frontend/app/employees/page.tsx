@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import FilterBar from "../components/filter-bar";
+import { filterInputClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
 import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
@@ -207,97 +209,77 @@ export default function EmployeesPage() {
         </div>
 
         {/* Filters Section */}
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr_1fr_1fr_auto] xl:items-end">
-            <div>
-              <label htmlFor="employee-search" className="text-sm font-semibold text-slate-700">
-                Search
-              </label>
-              <div className="relative mt-2">
-                <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
-                </svg>
-                <input
-                  id="employee-search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search name, ID, email, position..."
-                  className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                />
-              </div>
+        <FilterBar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search name, ID, email, position..."
+          summary={
+            <div className="text-sm font-semibold text-slate-600">
+              Showing <span className="text-slate-900">{filteredEmployees.length}</span> employee{filteredEmployees.length !== 1 ? "s" : ""}
             </div>
-
-            <div>
-              <label htmlFor="department-filter" className="text-sm font-semibold text-slate-700">
-                Department
-              </label>
-              <select
-                id="department-filter"
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-              >
-                {departmentOptions.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="projectsite-filter" className="text-sm font-semibold text-slate-700">
-                Project Site
-              </label>
-              <select
-                id="projectsite-filter"
-                value={selectedProjectSite}
-                onChange={(e) => setSelectedProjectSite(e.target.value)}
-                className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-              >
-                {projectSiteOptions.map((site) => (
-                  <option key={site} value={site}>
-                    {site}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="sort-mode" className="text-sm font-semibold text-slate-700">
-                Sort by
-              </label>
-              <select
-                id="sort-mode"
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-              >
-                <option value="name-asc">Name A → Z</option>
-                <option value="name-desc">Name Z → A</option>
-                <option value="department">Department</option>
-                <option value="projectSite">Project site</option>
-                <option value="status">Status</option>
-              </select>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedDepartment("All");
-                  setSelectedProjectSite("All");
-                  setSortMode("name-asc");
-                }}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:bg-slate-50"
-              >
-                Clear filters
-              </button>
-            </div>
+          }
+          onClearFilters={() => {
+            setSearchQuery("");
+            setSelectedDepartment("All");
+            setSelectedProjectSite("All");
+            setSortMode("name-asc");
+          }}
+        >
+          <div>
+            <label htmlFor="department-filter" className="text-sm font-semibold text-slate-700">
+              Department
+            </label>
+            <select
+              id="department-filter"
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className={filterInputClassName}
+            >
+              {departmentOptions.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div>
+            <label htmlFor="projectsite-filter" className="text-sm font-semibold text-slate-700">
+              Project Site
+            </label>
+            <select
+              id="projectsite-filter"
+              value={selectedProjectSite}
+              onChange={(e) => setSelectedProjectSite(e.target.value)}
+              className={filterInputClassName}
+            >
+              {projectSiteOptions.map((site) => (
+                <option key={site} value={site}>
+                  {site}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="sort-mode" className="text-sm font-semibold text-slate-700">
+              Sort by
+            </label>
+            <select
+              id="sort-mode"
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              className={filterInputClassName}
+            >
+              <option value="name-asc">Name A → Z</option>
+              <option value="name-desc">Name Z → A</option>
+              <option value="department">Department</option>
+              <option value="projectSite">Project site</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">View:</span>
             <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
               <button
@@ -335,7 +317,7 @@ export default function EmployeesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </FilterBar>
 
         {/* Loading & Error States */}
         {loading && (

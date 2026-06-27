@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import FilterBar from "../components/filter-bar";
 import { useNotification } from "../components/notification";
 import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
@@ -1099,28 +1100,25 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Employee Search */}
-          <div className="mt-6">
-            <label className="block">
-              <span className="text-sm font-bold text-slate-700">Search employees</span>
-              <div className="relative mt-2">
-                <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
-                  <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  value={employeeSearch}
-                  onChange={(event) => {
-                    setEmployeeSearch(event.target.value);
-                    setEmployeePage(1);
-                  }}
-                  className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm shadow-sm transition focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10"
-                  placeholder="Search by name or email..."
-                />
+          <FilterBar
+            searchValue={employeeSearch}
+            onSearchChange={(value) => {
+              setEmployeeSearch(value);
+              setEmployeePage(1);
+            }}
+            searchLabel="Search employees"
+            searchPlaceholder="Search by name or email..."
+            summary={
+              <div className="text-sm font-semibold text-slate-600">
+                Showing <span className="text-slate-900">{filteredEmployees.length}</span> employee{filteredEmployees.length !== 1 ? "s" : ""}
               </div>
-            </label>
-          </div>
+            }
+            onClearFilters={() => {
+              setEmployeeSearch("");
+              setEmployeePage(1);
+            }}
+            clearLabel="Clear search"
+          />
 
           {/* Employee List with Pagination */}
           <div className="mt-6 space-y-3">

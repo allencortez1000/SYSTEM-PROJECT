@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import FilterBar from "../components/filter-bar";
+import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
 import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
@@ -981,11 +983,11 @@ export default function AttendancePage() {
                           </div>
                         </div>
                         <select
-                          value={assignments[employee.id] || ""}
-                          onChange={(event) => assignEmployee(employee.id, event.target.value)}
-                          disabled={assignmentSavingId === employee.id}
-                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
+                        value={assignments[employee.id] || ""}
+                        onChange={(event) => assignEmployee(employee.id, event.target.value)}
+                        disabled={assignmentSavingId === employee.id}
+                        className={filterSelectCompactClassName}
+                      >
                           {projects.map((project) => (
                             <option key={project} value={project}>{project}</option>
                           ))}
@@ -1189,30 +1191,37 @@ export default function AttendancePage() {
 
             {/* Recent Records */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h3 className="text-lg font-black text-slate-900">Recent Attendance Records</h3>
-                </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-lg font-black text-slate-900">Recent Attendance Records</h3>
+              </div>
 
-                <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px]">
-                  <div className="relative">
-                    <svg className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
-                    </svg>
-                    <input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search attendance..."
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm font-medium text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                    />
-                  </div>
+              <FilterBar
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchPlaceholder="Search attendance..."
+                searchLabel="Search records"
+                onClearFilters={() => {
+                  setSearchQuery("");
+                  setSortMode("date-desc");
+                }}
+                summary={
+                  <p className="text-sm font-semibold text-slate-600">
+                    Showing <span className="text-slate-900">{latestRecords.length}</span> record{latestRecords.length !== 1 ? "s" : ""}
+                  </p>
+                }
+              >
+                <div>
+                  <label htmlFor="attendance-sort" className="text-sm font-semibold text-slate-700">
+                    Sort by
+                  </label>
                   <select
+                    id="attendance-sort"
                     value={sortMode}
                     onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                    className={filterInputClassName}
                   >
                     <option value="date-desc">Date newest</option>
                     <option value="date-asc">Date oldest</option>
@@ -1221,22 +1230,7 @@ export default function AttendancePage() {
                     <option value="status">Status</option>
                   </select>
                 </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {(searchQuery || sortMode !== "date-desc") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSortMode("date-desc");
-                    }}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white hover:text-blue-700"
-                  >
-                    Clear filters
-                  </button>
-                )}
-              </div>
+              </FilterBar>
 
               {loading ? (
                 <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">

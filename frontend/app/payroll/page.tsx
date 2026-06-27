@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import FilterBar from "../components/filter-bar";
+import { filterInputClassName } from "../components/filter-config";
 
 const API_BASE = "/api";
 
@@ -306,116 +308,81 @@ export default function PayrollIndex() {
         {/* Payroll Runs Table */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-xl">
           <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/30 px-6 py-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm">
-                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">Payment History</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">Recent payroll runs and releases</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm">
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
               </div>
-
-              <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_180px_auto] lg:items-end">
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Search</label>
-                  <div className="relative mt-2">
-                    <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
-                    </svg>
-                    <input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search payroll runs..."
-                      className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Department</label>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                  >
-                    <option value="">All departments</option>
-                    {departments.map((department) => (
-                      <option key={department.id} value={department.name}>{department.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Project Site</label>
-                  <select
-                    value={selectedProjectSite}
-                    onChange={(e) => setSelectedProjectSite(e.target.value)}
-                    className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                  >
-                    <option value="">All project sites</option>
-                    {projectSites.map((projectSite) => (
-                      <option key={projectSite.id} value={projectSite.name}>{projectSite.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Sort by</label>
-                  <select
-                    value={sortMode}
-                    onChange={(e) => setSortMode(e.target.value as SortMode)}
-                    className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                  >
-                    <option value="recent">Newest</option>
-                    <option value="oldest">Oldest</option>
-                    <option value="period">Period</option>
-                    <option value="run">Run code</option>
-                  </select>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedDepartment("");
-                    setSelectedProjectSite("");
-                    setSortMode("recent");
-                  }}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:bg-slate-50"
-                >
-                  Clear filters
-                </button>
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Payment History</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Recent payroll runs and releases</p>
               </div>
             </div>
           </div>
 
-          <div className="p-6">
-            {!loading && !error && (
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-sm font-semibold text-slate-600">
+          <div className="px-6 pt-6">
+            <FilterBar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search payroll runs..."
+              summary={
+                <div className="text-sm font-semibold text-slate-600">
                   Showing <span className="text-slate-900">{filteredRuns.length}</span> payroll run{filteredRuns.length !== 1 ? "s" : ""}
-                </p>
-                {(searchQuery || selectedDepartment || selectedProjectSite || sortMode !== "recent") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedDepartment("");
-                      setSelectedProjectSite("");
-                      setSortMode("recent");
-                    }}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-blue-700"
-                  >
-                    Clear filters
-                  </button>
-                )}
+                </div>
+              }
+              onClearFilters={() => {
+                setSearchQuery("");
+                setSelectedDepartment("");
+                setSelectedProjectSite("");
+                setSortMode("recent");
+              }}
+              clearLabel="Clear filters"
+            >
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Department</label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className={filterInputClassName}
+                >
+                  <option value="">All departments</option>
+                  {departments.map((department) => (
+                    <option key={department.id} value={department.name}>{department.name}</option>
+                  ))}
+                </select>
               </div>
-            )}
 
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Project Site</label>
+                <select
+                  value={selectedProjectSite}
+                  onChange={(e) => setSelectedProjectSite(e.target.value)}
+                  className={filterInputClassName}
+                >
+                  <option value="">All project sites</option>
+                  {projectSites.map((projectSite) => (
+                    <option key={projectSite.id} value={projectSite.name}>{projectSite.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Sort by</label>
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as SortMode)}
+                  className={filterInputClassName}
+                >
+                  <option value="recent">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="period">Period</option>
+                  <option value="run">Run code</option>
+                </select>
+              </div>
+            </FilterBar>
+
+          <div className="p-6">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-3">
@@ -449,63 +416,28 @@ export default function PayrollIndex() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">
-                        Run Code
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">
-                        Period
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">
-                        Payout Date
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wider text-slate-700">
-                        Net Pay
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700">
-                        Status
-                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Run Code</th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Period</th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Payout Date</th>
+                      <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wider text-slate-700">Net Pay</th>
+                      <th className="px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredRuns.map((run, index) => (
                       <tr key={index} className="group transition-all duration-200 hover:bg-slate-50">
-                        <td className="px-4 py-4">
-                          <span className="font-black text-slate-900">
-                            {pick(run, ["run_code"])}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-600">
-                          <div className="flex items-center gap-2">
-                            <svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                            </svg>
-                            <span className="font-semibold">
-                              {pick(run, ["pay_period_start"])} → {pick(run, ["pay_period_end"])}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm font-semibold text-slate-600">
-                          {pick(run, ["payout_date"])}
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <span className="text-base font-black text-emerald-700">
-                            {pesos(Number(run["total_net_pay"] ?? 0))}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm">
-                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
-                              <circle cx={4} cy={4} r={3} />
-                            </svg>
-                            {pick(run, ["status"])}
-                          </span>
-                        </td>
+                        <td className="px-4 py-4"><span className="font-black text-slate-900">{pick(run, ["run_code"])}</span></td>
+                        <td className="px-4 py-4 text-sm text-slate-600"><div className="flex items-center gap-2"><svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg><span className="font-semibold">{pick(run, ["pay_period_start"])} → {pick(run, ["pay_period_end"])}</span></div></td>
+                        <td className="px-4 py-4 text-sm font-semibold text-slate-600">{pick(run, ["payout_date"])}</td>
+                        <td className="px-4 py-4 text-right"><span className="text-base font-black text-emerald-700">{pesos(Number(run["total_net_pay"] ?? 0))}</span></td>
+                        <td className="px-4 py-4 text-center"><span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm"><svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8"><circle cx={4} cy={4} r={3} /></svg>{pick(run, ["status"])}</span></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>
