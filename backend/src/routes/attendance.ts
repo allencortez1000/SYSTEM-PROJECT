@@ -17,6 +17,9 @@ type AttendanceRow = {
   overtime_hours?: number | string | null;
   overtime_mode?: string | null;
   employees?: {
+    first_name?: string | null;
+    middle_name?: string | null;
+    last_name?: string | null;
     full_name?: string | null;
   } | null;
 };
@@ -35,9 +38,23 @@ type AssignmentRow = {
 };
 
 function splitFullName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/);
-  const firstName = parts.shift() || 'Employee';
-  const lastName = parts.length ? parts.join(' ') : 'Record';
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return {
+      firstName: 'Employee',
+      lastName: 'Record',
+    };
+  }
+
+  if (parts.length === 1) {
+    return {
+      firstName: parts[0],
+      lastName: 'Record',
+    };
+  }
+
+  const lastName = parts[0];
+  const firstName = parts.slice(1).join(' ');
 
   return {
     firstName,
@@ -45,11 +62,29 @@ function splitFullName(fullName: string) {
   };
 }
 
+function formatSurnameFirst(firstName?: string | null, middleName?: string | null, lastName?: string | null, fallback?: string | null) {
+  const first = String(firstName || '').trim();
+  const middle = String(middleName || '').trim();
+  const last = String(lastName || '').trim();
+
+  const givenNames = [first, middle].filter(Boolean).join(' ').trim();
+  if (last && givenNames) {
+    return `${last}, ${givenNames}`;
+  }
+
+  return fallback || [first, middle, last].filter(Boolean).join(' ').trim() || 'Unknown employee';
+}
+
 function toAttendanceApi(row: AttendanceRow) {
   return {
     id: row.id,
     employeeId: row.employee_id || undefined,
-    employeeName: row.employees?.full_name || 'Unknown employee',
+    employeeName: formatSurnameFirst(
+      row.employees?.first_name,
+      row.employees?.middle_name,
+      row.employees?.last_name,
+      row.employees?.full_name,
+    ),
     date: row.attendance_date,
     status: row.status,
     checkIn: row.check_in || undefined,

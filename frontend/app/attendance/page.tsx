@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { useNotification } from "../components/notification";
 import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
@@ -427,6 +428,34 @@ export default function AttendancePage() {
       .filter((record) => selectedDateSet.has(record.date))
       .slice(0, 20);
   }, [assignedEmployees, records, periodDates]);
+
+  const exportVisibleAttendance = useCallback(() => {
+    if (latestRecords.length === 0) {
+      notify("No attendance records to export");
+      return;
+    }
+
+    const rows = latestRecords.map((record) => ({
+      Worker: record.employeeName,
+      Position: assignedEmployees.find((employee) => employee.id === record.employeeId)?.position || "Worker",
+      Date: formatDateFull(record.date),
+      Status: record.status,
+      "Check In": record.checkIn || "",
+      "Check Out": record.checkOut || "",
+      "Project Site": record.projectSite || selectedProject,
+      Notes: record.notes || "",
+      "Worked Hours": typeof record.workedHours === "number" ? record.workedHours : "",
+      "Overtime Hours": typeof record.overtimeHours === "number" ? record.overtimeHours : "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+
+    const fileName = `attendance-${selectedProject}-${rangeStartDate}-${rangeEndDate}.xlsx`.replace(/\s+/g, "-").toLowerCase();
+    XLSX.writeFile(workbook, fileName);
+    notify("Attendance exported to Excel");
+  }, [assignedEmployees, latestRecords, notify, rangeEndDate, rangeStartDate, selectedProject]);
 
   const summary = useMemo(() => {
     const counts = { Present: 0, Absent: 0, Leave: 0, Remote: 0 };
@@ -1214,6 +1243,9 @@ export default function AttendancePage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={exportVisibleAttendance} disabled={latestRecords.length === 0} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 shadow-sm transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60">
+                    Export Excel
+                  </button>
                   <button type="button" onClick={saveAttendance} disabled={saving || loading} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
                     {saving ? "Saving..." : "Save attendance"}
                   </button>

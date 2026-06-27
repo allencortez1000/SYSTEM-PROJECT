@@ -84,16 +84,23 @@ function normalizeAmount(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Unassigned') {
-  const fallbackFullName = [row.first_name, row.middle_name, row.last_name]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
+function formatSurnameFirst(row: EmployeeRow) {
+  const lastName = String(row.last_name || '').trim();
+  const firstName = String(row.first_name || '').trim();
+  const middleName = String(row.middle_name || '').trim();
 
+  const givenNames = [firstName, middleName].filter(Boolean).join(' ').trim();
+  if (lastName && givenNames) {
+    return `${lastName}, ${givenNames}`;
+  }
+  return row.full_name || [firstName, middleName, lastName].filter(Boolean).join(' ').trim() || 'Unnamed employee';
+}
+
+function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Unassigned') {
   return {
     id: row.id,
     employeeId: row.employee_no,
-    fullName: row.full_name || fallbackFullName,
+    fullName: formatSurnameFirst(row),
     email: row.email,
     department: row.department_id ? lookups.departmentMap.get(row.department_id) || 'Unassigned' : 'Unassigned',
     projectSite,
@@ -358,7 +365,7 @@ router.get('/', async (req, res) => {
     const limit = Number(req.query.limit || 25);
     const offset = Number(req.query.offset || 0);
 
-    let employeesQuery = supabase.from('employees').select(EMPLOYEE_SELECT).order('created_at', { ascending: false }) as any;
+    let employeesQuery = supabase.from('employees').select(EMPLOYEE_SELECT).order('last_name', { ascending: true }).order('first_name', { ascending: true }) as any;
 
     if (departmentIds !== null) {
       employeesQuery = employeesQuery.in(
@@ -473,10 +480,14 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
+    const { fullName, firstName, lastName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
 
-    if (!fullName) {
-      return res.status(400).json({ message: 'fullName is required' });
+    const cleanedFirstName = String(firstName || '').trim();
+    const cleanedLastName = String(lastName || '').trim();
+    const cleanedFullName = String(fullName || '').trim();
+
+    if (!cleanedFirstName || !cleanedLastName) {
+      return res.status(400).json({ message: 'firstName and lastName are required' });
     }
 
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
@@ -493,17 +504,17 @@ router.post('/', async (req, res) => {
     }
 
     const positionId = await getOrCreatePosition(organizationId, departmentId, position || 'Employee');
-    const { firstName, lastName } = splitFullName(fullName);
-
     const employeeNo = `EMP-${Date.now()}`;
+    const fullNameValue = cleanedFullName || `${cleanedLastName}, ${cleanedFirstName}`;
 
     const { data, error } = await supabase
       .from('employees')
       .insert({
         organization_id: organizationId,
         employee_no: employeeNo,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: cleanedFirstName,
+        last_name: cleanedLastName,
+        full_name: fullNameValue,
         email,
         department_id: departmentId,
         position_id: positionId,
@@ -550,7 +561,7 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { fullName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
+    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
     let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;

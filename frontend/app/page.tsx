@@ -119,7 +119,7 @@ export default function Home() {
     const presentToday = attendance.filter(
       (r) => r.date === today && r.status === "Present",
     ).length;
-    const onLeave = attendance.filter((r) => r.status === "Leave").length;
+    const onLeave = attendance.filter((r) => r.date === today && r.status === "Leave").length;
 
     const deptMap = new Map<string, number>();
     employees.forEach((e) => {
