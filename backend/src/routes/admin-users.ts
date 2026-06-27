@@ -68,19 +68,72 @@ async function getDefaultOrganizationId() {
   return newOrg.id as string;
 }
 
-router.get('/departments', async (req, res) => {
+router.get('/departments', async (req: any, res) => {
   try {
-    // allow if user can view admin lists
-    const allowed = await userHasAdminViewAccess(req);
-    if (!allowed) return res.status(403).json({ message: 'Insufficient permissions' });
+    // Any authenticated user can read the departments list (needed for dropdowns).
+    // Super-admins and users with admin_access get all departments.
+    // Sub-admins without admin_access get only their assigned departments.
+    // Department-head-admins also get only their assigned departments.
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+
+    const role: string = req.user.role || '';
+    const userId: string = req.user.userId || '';
+
+    // Super-admins always see everything
+    if (role === 'super-admin') {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return res.json({ departments: data || [] });
+    }
+
+    // For sub-admins: check if they have admin_access permission → show all
+    if (role === 'sub-admin') {
+      const { data: userData } = await supabase
+        .from('app_users')
+        .select('permissions')
+        .eq('id', userId)
+        .limit(1);
+      const permissions = Array.isArray(userData?.[0]?.permissions)
+        ? userData![0].permissions.map((p: unknown) => String(p))
+        : [];
+      if (permissions.includes('admin_access')) {
+        const { data, error } = await supabase
+          .from('departments')
+          .select('id, name')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        return res.json({ departments: data || [] });
+      }
+    }
+
+    // For department-head-admins and sub-admins without admin_access:
+    // return only the departments they are assigned to
+    const { data: links, error: linksError } = await supabase
+      .from('app_user_departments')
+      .select('department_id')
+      .eq('user_id', userId);
+    if (linksError) throw linksError;
+
+    const assignedIds = (links || []).map((l: any) => String(l.department_id));
+    if (assignedIds.length === 0) {
+      // No assignments — fall back to all departments so dropdowns are never empty
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return res.json({ departments: data || [] });
+    }
 
     const { data, error } = await supabase
       .from('departments')
       .select('id, name')
+      .in('id', assignedIds)
       .order('name', { ascending: true });
-
     if (error) throw error;
-
     res.json({ departments: data || [] });
   } catch (error) {
     res.status(500).json({
