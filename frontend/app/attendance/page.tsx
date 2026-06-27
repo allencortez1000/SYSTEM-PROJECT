@@ -263,6 +263,8 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [assignmentSavingId, setAssignmentSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "date-desc" | "date-asc" | "status">("date-desc");
   const anchorDateInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -417,17 +419,49 @@ export default function AttendancePage() {
 
   const latestRecords = useMemo(() => {
     const selectedDateSet = new Set(periodDates);
-    return records
+    const query = searchQuery.trim().toLowerCase();
+
+    const filtered = records
       .filter((record) => {
         const matchesAssignedEmployee = assignedEmployees.some((employee) => {
           if (record.employeeId) return record.employeeId === employee.id;
           return employee.fullName === record.employeeName;
         });
-        return matchesAssignedEmployee;
-      })
-      .filter((record) => selectedDateSet.has(record.date))
-      .slice(0, 20);
-  }, [assignedEmployees, records, periodDates]);
+        if (!matchesAssignedEmployee) return false;
+        if (!selectedDateSet.has(record.date)) return false;
+
+        if (!query) return true;
+        return [
+          record.employeeName,
+          record.status,
+          record.checkIn,
+          record.checkOut,
+          record.notes,
+          record.projectSite,
+          record.date,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query));
+      });
+
+    const getEmployeeName = (record: AttendanceRecord) => record.employeeName.toLowerCase();
+
+    return filtered.sort((a, b) => {
+      switch (sortMode) {
+        case "name-asc":
+          return getEmployeeName(a).localeCompare(getEmployeeName(b)) || a.date.localeCompare(b.date);
+        case "name-desc":
+          return getEmployeeName(b).localeCompare(getEmployeeName(a)) || b.date.localeCompare(a.date);
+        case "date-asc":
+          return a.date.localeCompare(b.date) || getEmployeeName(a).localeCompare(getEmployeeName(b));
+        case "status":
+          return a.status.localeCompare(b.status) || a.date.localeCompare(b.date);
+        case "date-desc":
+        default:
+          return b.date.localeCompare(a.date) || getEmployeeName(a).localeCompare(getEmployeeName(b));
+      }
+    }).slice(0, 20);
+  }, [assignedEmployees, records, periodDates, searchQuery, sortMode]);
 
   const exportVisibleAttendance = useCallback(() => {
     if (latestRecords.length === 0) {
@@ -1155,11 +1189,53 @@ export default function AttendancePage() {
 
             {/* Recent Records */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-5">
-                <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-lg font-black text-slate-900">Recent Attendance Records</h3>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="text-lg font-black text-slate-900">Recent Attendance Records</h3>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px]">
+                  <div className="relative">
+                    <svg className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+                    </svg>
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search attendance..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-sm font-medium text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                    />
+                  </div>
+                  <select
+                    value={sortMode}
+                    onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="date-desc">Date newest</option>
+                    <option value="date-asc">Date oldest</option>
+                    <option value="name-asc">Name A → Z</option>
+                    <option value="name-desc">Name Z → A</option>
+                    <option value="status">Status</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {(searchQuery || sortMode !== "date-desc") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSortMode("date-desc");
+                    }}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-white hover:text-blue-700"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
 
               {loading ? (

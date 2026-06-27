@@ -10,6 +10,7 @@ type Row = Record<string, unknown>;
 
 type Department = { id: string; name: string };
 type ProjectSite = { id: string; name: string };
+type SortMode = "recent" | "oldest" | "period" | "run";
 
 function pick(row: Row, keys: string[]): string {
   for (const key of keys) {
@@ -41,6 +42,8 @@ export default function PayrollIndex() {
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedProjectSite, setSelectedProjectSite] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,6 +100,50 @@ export default function PayrollIndex() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
+
+  const filteredRuns = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    const filtered = runs.filter((run) => {
+      const values = [
+        pick(run, ["run_code"]),
+        pick(run, ["period_start", "start_date"]),
+        pick(run, ["period_end", "end_date"]),
+        pick(run, ["department_name", "department"]),
+        pick(run, ["project_site_name", "project_site"]),
+        pick(run, ["status"]),
+      ].join(" ").toLowerCase();
+
+      const departmentMatch = !selectedDepartment || pick(run, ["department_name", "department"]) === selectedDepartment;
+      const projectMatch = !selectedProjectSite || pick(run, ["project_site_name", "project_site"]) === selectedProjectSite;
+      const searchMatch = !query || values.includes(query);
+
+      return departmentMatch && projectMatch && searchMatch;
+    });
+
+    return filtered.sort((a, b) => {
+      const aRun = pick(a, ["run_code"]);
+      const bRun = pick(b, ["run_code"]);
+      const aStart = pick(a, ["period_start", "start_date"]);
+      const bStart = pick(b, ["period_start", "start_date"]);
+      const aEnd = pick(a, ["period_end", "end_date"]);
+      const bEnd = pick(b, ["period_end", "end_date"]);
+      const aPeriod = `${aStart} ${aEnd}`;
+      const bPeriod = `${bStart} ${bEnd}`;
+
+      switch (sortMode) {
+        case "oldest":
+          return aStart.localeCompare(bStart) || aRun.localeCompare(bRun);
+        case "period":
+          return aPeriod.localeCompare(bPeriod) || aRun.localeCompare(bRun);
+        case "run":
+          return aRun.localeCompare(bRun);
+        case "recent":
+        default:
+          return bStart.localeCompare(aStart) || bRun.localeCompare(aRun);
+      }
+    });
+  }, [runs, searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
 
   const stats = useMemo(
     () => [
@@ -259,20 +306,116 @@ export default function PayrollIndex() {
         {/* Payroll Runs Table */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-xl">
           <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/30 px-6 py-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm">
-                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Payment History</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">Recent payroll runs and releases</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-black text-slate-900">Payment History</h3>
-                <p className="mt-1 text-sm font-semibold text-slate-600">Recent payroll runs and releases</p>
+
+              <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_180px_180px_auto] lg:items-end">
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Search</label>
+                  <div className="relative mt-2">
+                    <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+                    </svg>
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search payroll runs..."
+                      className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Department</label>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="">All departments</option>
+                    {departments.map((department) => (
+                      <option key={department.id} value={department.name}>{department.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Project Site</label>
+                  <select
+                    value={selectedProjectSite}
+                    onChange={(e) => setSelectedProjectSite(e.target.value)}
+                    className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="">All project sites</option>
+                    {projectSites.map((projectSite) => (
+                      <option key={projectSite.id} value={projectSite.name}>{projectSite.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Sort by</label>
+                  <select
+                    value={sortMode}
+                    onChange={(e) => setSortMode(e.target.value as SortMode)}
+                    className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="recent">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="period">Period</option>
+                    <option value="run">Run code</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedDepartment("");
+                    setSelectedProjectSite("");
+                    setSortMode("recent");
+                  }}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:bg-slate-50"
+                >
+                  Clear filters
+                </button>
               </div>
             </div>
           </div>
 
           <div className="p-6">
+            {!loading && !error && (
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-600">
+                  Showing <span className="text-slate-900">{filteredRuns.length}</span> payroll run{filteredRuns.length !== 1 ? "s" : ""}
+                </p>
+                {(searchQuery || selectedDepartment || selectedProjectSite || sortMode !== "recent") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedDepartment("");
+                      setSelectedProjectSite("");
+                      setSortMode("recent");
+                    }}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 hover:text-blue-700"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-3">
@@ -280,7 +423,7 @@ export default function PayrollIndex() {
                   <p className="text-sm font-semibold text-slate-600">Loading payroll runs...</p>
                 </div>
               </div>
-            ) : runs.length === 0 ? (
+            ) : filteredRuns.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200">
                   <svg className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -324,7 +467,7 @@ export default function PayrollIndex() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {runs.map((run, index) => (
+                    {filteredRuns.map((run, index) => (
                       <tr key={index} className="group transition-all duration-200 hover:bg-slate-50">
                         <td className="px-4 py-4">
                           <span className="font-black text-slate-900">
