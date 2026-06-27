@@ -649,12 +649,17 @@ export default function NewPayrollPage() {
 
       setRows(
         workers.map((worker): WorkerRow => {
-          const employee = employees.find((item) => item.id === worker.employeeId);
+          const employee = employees.find((item) => item.id === worker.employeeId)
+            || employees.find((item) => item.fullName.toLowerCase() === worker.employeeName.toLowerCase());
+          // Prefer the already-correctly-formatted fullName from the employees list
+          // (backend formats it as "De Leon, Arnold" using first_name/last_name fields).
+          // Fall back to formatSurnameFirst only if the employee isn't in the local list.
+          const displayName = employee?.fullName || formatSurnameFirst(worker.employeeName);
           return {
             id: crypto.randomUUID(),
             employeeId: worker.employeeId,
             supervisor: "",
-            name: formatSurnameFirst(worker.employeeName),
+            name: displayName,
             position: worker.position || "Labor",
             dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
             days: worker.attendance.paidDays || 0,
@@ -677,7 +682,7 @@ export default function NewPayrollPage() {
             payrollSnapshot: worker.payrollSnapshot || null,
             syncedFromAttendance: true,
           };
-        }),
+        }).sort((a, b) => a.name.localeCompare(b.name)),
       );
       setProjectName(`${selectedProject} Payroll`);
       notify("Payroll rows synced from attendance");
