@@ -403,7 +403,7 @@ router.get('/', async (_, res) => {
       .from('attendance_records')
       .select(`
         *,
-        employees(full_name)
+        employees(first_name, middle_name, last_name, full_name)
       `)
       .order('attendance_date', { ascending: false })
       .order('created_at', { ascending: false });
@@ -528,7 +528,22 @@ router.delete('/', async (req, res) => {
 
     let resolvedEmployeeId = String(employeeId || '').trim();
     if (!resolvedEmployeeId && employeeName) {
-      resolvedEmployeeId = await findOrCreateEmployeeByName(String(employeeName));
+      const { data: foundEmployee, error: findError } = await supabase
+        .from('employees')
+        .select('id')
+        .ilike('full_name', String(employeeName).trim())
+        .limit(1)
+        .maybeSingle();
+
+      if (findError) {
+        throw findError;
+      }
+
+      if (!foundEmployee?.id) {
+        return res.status(404).json({ message: 'Employee not found' });
+      }
+
+      resolvedEmployeeId = foundEmployee.id as string;
     }
 
     const { error } = await supabase

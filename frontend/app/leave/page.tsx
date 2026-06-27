@@ -88,8 +88,8 @@ export default function LeavePage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
         ),
-        gradient: "from-amber-500 to-orange-500",
-        bgGradient: "from-amber-50 to-orange-50",
+        gradient: "from-blue-600 to-cyan-500",
+        bgGradient: "from-blue-50 to-cyan-50",
       },
       {
         label: "Approved",
@@ -123,7 +123,7 @@ export default function LeavePage() {
         </p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-3">
         {summary.map(({ label, value, detail, icon, gradient, bgGradient }) => (
           <div
             key={label}
@@ -135,7 +135,7 @@ export default function LeavePage() {
               </div>
             </div>
             <p className="text-sm font-bold uppercase tracking-wider text-slate-600">{label}</p>
-            <p className={`mt-3 bg-gradient-to-br ${gradient} bg-clip-text text-4xl font-black text-transparent`}>
+            <p className={`mt-3 bg-gradient-to-br ${gradient} bg-clip-text text-3xl font-black text-transparent`}>
               {value}
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-500">{detail}</p>
@@ -207,7 +207,7 @@ export default function LeavePage() {
                 <tbody className="bg-white">
                   {rows.map((row, index) => (
                     <tr
-                      key={index}
+                      key={String(row.id ?? index)}
                       className={`cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 ${
                         activeRow === row ? "bg-gradient-to-r from-blue-100 to-indigo-100" : ""
                       }`}
@@ -219,28 +219,89 @@ export default function LeavePage() {
                       <td className="text-slate-600">{pick(row, ["end_date"])}</td>
                       <td className="font-bold text-slate-700">{pick(row, ["total_days"])}</td>
                       <td>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm">
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
-                            <circle cx="4" cy="4" r="3" />
-                          </svg>
-                          {pick(row, ["status"])}
-                        </span>
+                        {(() => {
+                          const status = pick(row, ["status"]).toLowerCase();
+                          const colorClass =
+                            status === "approved"
+                              ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800"
+                              : status === "rejected"
+                              ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
+                              : "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800";
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${colorClass}`}>
+                              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
+                                <circle cx="4" cy="4" r="3" />
+                              </svg>
+                              {pick(row, ["status"])}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setActiveRow(row);
-                          }}
-                          className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-950 to-slate-800 px-4 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-blue-600 hover:to-cyan-500 hover:shadow-lg"
-                        >
-                          <svg className="h-3.5 w-3.5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                          </svg>
-                          View details
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActiveRow(row);
+                            }}
+                            className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-950 to-slate-800 px-4 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-blue-600 hover:to-cyan-500 hover:shadow-lg"
+                          >
+                            <svg className="h-3.5 w-3.5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                            View details
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              try {
+                                const token = localStorage.getItem("auth_token");
+                                const res = await fetch(`${API_BASE}/data/leave/${String(row.id)}`, {
+                                  method: "PATCH",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                  },
+                                  body: JSON.stringify({ status: "approved" }),
+                                });
+                                if (!res.ok) throw new Error(await res.text());
+                                await load();
+                              } catch (err) {
+                                alert(`Approve failed: ${(err as Error).message}`);
+                              }
+                            }}
+                            className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              try {
+                                const token = localStorage.getItem("auth_token");
+                                const res = await fetch(`${API_BASE}/data/leave/${String(row.id)}`, {
+                                  method: "PATCH",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                  },
+                                  body: JSON.stringify({ status: "rejected" }),
+                                });
+                                if (!res.ok) throw new Error(await res.text());
+                                await load();
+                              } catch (err) {
+                                alert(`Reject failed: ${(err as Error).message}`);
+                              }
+                            }}
+                            className="inline-flex items-center rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
+                          >
+                            Reject
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

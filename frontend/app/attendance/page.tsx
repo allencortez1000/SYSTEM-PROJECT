@@ -651,7 +651,9 @@ export default function AttendancePage() {
 
     try {
       const payloads = assignedEmployees.flatMap((employee) =>
-        periodDates.map((date) => {
+        periodDates
+          .filter((date) => new Date(date).getDay() !== 0)
+          .map((date) => {
           const draft = ensureDraft(employee.id, date);
           const workedHours = draft.status === "Absent" || draft.status === "Leave"
             ? 0
@@ -676,18 +678,28 @@ export default function AttendancePage() {
         }),
       );
 
-      for (const payload of payloads) {
-        const res = await fetch("/api/attendance", {
+      const token = localStorage.getItem('auth_token');
+      const promises = payloads.map((payload) =>
+        fetch("/api/attendance", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify(payload),
-        });
+        })
+          .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) return new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
+            return null;
+          })
+          .catch((err) => err as Error)
+      );
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
-      }
+      const results = await Promise.all(promises);
+      const firstError = results.find((r) => r instanceof Error);
+      if (firstError) throw firstError;
 
-      const refreshed = await fetch("/api/attendance");
+      const refreshed = await fetch("/api/attendance", {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
         setRecords(refreshedData?.attendance || []);
@@ -753,7 +765,9 @@ export default function AttendancePage() {
         });
       }
 
-      const refreshed = await fetch("/api/attendance");
+      const refreshed = await fetch("/api/attendance", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem('auth_token')}` },
+      });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
         setRecords(refreshedData?.attendance || []);
@@ -804,7 +818,9 @@ export default function AttendancePage() {
         return next;
       });
 
-      const refreshed = await fetch("/api/attendance");
+      const refreshed = await fetch("/api/attendance", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem('auth_token')}` },
+      });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
         setRecords(refreshedData?.attendance || []);
@@ -824,7 +840,7 @@ export default function AttendancePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-3">
@@ -833,7 +849,7 @@ export default function AttendancePage() {
             </svg>
             <span className="text-sm font-bold uppercase tracking-wider text-blue-600">Attendance Hub</span>
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">
             Project Attendance & Deployment
           </h1>
           <p className="mt-3 max-w-3xl text-lg text-slate-600">
@@ -866,7 +882,7 @@ export default function AttendancePage() {
         )}
 
         {/* Project Stats Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
           {projectCounts.map((item) => (
             <div
               key={item.project}
@@ -884,7 +900,7 @@ export default function AttendancePage() {
                     </svg>
                     <p className="text-sm font-bold text-slate-600">{item.project}</p>
                   </div>
-                  <p className="mt-3 text-3xl font-black text-slate-900">{item.count}</p>
+                  <p className="mt-3 text-2xl font-black text-slate-900">{item.count}</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">Assigned Workers</p>
                 </div>
               </div>
@@ -1300,7 +1316,7 @@ export default function AttendancePage() {
       {/* Attendance Table Modal */}
       {isWorkspaceOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 p-2 backdrop-blur-sm">
-          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
             <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-3 py-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
@@ -1611,7 +1627,7 @@ export default function AttendancePage() {
         const employee = employees.find((item) => item.id === deleteTarget.employeeId);
         return employee ? (
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-lg">
               <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-rose-50/70 px-5 py-4">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1653,7 +1669,7 @@ export default function AttendancePage() {
       {/* Edit Attendance Modal */}
       {activeCell && activeEmployee && activeDraft && (
         <div className="fixed inset-0 z-[60] bg-slate-950/70 p-3 backdrop-blur-sm">
-          <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
             <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2">

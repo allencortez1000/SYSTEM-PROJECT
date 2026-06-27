@@ -44,11 +44,14 @@ export default function PayrollIndex() {
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedProjectSite, setSelectedProjectSite] = useState("");
+  const [modalDepartment, setModalDepartment] = useState("");
+  const [modalProjectSite, setModalProjectSite] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("recent");
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const token = localStorage.getItem("hr_token");
       const fetchOptions = token
@@ -126,8 +129,8 @@ export default function PayrollIndex() {
     return filtered.sort((a, b) => {
       const aRun = pick(a, ["run_code"]);
       const bRun = pick(b, ["run_code"]);
-      const aStart = pick(a, ["period_start", "start_date"]);
-      const bStart = pick(b, ["period_start", "start_date"]);
+      const aStart = pick(a, ["period_start", "pay_period_start", "start_date"]);
+      const bStart = pick(b, ["period_start", "pay_period_start", "start_date"]);
       const aEnd = pick(a, ["period_end", "end_date"]);
       const bEnd = pick(b, ["period_end", "end_date"]);
       const aPeriod = `${aStart} ${aEnd}`;
@@ -154,7 +157,7 @@ export default function PayrollIndex() {
         value: pesos(payrollCost),
         detail: "Sum of all employee salaries",
         icon: (
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
         ),
@@ -197,7 +200,7 @@ export default function PayrollIndex() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -231,7 +234,7 @@ export default function PayrollIndex() {
         )}
 
         {/* Stats Grid */}
-        <div className="mb-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {stats.map((stat) => (
             <div
               key={stat.label}
@@ -242,14 +245,14 @@ export default function PayrollIndex() {
                   <p className="text-xs font-black uppercase tracking-wider text-slate-600">
                     {stat.label}
                   </p>
-                  <p className="mt-3 text-3xl font-black text-slate-900">
+                  <p className="mt-3 text-2xl font-black text-slate-900">
                     {stat.value}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-slate-600">
                     {stat.detail}
                   </p>
                 </div>
-                <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${stat.iconBg} text-white shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.iconBg} text-white shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
                   {stat.icon}
                 </div>
               </div>
@@ -258,7 +261,7 @@ export default function PayrollIndex() {
         </div>
 
         {/* Main CTA Card */}
-        <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-2xl">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-lg">
           <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-6 py-8 text-white sm:px-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex-1">
@@ -273,7 +276,7 @@ export default function PayrollIndex() {
                 <h2 className="text-2xl font-black sm:text-3xl">
                   Total Payroll Cost
                 </h2>
-                <p className="mt-3 text-4xl font-black sm:text-5xl">
+                <p className="mt-3 text-3xl font-black sm:text-5xl">
                   {pesos(payrollCost)}
                 </p>
                 <p className="mt-3 text-sm font-semibold text-blue-100">
@@ -282,7 +285,7 @@ export default function PayrollIndex() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
-                  onClick={() => setCalculatorOpen(true)}
+                  onClick={() => { setModalDepartment(""); setModalProjectSite(""); setCalculatorOpen(true); }}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-black text-blue-700 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
                   type="button"
                 >
@@ -402,7 +405,7 @@ export default function PayrollIndex() {
                   Start your first payroll calculation to see payment history here
                 </p>
                 <button
-                  onClick={() => setCalculatorOpen(true)}
+                  onClick={() => { setModalDepartment(""); setModalProjectSite(""); setCalculatorOpen(true); }}
                   className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/30 transition-all duration-300 hover:scale-105 hover:shadow-xl"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -425,9 +428,9 @@ export default function PayrollIndex() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredRuns.map((run, index) => (
-                      <tr key={index} className="group transition-all duration-200 hover:bg-slate-50">
+                      <tr key={String(pick(run, ["id", "run_code", "run_id"]) ?? index)} className="group transition-all duration-200 hover:bg-slate-50">
                         <td className="px-4 py-4"><span className="font-black text-slate-900">{pick(run, ["run_code"])}</span></td>
-                        <td className="px-4 py-4 text-sm text-slate-600"><div className="flex items-center gap-2"><svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg><span className="font-semibold">{pick(run, ["pay_period_start"])} → {pick(run, ["pay_period_end"])}</span></div></td>
+                        <td className="px-4 py-4 text-sm text-slate-600"><div className="flex items-center gap-2"><svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg><span className="font-semibold">{pick(run, ["period_start", "pay_period_start", "start_date"])} → {pick(run, ["period_end", "pay_period_end", "end_date"])}</span></div></td>
                         <td className="px-4 py-4 text-sm font-semibold text-slate-600">{pick(run, ["payout_date"])}</td>
                         <td className="px-4 py-4 text-right"><span className="text-base font-black text-emerald-700">{pesos(Number(run["total_net_pay"] ?? 0))}</span></td>
                         <td className="px-4 py-4 text-center"><span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm"><svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8"><circle cx={4} cy={4} r={3} /></svg>{pick(run, ["status"])}</span></td>
@@ -445,7 +448,7 @@ export default function PayrollIndex() {
       {/* Modal for Starting Payroll */}
       {calculatorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm transition-all">
-          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl transition-all duration-300">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300">
             <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/50 px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -481,8 +484,8 @@ export default function PayrollIndex() {
                     Department
                   </span>
                   <select
-                    value={selectedDepartment}
-                    onChange={(event) => setSelectedDepartment(event.target.value)}
+                    value={modalDepartment}
+                    onChange={(event) => setModalDepartment(event.target.value)}
                     className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100"
                   >
                     <option value="">Select department</option>
@@ -503,8 +506,8 @@ export default function PayrollIndex() {
                     Project Site
                   </span>
                   <select
-                    value={selectedProjectSite}
-                    onChange={(event) => setSelectedProjectSite(event.target.value)}
+                    value={modalProjectSite}
+                    onChange={(event) => setModalProjectSite(event.target.value)}
                     className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100"
                   >
                     <option value="">Select project site</option>
@@ -517,7 +520,7 @@ export default function PayrollIndex() {
                 </label>
               </div>
 
-              {(!selectedDepartment || !selectedProjectSite) && (
+              {(!modalDepartment || !modalProjectSite) && (
                 <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white px-4 py-3 shadow-sm">
                   <svg className="h-5 w-5 shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
@@ -540,11 +543,11 @@ export default function PayrollIndex() {
               <button
                 type="button"
                 className="flex-1 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/30 transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
-                disabled={!selectedDepartment || !selectedProjectSite}
+                disabled={!modalDepartment || !modalProjectSite}
                 onClick={() => {
                   const params = new URLSearchParams();
-                  params.set("department", selectedDepartment);
-                  params.set("projectSite", selectedProjectSite);
+                  params.set("department", modalDepartment);
+                  params.set("projectSite", modalProjectSite);
                   router.push(`/payroll/new?${params.toString()}`);
                 }}
               >

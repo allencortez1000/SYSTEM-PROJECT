@@ -1,7 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 
@@ -33,29 +34,35 @@ export default function RecruitmentPage() {
     return () => window.removeEventListener("record-details-modal-close", handleClose);
   }, []);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const [candRes, openRes] = await Promise.all([
-          fetch(`${API_BASE}/data/candidates`),
-          fetch(`${API_BASE}/data/job-openings`),
-        ]);
-        if (!candRes.ok) throw new Error("Failed to load candidates");
-        const candData = await candRes.json();
-        setCandidates(candData.candidates || []);
-        if (openRes.ok) {
-          const openData = await openRes.json();
-          setOpenings(openData.jobOpenings || []);
-        }
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [candRes, openRes] = await Promise.all([
+        fetch(`${API_BASE}/data/candidates`),
+        fetch(`${API_BASE}/data/job-openings`),
+      ]);
+      if (!candRes.ok) throw new Error("Failed to load candidates");
+      const candData = await candRes.json();
+      setCandidates(candData.candidates || []);
+      if (openRes.ok) {
+        const openData = await openRes.json();
+        setOpenings(openData.jobOpenings || []);
       }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useSupabaseTableRefresh(
+    [{ table: "candidates" }, { table: "job_openings" }],
+    () => { void load(); },
+  );
 
   const metrics = useMemo(
     () => [
@@ -102,7 +109,7 @@ export default function RecruitmentPage() {
         </p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-2">
+      <section className="grid gap-4 md:grid-cols-2">
         {metrics.map(({ label, value, icon, gradient, bgGradient }) => (
           <div
             key={label}
@@ -114,7 +121,7 @@ export default function RecruitmentPage() {
               </div>
             </div>
             <p className="text-sm font-bold uppercase tracking-wider text-slate-600">{label}</p>
-            <p className={`mt-3 bg-gradient-to-br ${gradient} bg-clip-text text-4xl font-black text-transparent`}>
+            <p className={`mt-3 bg-gradient-to-br ${gradient} bg-clip-text text-3xl font-black text-transparent`}>
               {value}
             </p>
           </div>
@@ -183,7 +190,7 @@ export default function RecruitmentPage() {
                 const isActive = activeRow === candidate;
                 return (
                   <button
-                    key={index}
+                    key={String(candidate.id ?? index)}
                     type="button"
                     onClick={() => setActiveRow(candidate)}
                     className={`group relative overflow-hidden rounded-2xl border-2 p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
@@ -240,6 +247,72 @@ export default function RecruitmentPage() {
               })}
             </div>
           </>
+        )}
+      </section>
+
+      {/* Open Positions section */}
+      <section className="section-card">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 p-2.5 text-white shadow-lg">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0M12 12.75h.008v.008H12v-.008Z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wider text-blue-600">Vacancies</p>
+            <h3 className="text-2xl font-black text-slate-950">Open positions</h3>
+          </div>
+        </div>
+
+        {!loading && openings.length === 0 && (
+          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+            <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0M12 12.75h.008v.008H12v-.008Z" />
+            </svg>
+            <p className="mt-4 text-sm font-semibold text-slate-500">No job openings found in Supabase yet.</p>
+          </div>
+        )}
+
+        {openings.length > 0 && (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                    <th className="px-5 py-3 font-bold uppercase tracking-wider text-slate-600">Position</th>
+                    <th className="px-5 py-3 font-bold uppercase tracking-wider text-slate-600">Department</th>
+                    <th className="px-5 py-3 font-bold uppercase tracking-wider text-slate-600">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {openings.map((opening, index) => {
+                    const statusVal = pick(opening, ["status"]);
+                    const statusClass =
+                      statusVal.toLowerCase().includes("open") || statusVal.toLowerCase().includes("active")
+                        ? "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800"
+                        : statusVal.toLowerCase().includes("close") || statusVal.toLowerCase().includes("filled")
+                        ? "bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600"
+                        : "bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-800";
+                    return (
+                      <tr key={String(opening.id ?? index)} className="transition-colors hover:bg-gradient-to-r hover:from-slate-50 hover:to-white">
+                        <td className="px-5 py-4 font-black text-slate-950">
+                          {pick(opening, ["title", "position", "name"])}
+                        </td>
+                        <td className="px-5 py-4 font-semibold text-slate-600">
+                          {pick(opening, ["department"])}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black ${statusClass}`}>
+                            {statusVal}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </section>
 

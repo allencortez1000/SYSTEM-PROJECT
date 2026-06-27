@@ -537,9 +537,9 @@ export default function AdminUsersPage() {
   if (!loading && !canViewAdmins) {
     return (
       <div className="page-shell">
-        <div className="flex min-h-[60vh] items-center justify-center rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-12 shadow-xl">
+        <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-12 shadow-xl">
           <div className="text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-red-100">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-red-100">
               <svg className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -556,7 +556,7 @@ export default function AdminUsersPage() {
   return (
     <div className="page-shell">
       {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative">
           <div className="flex items-center gap-3">
@@ -567,7 +567,7 @@ export default function AdminUsersPage() {
             </div>
             <p className="text-sm font-bold uppercase tracking-wider text-white/90">System administration</p>
           </div>
-          <h2 className="mt-4 break-words text-3xl font-black tracking-tight sm:text-5xl">
+          <h2 className="mt-4 break-words text-2xl font-black tracking-tight sm:text-5xl">
             Admin Access Control
           </h2>
           <p className="mt-3 max-w-3xl text-lg text-white/90">
@@ -578,7 +578,7 @@ export default function AdminUsersPage() {
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 shadow-xl">
+        <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-12 shadow-xl">
           <div className="flex flex-col items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center">
               <svg className="h-12 w-12 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
@@ -593,7 +593,7 @@ export default function AdminUsersPage() {
 
       {/* Error State */}
       {error && (
-        <div className="flex items-start gap-3 rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
             <svg className="h-6 w-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -610,7 +610,7 @@ export default function AdminUsersPage() {
       {canCreateAdmins && (
         <section className="grid gap-6 xl:grid-cols-2">
           {/* Sub-Admin Creation Card */}
-          <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+          <article className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
@@ -737,7 +737,7 @@ export default function AdminUsersPage() {
           </article>
 
           {/* Worker Creation Card */}
-          <article className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+          <article className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-lg">
@@ -938,7 +938,7 @@ export default function AdminUsersPage() {
 
       {/* Admin Users List */}
       {canViewAdmins && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg">
@@ -958,7 +958,7 @@ export default function AdminUsersPage() {
 
           <div className="mt-6 space-y-4">
             {users.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
                 <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
@@ -967,7 +967,7 @@ export default function AdminUsersPage() {
             )}
 
             {users.map((user) => (
-              <div key={user.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 shadow-lg transition hover:shadow-xl">
+              <div key={user.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 shadow-lg transition hover:shadow-xl">
                 <div className="p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1081,7 +1081,7 @@ export default function AdminUsersPage() {
 
       {/* Worker Management Section */}
       {canViewAdmins && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">
@@ -1123,7 +1123,7 @@ export default function AdminUsersPage() {
           {/* Employee List with Pagination */}
           <div className="mt-6 space-y-3">
             {filteredEmployees.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
                 <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -1136,7 +1136,7 @@ export default function AdminUsersPage() {
             {paginatedEmployees.map((employee) => (
               <div
                 key={employee.id}
-                className="flex items-start justify-between gap-3 rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 p-6 shadow-lg transition hover:shadow-xl"
+                className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 p-6 shadow-lg transition hover:shadow-xl"
               >
                 <div className="min-w-0">
                   <p className="truncate text-lg font-black text-slate-900">{employee.fullName}</p>

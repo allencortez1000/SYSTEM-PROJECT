@@ -69,7 +69,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.35),_transparent_34%),radial-gradient(circle_at_70%_30%,_rgba(14,165,233,0.18),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#111827_100%)]" />
 
           <div className="relative z-10 flex min-h-[calc(100vh-3rem)] flex-col">
-            <Link href="/" className="group rounded-[1.75rem] border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/20 backdrop-blur">
+            <Link href="/" className="group rounded-[1.75rem] border border-white/10 bg-white/10 p-5 shadow-lg shadow-black/20 backdrop-blur">
               <div className="flex items-center gap-3">
                 <img
                   src="/rabino-logo.svg"
@@ -118,12 +118,12 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
         <main className="min-w-0">
           <header className="sticky top-0 z-30 border-b border-white/60 bg-white/80 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <img
                   src="/rabino-logo.svg"
                   alt="Rabino Home Builders Corporation logo"
-                  className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
+                  className="h-10 w-10 shrink-0 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
                 />
                 <div className="min-w-0">
                   <p className="eyebrow">Welcome back</p>

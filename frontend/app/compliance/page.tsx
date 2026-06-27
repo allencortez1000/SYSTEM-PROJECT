@@ -55,6 +55,17 @@ export default function CompliancePage() {
     void load();
   });
 
+  const today = new Date().toISOString().split("T")[0];
+  const overdueCount = rows.filter((r) => {
+    const status = String(r.status ?? "").toLowerCase();
+    const dueDate = String(r.due_date ?? "");
+    return status === "overdue" || (dueDate !== "" && dueDate < today);
+  }).length;
+  const pendingCount = rows.filter((r) => {
+    const status = String(r.status ?? "").toLowerCase();
+    return status === "pending" || status === "upcoming";
+  }).length;
+
   return (
     <div className="page-shell">
       <section className="hero-panel">
@@ -72,8 +83,8 @@ export default function CompliancePage() {
         </p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
             <div className="rounded-full bg-gradient-to-br from-green-500 to-emerald-500 p-3 text-white">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -82,13 +93,13 @@ export default function CompliancePage() {
             </div>
           </div>
           <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Total requirements</p>
-          <p className="mt-3 bg-gradient-to-br from-green-500 to-emerald-500 bg-clip-text text-4xl font-black text-transparent">
+          <p className="mt-3 bg-gradient-to-br from-green-500 to-emerald-500 bg-clip-text text-3xl font-black text-transparent">
             {rows.length}
           </p>
           <p className="mt-2 text-sm font-semibold text-slate-500">Active compliance items</p>
         </div>
 
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
             <div className="rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 p-3 text-white">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -96,14 +107,14 @@ export default function CompliancePage() {
               </svg>
             </div>
           </div>
-          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Audit status</p>
-          <p className="mt-3 bg-gradient-to-br from-blue-600 to-cyan-500 bg-clip-text text-4xl font-black text-transparent">
-            Ready
+          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Overdue / At-risk</p>
+          <p className="mt-3 bg-gradient-to-br from-blue-600 to-cyan-500 bg-clip-text text-3xl font-black text-transparent">
+            {overdueCount}
           </p>
-          <p className="mt-2 text-sm font-semibold text-slate-500">All systems monitored</p>
+          <p className="mt-2 text-sm font-semibold text-slate-500">Items overdue or past due date</p>
         </div>
 
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
             <div className="rounded-full bg-gradient-to-br from-slate-700 to-slate-900 p-3 text-white">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -111,11 +122,11 @@ export default function CompliancePage() {
               </svg>
             </div>
           </div>
-          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Real-time sync</p>
-          <p className="mt-3 bg-gradient-to-br from-slate-700 to-slate-900 bg-clip-text text-4xl font-black text-transparent">
-            Live
+          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Pending / Upcoming</p>
+          <p className="mt-3 bg-gradient-to-br from-slate-700 to-slate-900 bg-clip-text text-3xl font-black text-transparent">
+            {pendingCount}
           </p>
-          <p className="mt-2 text-sm font-semibold text-slate-500">Instant updates enabled</p>
+          <p className="mt-2 text-sm font-semibold text-slate-500">Items pending or upcoming</p>
         </div>
       </section>
 
@@ -181,7 +192,7 @@ export default function CompliancePage() {
                 const isActive = activeRow === row;
                 return (
                   <button
-                    key={index}
+                    key={String(row.id ?? index)}
                     type="button"
                     onClick={() => setActiveRow(row)}
                     className={`group flex w-full items-center justify-between rounded-2xl border-2 p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${
@@ -214,7 +225,24 @@ export default function CompliancePage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1.5 text-xs font-black text-blue-800 shadow-sm">
+                      {(() => {
+                        const statusVal = pick(row, ["status"]);
+                        const s = statusVal.toLowerCase();
+                        const rowDue = String(row.due_date ?? "");
+                        const isOverdue = s === "overdue" || (rowDue !== "" && rowDue < today);
+                        const isPending = s === "pending" || s === "upcoming";
+                        const badgeClass = isOverdue
+                          ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
+                          : isPending
+                          ? "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800"
+                          : "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800";
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black shadow-sm ${badgeClass}`}>
+                            {statusVal}
+                          </span>
+                        );
+                      })()}
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1.5 text-xs font-black text-blue-800 shadow-sm">
                         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>

@@ -75,7 +75,7 @@ export default function NewEmployeePage() {
   return (
     <div className="page-shell">
       {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -87,7 +87,7 @@ export default function NewEmployeePage() {
               </div>
               <p className="text-sm font-bold uppercase tracking-wider text-white/90">New employee</p>
             </div>
-            <h2 className="mt-4 break-words text-3xl font-black tracking-tight sm:text-5xl">
+            <h2 className="mt-4 break-words text-2xl font-black tracking-tight sm:text-5xl">
               Add employee record
             </h2>
             <p className="mt-3 max-w-2xl text-lg text-white/90">
@@ -95,7 +95,7 @@ export default function NewEmployeePage() {
             </p>
           </div>
 
-          <Link href="/employees" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-6 py-3 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
+          <Link href="/employees" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -105,7 +105,7 @@ export default function NewEmployeePage() {
       </section>
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
         <div className="flex items-center gap-3 border-b border-slate-100 pb-6">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
             <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -159,9 +159,9 @@ export default function NewEmployeePage() {
           </div>
 
           {/* Job Information Section */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-purple-50/50 p-6">
+          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
             <div className="mb-4 flex items-center gap-2">
-              <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">Job Details</h4>

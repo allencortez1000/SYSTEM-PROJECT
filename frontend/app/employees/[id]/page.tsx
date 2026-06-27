@@ -56,7 +56,8 @@ export default function EmployeeDetail() {
 
   useSupabaseTableRefresh([{ table: "employees" }], () => {
     if (!id) return;
-    void fetch(`/api/employees/${id}`).then(async (res) => {
+    const token = localStorage.getItem("hr_token");
+    void fetch(`/api/employees/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}).then(async (res) => {
       const data = await res.json().catch(() => ({}));
       if (res.ok) setEmployee(data.employee || null);
     });
@@ -65,7 +66,7 @@ export default function EmployeeDetail() {
   return (
     <div className="page-shell">
       {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -85,18 +86,26 @@ export default function EmployeeDetail() {
             </p>
           </div>
 
-          <Link href="/employees" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-6 py-3 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to employees
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/employees" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to employees
+            </Link>
+            <Link href={`/employees/${id}/edit`} className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Employee
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-12 shadow-xl">
+        <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-12 shadow-xl">
           <div className="flex flex-col items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center">
               <svg className="h-12 w-12 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
@@ -111,7 +120,7 @@ export default function EmployeeDetail() {
 
       {/* Error State */}
       {error && (
-        <div className="flex items-start gap-3 rounded-3xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
             <svg className="h-6 w-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -126,25 +135,37 @@ export default function EmployeeDetail() {
 
       {/* Employee Details */}
       {employee && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
           <div className="grid gap-8 lg:grid-cols-[0.6fr_1.4fr]">
             {/* Profile Card */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-2xl">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-lg">
               <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-gradient-to-br from-blue-600/20 to-cyan-400/20 blur-3xl"></div>
               <div className="relative">
-                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-tr from-blue-600 to-cyan-400 text-3xl font-black shadow-2xl">
-                  {employee.fullName.split(" ").map((name) => name[0]).slice(0, 2).join("")}
+                <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 text-3xl font-black shadow-lg">
+                  {employee.fullName.split(" ").map((name) => name?.[0] ?? "").filter(Boolean).slice(0, 2).join("")}
                 </div>
-                <h3 className="mt-6 break-words text-3xl font-black">{employee.fullName}</h3>
+                <h3 className="mt-6 break-words text-2xl font-black">{employee.fullName}</h3>
                 <p className="mt-3 flex items-center gap-2 text-base font-semibold text-slate-300">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                   {employee.position || "Employee"}
                 </p>
-                <div className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-500/20 px-4 py-2 backdrop-blur-sm">
-                  <div className="h-2 w-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50"></div>
-                  <span className="text-sm font-black text-emerald-300">{employee.status || "Active"}</span>
+                <div className={`mt-6 inline-flex items-center gap-2 rounded-2xl px-4 py-2 backdrop-blur-sm ${
+                    /^(active)$/i.test(employee.status || "") ? "bg-emerald-500/20" :
+                    /^(inactive|terminated)$/i.test(employee.status || "") ? "bg-red-500/20" :
+                    "bg-slate-500/20"
+                  }`}>
+                  <div className={`h-2 w-2 rounded-full shadow-lg ${
+                    /^(active)$/i.test(employee.status || "") ? "bg-emerald-400 shadow-emerald-400/50" :
+                    /^(inactive|terminated)$/i.test(employee.status || "") ? "bg-red-400 shadow-red-400/50" :
+                    "bg-slate-400 shadow-slate-400/50"
+                  }`}></div>
+                  <span className={`text-sm font-black ${
+                    /^(active)$/i.test(employee.status || "") ? "text-emerald-300" :
+                    /^(inactive|terminated)$/i.test(employee.status || "") ? "text-red-300" :
+                    "text-slate-300"
+                  }`}>{employee.status || "Active"}</span>
                 </div>
               </div>
             </div>
@@ -221,7 +242,7 @@ type InfoCardProps = {
 
 function InfoCard({ label, value, icon, gradient, highlight }: InfoCardProps) {
   return (
-    <div className={`group relative min-w-0 overflow-hidden rounded-3xl border ${highlight ? "md:col-span-2 border-slate-200" : "border-slate-100"} bg-white p-6 shadow-lg transition hover:shadow-xl`}>
+    <div className={`group relative min-w-0 overflow-hidden rounded-2xl border ${highlight ? "md:col-span-2 border-slate-200" : "border-slate-100"} bg-white p-5 shadow-lg transition hover:shadow-xl`}>
       <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-gradient-to-br from-slate-50 to-blue-50 blur-2xl opacity-50 transition group-hover:opacity-100"></div>
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
@@ -230,7 +251,7 @@ function InfoCard({ label, value, icon, gradient, highlight }: InfoCardProps) {
           </div>
         </div>
         <p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
-        <p className={`mt-2 break-words font-black text-slate-950 ${highlight ? "text-3xl" : "text-xl"}`}>{value}</p>
+        <p className={`mt-2 break-words font-black text-slate-950 ${highlight ? "text-2xl" : "text-xl"}`}>{value}</p>
       </div>
     </div>
   );

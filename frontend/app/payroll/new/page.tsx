@@ -423,7 +423,7 @@ export default function NewPayrollPage() {
     { label: "Workers", value: filledRows || rows.length, detail: "Rows in this payroll", tone: "bg-blue-50 text-blue-700" },
     { label: "Attendance-linked", value: syncedRows, detail: "Rows synced from attendance", tone: "bg-cyan-50 text-cyan-700" },
     { label: "Gross salary", value: money(totals.totalSalary), detail: "Days + overtime pay", tone: "bg-emerald-50 text-emerald-700" },
-    { label: "Net release", value: moneyWhole(totals.netSalary), detail: "Total payable after deductions", tone: "bg-violet-50 text-violet-700" },
+    { label: "Net release", value: moneyWhole(totals.netSalary), detail: "Total payable after deductions", tone: "bg-slate-100 text-slate-700" },
   ];
 
   function updateRow(id: string, patch: Partial<WorkerRow>) {

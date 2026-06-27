@@ -77,27 +77,27 @@ export default function ReportsPage() {
 
           <Link
             href="/"
-            className="group inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
+            className="group inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
           >
             Back to dashboard
           </Link>
         </div>
       </section>
 
-      <section className="grid min-w-0 gap-6 md:grid-cols-2">
+      <section className="grid min-w-0 gap-4 md:grid-cols-2">
         {reportCards.map((card) => {
           const IconComponent = card.icon;
           return (
             <Link
               key={card.href}
               href={card.href}
-              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-2xl"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
             >
               {/* Gradient border effect on hover */}
               <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${card.gradient} opacity-0 transition-opacity group-hover:opacity-5`} />
 
               {/* Icon */}
-              <div className={`relative flex h-14 w-14 items-center justify-center rounded-2xl ${card.iconBg} shadow-sm transition-all group-hover:scale-110 group-hover:shadow-md`}>
+              <div className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${card.iconBg} shadow-sm transition-all group-hover:scale-110 group-hover:shadow-md`}>
                 <IconComponent className={`h-7 w-7 ${card.iconColor}`} />
               </div>
 

@@ -71,6 +71,31 @@ router.get('/leave', async (_, res) => {
   res.json({ leave: rows, error });
 });
 
+router.patch('/leave/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body as { status?: string };
+  if (!id || !status) {
+    res.status(400).json({ error: 'Missing id or status' });
+    return;
+  }
+  const allowed = ['approved', 'rejected', 'pending'];
+  if (!allowed.includes(String(status).toLowerCase())) {
+    res.status(400).json({ error: `Status must be one of: ${allowed.join(', ')}` });
+    return;
+  }
+  const { data, error } = await supabase
+    .from('leave_requests')
+    .update({ status: String(status).toLowerCase(), updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+  res.json({ leave: data });
+});
+
 router.get('/leave-types', async (_, res) => {
   const { rows, error } = await fetchTable('leave_types');
   res.json({ leaveTypes: rows, error });

@@ -139,9 +139,9 @@ export default function EmployeesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
@@ -153,7 +153,7 @@ export default function EmployeesPage() {
             </div>
             <Link
               href="/employees/new"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -164,12 +164,12 @@ export default function EmployeesPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Active Employees</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{stats.activeStaff}</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.activeStaff}</p>
               </div>
               <div className="rounded-xl bg-green-100 p-3">
                 <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,11 +179,11 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Departments</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{stats.departments}</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.departments}</p>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 p-3">
                 <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -193,14 +193,14 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Total Records</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{stats.totalRecords}</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.totalRecords}</p>
               </div>
-              <div className="rounded-xl bg-purple-100 p-3">
-                <svg className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 p-3">
+                <svg className="h-6 w-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
