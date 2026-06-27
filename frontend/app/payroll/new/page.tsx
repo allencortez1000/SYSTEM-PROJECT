@@ -50,6 +50,17 @@ type WorkerRow = {
   syncedFromAttendance?: boolean;
 };
 
+/** Convert "First Middle Last" → "Last, First Middle". Already-formatted names (containing a comma) are returned as-is. */
+function formatSurnameFirst(name: string): string {
+  const trimmed = (name || "").trim();
+  if (!trimmed || trimmed.includes(",")) return trimmed;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return trimmed;
+  const last = parts[parts.length - 1];
+  const rest = parts.slice(0, parts.length - 1).join(" ");
+  return `${last}, ${rest}`;
+}
+
 type Employee = {
   id: string;
   fullName: string;
@@ -555,7 +566,8 @@ export default function NewPayrollPage() {
   }
 
   function selectEmployee(rowId: string, employeeName: string) {
-    const employee = employees.find((item) => item.fullName === employeeName);
+    const formatted = formatSurnameFirst(employeeName);
+    const employee = employees.find((item) => item.fullName === formatted) || employees.find((item) => item.fullName === employeeName);
     const employeeSalary = employee?.salary ? Number(employee.salary) : 0;
     const estimatedDailyRate = employee?.salaryBasis?.toLowerCase() === "daily"
       ? employeeSalary || undefined
@@ -565,7 +577,7 @@ export default function NewPayrollPage() {
 
   updateRow(rowId, {
     employeeId: employee?.id,
-    name: employeeName,
+    name: formatted,
     position: employee?.position || "Labor",
     syncedFromAttendance: false,
     ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
@@ -642,7 +654,7 @@ export default function NewPayrollPage() {
             id: crypto.randomUUID(),
             employeeId: worker.employeeId,
             supervisor: "",
-            name: worker.employeeName,
+            name: formatSurnameFirst(worker.employeeName),
             position: worker.position || "Labor",
             dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
             days: worker.attendance.paidDays || 0,
