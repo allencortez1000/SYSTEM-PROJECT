@@ -19,6 +19,7 @@ type Employee = {
 };
 
 type FieldView = "both" | "department" | "projectSite";
+type SortMode = "name-asc" | "name-desc" | "department" | "projectSite" | "status";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[] | null>(null);
@@ -27,6 +28,8 @@ export default function EmployeesPage() {
   const [fieldView, setFieldView] = useState<FieldView>("both");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("All");
   const [selectedProjectSite, setSelectedProjectSite] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortMode, setSortMode] = useState<SortMode>("name-asc");
   const { notify } = useNotification();
 
   const employeeList = employees ?? [];
@@ -50,12 +53,46 @@ export default function EmployeesPage() {
   }, [employeeList]);
 
   const filteredEmployees = useMemo(() => {
-    return employeeList.filter((employee) => {
+    const query = searchQuery.trim().toLowerCase();
+
+    const filtered = employeeList.filter((employee) => {
       const departmentMatch = selectedDepartment === "All" || employee.department === selectedDepartment;
       const projectSiteMatch = selectedProjectSite === "All" || employee.projectSite === selectedProjectSite;
-      return departmentMatch && projectSiteMatch;
+      const searchMatch =
+        !query ||
+        employee.fullName.toLowerCase().includes(query) ||
+        employee.employeeId.toLowerCase().includes(query) ||
+        employee.department.toLowerCase().includes(query) ||
+        String(employee.projectSite || "").toLowerCase().includes(query) ||
+        employee.position.toLowerCase().includes(query) ||
+        String(employee.email || "").toLowerCase().includes(query);
+
+      return departmentMatch && projectSiteMatch && searchMatch;
     });
-  }, [employeeList, selectedDepartment, selectedProjectSite]);
+
+    const getSurname = (name: string) => {
+      const trimmed = name.trim();
+      if (trimmed.includes(",")) return trimmed.split(",")[0].trim().toLowerCase();
+      const parts = trimmed.split(/\s+/).filter(Boolean);
+      return (parts.length ? parts[parts.length - 1] : trimmed).toLowerCase();
+    };
+
+    return filtered.sort((a, b) => {
+      switch (sortMode) {
+        case "name-desc":
+          return getSurname(b.fullName).localeCompare(getSurname(a.fullName)) || b.fullName.localeCompare(a.fullName);
+        case "department":
+          return a.department.localeCompare(b.department) || a.fullName.localeCompare(b.fullName);
+        case "projectSite":
+          return String(a.projectSite || "").localeCompare(String(b.projectSite || "")) || a.fullName.localeCompare(b.fullName);
+        case "status":
+          return String(a.status || "").localeCompare(String(b.status || "")) || a.fullName.localeCompare(b.fullName);
+        case "name-asc":
+        default:
+          return getSurname(a.fullName).localeCompare(getSurname(b.fullName)) || a.fullName.localeCompare(b.fullName);
+      }
+    });
+  }, [employeeList, searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
 
   const stats = useMemo(() => {
     const activeStaff = filteredEmployees.filter((employee) => String(employee.status || "").toLowerCase() === "active").length;
@@ -171,21 +208,34 @@ export default function EmployeesPage() {
 
         {/* Filters Section */}
         <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr_1fr_1fr_auto] xl:items-end">
+            <div>
+              <label htmlFor="employee-search" className="text-sm font-semibold text-slate-700">
+                Search
+              </label>
+              <div className="relative mt-2">
+                <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
                 </svg>
-                <label htmlFor="department-filter" className="text-sm font-semibold text-slate-700">
-                  Department
-                </label>
+                <input
+                  id="employee-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search name, ID, email, position..."
+                  className="w-full rounded-lg border-2 border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="department-filter" className="text-sm font-semibold text-slate-700">
+                Department
+              </label>
               <select
                 id="department-filter"
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               >
                 {departmentOptions.map((dept) => (
                   <option key={dept} value={dept}>
@@ -195,21 +245,15 @@ export default function EmployeesPage() {
               </select>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <label htmlFor="projectsite-filter" className="text-sm font-semibold text-slate-700">
-                  Project Site
-                </label>
-              </div>
+            <div>
+              <label htmlFor="projectsite-filter" className="text-sm font-semibold text-slate-700">
+                Project Site
+              </label>
               <select
                 id="projectsite-filter"
                 value={selectedProjectSite}
                 onChange={(e) => setSelectedProjectSite(e.target.value)}
-                className="rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
               >
                 {projectSiteOptions.map((site) => (
                   <option key={site} value={site}>
@@ -219,43 +263,76 @@ export default function EmployeesPage() {
               </select>
             </div>
 
+            <div>
+              <label htmlFor="sort-mode" className="text-sm font-semibold text-slate-700">
+                Sort by
+              </label>
+              <select
+                id="sort-mode"
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="mt-2 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              >
+                <option value="name-asc">Name A → Z</option>
+                <option value="name-desc">Name Z → A</option>
+                <option value="department">Department</option>
+                <option value="projectSite">Project site</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">View:</span>
-              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
-                <button
-                  type="button"
-                  onClick={() => setFieldView("both")}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                    fieldView === "both"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  Both
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFieldView("department")}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                    fieldView === "department"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  Dept
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFieldView("projectSite")}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                    fieldView === "projectSite"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  Site
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedDepartment("All");
+                  setSelectedProjectSite("All");
+                  setSortMode("name-asc");
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:bg-slate-50"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">View:</span>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() => setFieldView("both")}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                  fieldView === "both"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                Both
+              </button>
+              <button
+                type="button"
+                onClick={() => setFieldView("department")}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                  fieldView === "department"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                Dept
+              </button>
+              <button
+                type="button"
+                onClick={() => setFieldView("projectSite")}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                  fieldView === "projectSite"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                Site
+              </button>
             </div>
           </div>
         </div>
@@ -284,9 +361,33 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* Employee Grid */}
+        {/* Results Summary */}
         {!loading && !error && (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-sm font-semibold text-slate-600">
+              Showing <span className="text-slate-900">{filteredEmployees.length}</span> employee{filteredEmployees.length !== 1 ? "s" : ""}
+              {searchQuery.trim() ? <> for <span className="text-slate-900">“{searchQuery.trim()}”</span></> : null}
+            </p>
+            {(searchQuery || selectedDepartment !== "All" || selectedProjectSite !== "All" || sortMode !== "name-asc") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedDepartment("All");
+                  setSelectedProjectSite("All");
+                  setSortMode("name-asc");
+                }}
+                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-white hover:text-blue-700"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Employee Grid */}
+        {!loading && !error && filteredEmployees.length > 0 && (
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredEmployees.map((employee) => {
               const displayName = employee.fullName || "Unnamed employee";
               const initials = displayName
@@ -414,6 +515,30 @@ export default function EmployeesPage() {
                 Clear Filters
               </button>
             )}
+          </div>
+        )}
+
+        {!loading && !error && filteredEmployees.length === 0 && (
+          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+            <svg className="mx-auto h-14 w-14 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m1.897-4.303a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 className="mt-4 text-lg font-bold text-slate-900">No employees found</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Try changing your filters or search terms.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedDepartment("All");
+                setSelectedProjectSite("All");
+                setSortMode("name-asc");
+              }}
+              className="mt-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:shadow-md"
+            >
+              Clear filters
+            </button>
           </div>
         )}
       </div>
