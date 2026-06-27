@@ -97,15 +97,15 @@ export default function EmployeesPage() {
   }, [employeeList, searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
 
   const stats = useMemo(() => {
-    const activeStaff = filteredEmployees.filter((employee) => String(employee.status || "").toLowerCase() === "active").length;
-    const departments = new Set(filteredEmployees.map((employee) => employee.department).filter(Boolean)).size;
+    const activeStaff = employeeList.filter((employee) => String(employee.status || "").toLowerCase() === "active").length;
+    const departments = new Set(employeeList.map((employee) => employee.department).filter(Boolean)).size;
 
     return {
       activeStaff,
       departments,
       totalRecords: filteredEmployees.length,
     };
-  }, [filteredEmployees]);
+  }, [employeeList, filteredEmployees.length]);
 
   const load = useCallback(async () => {
     try {
@@ -121,7 +121,7 @@ export default function EmployeesPage() {
 
       setEmployees(data.employees || []);
       setError(null);
-      notify("Employees loaded");
+
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -500,29 +500,7 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {!loading && !error && filteredEmployees.length === 0 && (
-          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
-            <svg className="mx-auto h-14 w-14 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m1.897-4.303a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <h3 className="mt-4 text-lg font-bold text-slate-900">No employees found</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Try changing your filters or search terms.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedDepartment("All");
-                setSelectedProjectSite("All");
-                setSortMode("name-asc");
-              }}
-              className="mt-4 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:shadow-md"
-            >
-              Clear filters
-            </button>
-          </div>
-        )}
+
       </div>
     </div>
   );

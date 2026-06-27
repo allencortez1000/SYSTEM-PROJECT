@@ -28,6 +28,7 @@ type SessionUser = {
 function labelFromRole(role?: string) {
   if (role === "super-admin") return "Super Admin";
   if (role === "department-head-admin") return "Department Head Admin";
+  if (role === "sub-admin") return "Sub Admin";
   return "User";
 }
 
@@ -59,7 +60,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   function handleLogout() {
     localStorage.removeItem("hr_token");
     localStorage.removeItem("hr_user");
-    window.location.href = "/";
+    window.location.href = "/login";
   }
 
   return (
@@ -152,7 +153,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
                 <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-white py-1.5 pl-2 pr-4 shadow-sm">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 text-xs font-black text-white">
-                    AD
+                    {(sessionUser?.name || "?").split(" ").map((n: string) => n?.[0] ?? "").filter(Boolean).slice(0, 2).join("").toUpperCase() || "?"}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-xs font-bold text-slate-950">{sessionUser?.name || "User"}</p>

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNotification } from "../../components/notification";
 
@@ -11,17 +11,30 @@ export default function NewEmployeePage() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const departmentOptions = useMemo(
-    () => ["Construction", "Human Resources", "Operations", "Finance", "Administration", "Engineering"],
-    [],
-  );
-  const projectSiteOptions = useMemo(
-    () => ["Amica North", "Amica South", "Construction Yard", "Warehouse", "Office"],
-    [],
-  );
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
+  const [projectSiteOptions, setProjectSiteOptions] = useState<string[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
 
-  const [department, setDepartment] = useState("Human Resources");
-  const [projectSite, setProjectSite] = useState("Amica North");
+  useEffect(() => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+    const token = localStorage.getItem("hr_token");
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    Promise.all([
+      fetch(`${API_BASE}/admin-users/departments`, { headers }).then((r) => r.json()).catch(() => ({})),
+      fetch(`${API_BASE}/attendance/projects`, { headers }).then((r) => r.json()).catch(() => ({})),
+    ]).then(([deptData, projData]) => {
+      if (Array.isArray(deptData?.departments)) {
+        setDepartmentOptions(deptData.departments.map((d: { name: string }) => d.name));
+      }
+      if (Array.isArray(projData?.projects)) {
+        setProjectSiteOptions(projData.projects.map((p: { name: string }) => p.name));
+      }
+    }).finally(() => setOptionsLoading(false));
+  }, []);
+
+  const [department, setDepartment] = useState("");
+  const [projectSite, setProjectSite] = useState("");
   const [position, setPosition] = useState("Employee");
   const [salary, setSalary] = useState(0);
   const [manager, setManager] = useState("");
@@ -173,6 +186,7 @@ export default function NewEmployeePage() {
                 value={department}
                 onChange={setDepartment}
                 options={departmentOptions}
+                disabled={optionsLoading}
                 icon={
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -198,6 +212,7 @@ export default function NewEmployeePage() {
                 value={projectSite}
                 onChange={setProjectSite}
                 options={projectSiteOptions}
+                disabled={optionsLoading}
                 icon={
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -364,9 +379,10 @@ type SelectFieldProps = {
   onChange: (value: string) => void;
   options: string[];
   icon?: React.ReactNode;
+  disabled?: boolean;
 };
 
-function SelectField({ id, label, value, onChange, options, icon }: SelectFieldProps) {
+function SelectField({ id, label, value, onChange, options, icon, disabled }: SelectFieldProps) {
   return (
     <label className="block min-w-0">
       <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
@@ -377,7 +393,8 @@ function SelectField({ id, label, value, onChange, options, icon }: SelectFieldP
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+        disabled={disabled}
+        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {options.map((option) => (
           <option key={option} value={option}>

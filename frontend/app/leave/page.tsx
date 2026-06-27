@@ -33,9 +33,11 @@ export default function LeavePage() {
   const [activeRow, setActiveRow] = useState<LeaveRow | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/data/leave`);
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch(`${API_BASE}/data/leave`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
       if (!res.ok) throw new Error("Failed to load leave requests");
       const data = await res.json();
       setRows(data.leave || []);
@@ -66,6 +68,7 @@ export default function LeavePage() {
   const summary = useMemo(() => {
     const pending = rows.filter((r) => pick(r, ["status"]).toLowerCase() === "pending").length;
     const approved = rows.filter((r) => pick(r, ["status"]).toLowerCase() === "approved").length;
+    const rejected = rows.filter((r) => pick(r, ["status"]).toLowerCase() === "rejected").length;
     return [
       {
         label: "Total requests",
@@ -102,6 +105,18 @@ export default function LeavePage() {
         ),
         gradient: "from-emerald-500 to-teal-500",
         bgGradient: "from-emerald-50 to-teal-50",
+      },
+      {
+        label: "Rejected",
+        value: String(rejected),
+        detail: "Declined requests",
+        icon: (
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        ),
+        gradient: "from-red-500 to-rose-500",
+        bgGradient: "from-red-50 to-rose-50",
       },
     ];
   }, [rows]);
@@ -253,6 +268,8 @@ export default function LeavePage() {
                             </svg>
                             View details
                           </button>
+                          {String(pick(row, ["status"]) || "").toLowerCase() === "pending" && (
+                            <>
                           <button
                             type="button"
                             onClick={async (event) => {
@@ -270,7 +287,7 @@ export default function LeavePage() {
                                 if (!res.ok) throw new Error(await res.text());
                                 await load();
                               } catch (err) {
-                                alert(`Approve failed: ${(err as Error).message}`);
+                                setError(`Approve failed: ${(err as Error).message}`);
                               }
                             }}
                             className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
@@ -294,13 +311,15 @@ export default function LeavePage() {
                                 if (!res.ok) throw new Error(await res.text());
                                 await load();
                               } catch (err) {
-                                alert(`Reject failed: ${(err as Error).message}`);
+                                setError(`Reject failed: ${(err as Error).message}`);
                               }
                             }}
                             className="inline-flex items-center rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
                           >
                             Reject
                           </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

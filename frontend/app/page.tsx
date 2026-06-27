@@ -34,12 +34,14 @@ const deptColors = [
   "from-cyan-400 to-blue-600",
 ];
 
+const pesoFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  maximumFractionDigits: 0,
+});
+
 function pesos(value: number) {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
+  return pesoFormatter.format(value || 0);
 }
 
 export default function Home() {
@@ -49,7 +51,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (employees.length === 0) setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("hr_token");
@@ -114,7 +116,9 @@ export default function Home() {
     const activeEmployees = employees.filter(
       (e) => (e.status || "Active").toLowerCase() === "active",
     ).length;
-    const payrollCost = employees.reduce((sum, e) => sum + (Number(e.salary) || 0), 0);
+    const payrollCost = employees
+      .filter((e) => String(e.status || "").toLowerCase() === "active" || String(e.status || "") === "")
+      .reduce((sum, e) => sum + (Number(e.salary) || 0), 0);
     const today = new Date().toISOString().slice(0, 10);
     const presentToday = attendance.filter(
       (r) => r.date === today && r.status === "Present",
@@ -126,14 +130,13 @@ export default function Home() {
       const dept = e.department || "Unassigned";
       deptMap.set(dept, (deptMap.get(dept) || 0) + 1);
     });
-    const maxDept = Math.max(1, ...Array.from(deptMap.values()));
     const departments = Array.from(deptMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([name, count], index) => ({
         name,
         count,
-        value: Math.round((count / maxDept) * 100),
+        value: Math.round((count / Math.max(1, totalEmployees)) * 100),
         color: deptColors[index % deptColors.length],
       }));
 
@@ -341,7 +344,7 @@ export default function Home() {
                       </div>
                       <div>
                         <p className="font-semibold text-slate-900">{department.name}</p>
-                        <p className="text-sm text-slate-500">{department.count} employees</p>
+                        <p className="text-sm text-slate-500">{department.value}% of staff</p>
                       </div>
                     </div>
                     <span className="text-sm font-bold text-slate-400">{department.value}%</span>
@@ -373,10 +376,14 @@ export default function Home() {
             </div>
 
             <div className="mt-6 space-y-3">
-              {employees.slice(0, 5).map((employee) => {
+              {[...employees]
+                .sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())
+                .slice(0, 5)
+                .map((employee) => {
                 const initials = employee.fullName
                   .split(" ")
-                  .map((n) => n[0])
+                  .map((n: string) => n?.[0] ?? "")
+                  .filter(Boolean)
                   .slice(0, 2)
                   .join("");
                 const isActive = (employee.status || "Active").toLowerCase() === "active";

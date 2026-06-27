@@ -182,7 +182,15 @@ router.get('/reports/headcount-movement', async (_, res) => {
   const currentMonth = currentMonthKey();
   const totalEmployees = employees.length;
   const newHires = employees.filter((employee) => monthKey(employee.hire_date || employee.created_at) === currentMonth).length;
-  const exits = employees.filter((employee) => monthKey(employee.termination_date) === currentMonth || String(employee.status || '').toLowerCase() === 'terminated').length;
+  // NOTE: termination_date is preferred; falls back to updated_at so only recently-terminated
+  // employees are counted as exits this month rather than all historically terminated employees.
+  const terminatedThisMonth = (employee: Row) => {
+    if (String(employee.status || '').toLowerCase() !== 'terminated') return false;
+    const dateStr = (employee.termination_date || employee.updated_at) as string | undefined;
+    if (!dateStr) return false;
+    return monthKey(dateStr) === currentMonth;
+  };
+  const exits = employees.filter(terminatedThisMonth).length;
   const activeEmployees = employees.filter((employee) => String(employee.status || 'Active').toLowerCase() === 'active').length;
 
   const departments = Array.from(
@@ -190,7 +198,7 @@ router.get('/reports/headcount-movement', async (_, res) => {
       const name = departmentNameFromMap(employee.department_id, departmentsResult.departmentMap);
       const current = map.get(name) || { department: name, start: 0, hired: 0, exited: 0, ending: 0 };
       const hiredThisMonth = monthKey(employee.hire_date || employee.created_at) === currentMonth;
-      const exitedThisMonth = monthKey(employee.termination_date) === currentMonth || String(employee.status || '').toLowerCase() === 'terminated';
+      const exitedThisMonth = terminatedThisMonth(employee);
       if (hiredThisMonth) current.hired += 1;
       if (exitedThisMonth) current.exited += 1;
       if (!exitedThisMonth) current.ending += 1;

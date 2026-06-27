@@ -25,9 +25,11 @@ export default function CompliancePage() {
   const [activeRow, setActiveRow] = useState<Row | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/data/compliance`);
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch(`${API_BASE}/data/compliance`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
       if (!res.ok) throw new Error("Failed to load compliance requirements");
       const data = await res.json();
       setRows(data.compliance || []);
@@ -59,7 +61,8 @@ export default function CompliancePage() {
   const overdueCount = rows.filter((r) => {
     const status = String(r.status ?? "").toLowerCase();
     const dueDate = String(r.due_date ?? "");
-    return status === "overdue" || (dueDate !== "" && dueDate < today);
+    const isCompleted = ["completed", "compliant"].includes(status);
+    return !isCompleted && (status === "overdue" || (dueDate !== "" && dueDate < today));
   }).length;
   const pendingCount = rows.filter((r) => {
     const status = String(r.status ?? "").toLowerCase();
@@ -229,7 +232,8 @@ export default function CompliancePage() {
                         const statusVal = pick(row, ["status"]);
                         const s = statusVal.toLowerCase();
                         const rowDue = String(row.due_date ?? "");
-                        const isOverdue = s === "overdue" || (rowDue !== "" && rowDue < today);
+                        const isCompleted = ["completed", "compliant"].includes(s);
+                        const isOverdue = !isCompleted && (s === "overdue" || (rowDue !== "" && rowDue < today));
                         const isPending = s === "pending" || s === "upcoming";
                         const badgeClass = isOverdue
                           ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"

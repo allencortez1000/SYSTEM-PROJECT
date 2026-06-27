@@ -37,14 +37,18 @@ export default function RecruitmentPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem("hr_token");
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
       const [candRes, openRes] = await Promise.all([
-        fetch(`${API_BASE}/data/candidates`),
-        fetch(`${API_BASE}/data/job-openings`),
+        fetch(`${API_BASE}/data/candidates`, { headers }),
+        fetch(`${API_BASE}/data/job-openings`, { headers }),
       ]);
       if (!candRes.ok) throw new Error("Failed to load candidates");
       const candData = await candRes.json();
       setCandidates(candData.candidates || []);
-      if (openRes.ok) {
+      if (!openRes.ok) {
+        setError("Failed to load job openings");
+      } else {
         const openData = await openRes.json();
         setOpenings(openData.jobOpenings || []);
       }
@@ -147,7 +151,7 @@ export default function RecruitmentPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="font-semibold text-blue-700">Loading candidates...</p>
+            <p className="font-semibold text-blue-700">Loading recruitment data...</p>
           </div>
         )}
 
@@ -294,7 +298,7 @@ export default function RecruitmentPage() {
                         ? "bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600"
                         : "bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-800";
                     return (
-                      <tr key={String(opening.id ?? index)} className="transition-colors hover:bg-gradient-to-r hover:from-slate-50 hover:to-white">
+                      <tr key={String(opening.id ?? index)} className="cursor-pointer transition-colors hover:bg-gradient-to-r hover:from-slate-50 hover:to-white" onClick={() => setActiveRow(opening)}>
                         <td className="px-5 py-4 font-black text-slate-950">
                           {pick(opening, ["title", "position", "name"])}
                         </td>

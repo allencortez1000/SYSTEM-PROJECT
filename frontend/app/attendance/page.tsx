@@ -557,7 +557,7 @@ export default function AttendancePage() {
             : savedOvertime.overtimeMode === "manual"
               ? savedOvertime.overtimeHours
               : String(computeAutoOvertime(existingRecord?.checkIn || defaultDraftEntry.checkIn, existingRecord?.checkOut || defaultDraftEntry.checkOut)),
-        overtimeMode: existingRecord?.overtimeHours !== undefined && existingRecord?.overtimeHours !== null ? "manual" : "manual",
+        overtimeMode: existingRecord?.overtimeHours !== undefined && existingRecord?.overtimeHours !== null ? "manual" : "auto",
       }
     );
   }
@@ -678,7 +678,7 @@ export default function AttendancePage() {
         }),
       );
 
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('hr_token');
       const promises = payloads.map((payload) =>
         fetch("/api/attendance", {
           method: "POST",
@@ -766,7 +766,7 @@ export default function AttendancePage() {
       }
 
       const refreshed = await fetch("/api/attendance", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem('auth_token')}` },
+        headers: { "Authorization": `Bearer ${localStorage.getItem('hr_token')}` },
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
@@ -819,7 +819,7 @@ export default function AttendancePage() {
       });
 
       const refreshed = await fetch("/api/attendance", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem('auth_token')}` },
+        headers: { "Authorization": `Bearer ${localStorage.getItem('hr_token')}` },
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {

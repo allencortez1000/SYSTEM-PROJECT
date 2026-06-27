@@ -119,13 +119,7 @@ router.get('/departments', async (req: any, res) => {
 
     const assignedIds = (links || []).map((l: any) => String(l.department_id));
     if (assignedIds.length === 0) {
-      // No assignments — fall back to all departments so dropdowns are never empty
-      const { data, error } = await supabase
-        .from('departments')
-        .select('id, name')
-        .order('name', { ascending: true });
-      if (error) throw error;
-      return res.json({ departments: data || [] });
+      return res.json({ departments: [] });
     }
 
     const { data, error } = await supabase
@@ -433,7 +427,7 @@ router.patch('/:id/departments', requireSuperAdmin, async (req, res) => {
 router.patch('/:id/active', requireSuperAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
-    const isActive = Boolean(req.body?.isActive);
+    const isActive = req.body?.isActive === true || req.body?.isActive === "true";
 
     const { error } = await supabase
       .from('app_users')

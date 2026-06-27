@@ -207,7 +207,7 @@ function computeRow(row: WorkerRow, frequency: PayFrequency) {
   const philHealth = row.hasPhilHealth ? (row.philHealthManual ?? 0) : 0;
   const sssLoan = row.hasSssLoan ? row.sssLoan : 0;
   const tax = row.hasTax ? row.tax : 0;
-  const additionalDeduction = row.additionalDeduction;
+  const additionalDeduction = row.hasAdditionalDeduction ? (Number(row.additionalDeduction) || 0) : 0;
   const totalDeduction = row.cashAdvance + tax + sssLoan + additionalDeduction + philHealth + pagIbig + sss;
   const netSalary = Math.max(0, totalSalary - totalDeduction);
 
@@ -444,6 +444,7 @@ export default function NewPayrollPage() {
   async function saveRowToSupabase(row: WorkerRow) {
     if (!row.employeeId) return;
 
+    const computed = computeRow(row, payFrequency);
     const res = await fetch(`${API_BASE}/payroll/attendance-overrides`, {
       method: "POST",
       headers: {
@@ -457,17 +458,17 @@ export default function NewPayrollPage() {
         endDate: periodEnd,
         paidDaysOverride: row.days,
         overtimeHoursOverride: row.otHours,
-        salaryAmount: row.payrollSnapshot?.salaryAmount ?? null,
-        otPay: row.payrollSnapshot?.otPay ?? null,
-        philhealthAmount: row.payrollSnapshot?.philHealthAmount ?? null,
-        sssAmount: row.payrollSnapshot?.sssAmount ?? null,
-        pagibigAmount: row.payrollSnapshot?.pagIbigAmount ?? null,
-        totalSalary: row.payrollSnapshot?.totalSalary ?? null,
-        totalDeduction: row.payrollSnapshot?.totalDeduction ?? null,
-        netSalary: row.payrollSnapshot?.netSalary ?? null,
-        cashAdvance: row.payrollSnapshot?.cashAdvance ?? null,
-        taxAmount: row.payrollSnapshot?.taxAmount ?? null,
-        additionalDeduction: row.payrollSnapshot?.additionalDeduction ?? row.additionalDeduction,
+        salaryAmount: row.payrollSnapshot?.salaryAmount ?? computed.amount,
+        otPay: row.payrollSnapshot?.otPay ?? computed.otPay,
+        philhealthAmount: row.payrollSnapshot?.philHealthAmount ?? computed.philHealth,
+        sssAmount: row.payrollSnapshot?.sssAmount ?? computed.sss,
+        pagibigAmount: row.payrollSnapshot?.pagIbigAmount ?? computed.pagIbig,
+        totalSalary: row.payrollSnapshot?.totalSalary ?? computed.totalSalary,
+        totalDeduction: row.payrollSnapshot?.totalDeduction ?? computed.totalDeduction,
+        netSalary: row.payrollSnapshot?.netSalary ?? computed.netSalary,
+        cashAdvance: row.payrollSnapshot?.cashAdvance ?? row.cashAdvance,
+        taxAmount: row.payrollSnapshot?.taxAmount ?? computed.tax,
+        additionalDeduction: row.payrollSnapshot?.additionalDeduction ?? computed.additionalDeduction,
         remarks: row.remarks || null,
       }),
     });

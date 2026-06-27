@@ -29,7 +29,8 @@ function formatCurrency(value?: number) {
 
 export default function EmployeeDetail() {
   const params = useParams();
-  const id = params?.id ?? "0";
+  const rawId = params?.id;
+  const id = Array.isArray(rawId) ? rawId[0] : (rawId ?? "");
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,12 +94,16 @@ export default function EmployeeDetail() {
               </svg>
               Back to employees
             </Link>
-            <Link href={`/employees/${id}/edit`} className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
+            <button
+              disabled
+              title="Edit functionality coming soon"
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white/50 backdrop-blur-sm"
+            >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               Edit Employee
-            </Link>
+            </button>
           </div>
         </div>
       </section>
