@@ -45,48 +45,12 @@ if (hasSupabaseConfig) {
   app.use('/api/admin-users', adminUsersRouter);
   app.use('/api/debug', debugRouter);
 } else {
-  console.warn('SUPABASE_URL / SUPABASE_SECRET_KEY not found. Starting backend in local mock mode.');
+  console.warn('SUPABASE_URL / SUPABASE_SECRET_KEY not found. Starting backend in local readonly mode with no seeded mock data. Configure Supabase credentials for full functionality.');
 
-  const users = [
-    {
-      id: 'user-admin',
-      username: 'admin',
-      email: 'admin@hrpayroll.local',
-      passwordHash: bcrypt.hashSync('admin', 10),
-      role: 'super-admin',
-      fullName: 'System Administrator',
-      isActive: true,
-      permissions: [],
-    },
-  ];
-
-  const employees = [
-    {
-      id: 'emp-1',
-      employeeId: 'EMP-0001',
-      fullName: 'Juan Dela Cruz',
-      email: 'juan@company.com',
-      department: 'Operations',
-      position: 'Field Engineer',
-      status: 'Active',
-      salary: 25000,
-    },
-    {
-      id: 'emp-2',
-      employeeId: 'EMP-0002',
-      fullName: 'Maria Santos',
-      email: 'maria@company.com',
-      department: 'HR',
-      position: 'HR Officer',
-      status: 'Active',
-      salary: 28000,
-    },
-  ];
-
-  const attendance = [
-    { id: 'att-1', employeeName: 'Juan Dela Cruz', date: new Date().toISOString().slice(0, 10), status: 'Present' },
-    { id: 'att-2', employeeName: 'Maria Santos', date: new Date().toISOString().slice(0, 10), status: 'Leave' },
-  ];
+  // No seeded mock users, employees, or attendance entries are created anymore.
+  const users: any[] = [];
+  const employees: any[] = [];
+  const attendance: any[] = [];
 
   const createToken = (user: any) =>
     jwt.sign(
@@ -112,11 +76,15 @@ if (hasSupabaseConfig) {
     }
   };
 
+  // Login remains available but will only authenticate against configured users (none by default).
   app.post('/api/auth/login', (req, res) => {
     const loginName = String(req.body?.username || req.body?.email || '').trim();
     const password = String(req.body?.password || '');
     const user = users.find((item) => item.username === loginName || item.email === loginName);
-    if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    if (!bcrypt.compareSync(password, user.passwordHash)) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     res.json({
@@ -213,19 +181,17 @@ if (hasSupabaseConfig) {
     ]});
   });
 
-  // attendance projects & assignments
-  const mockProjects = [
-    { id: 'proj-1', name: 'Daan Pari' },
-    { id: 'proj-2', name: 'Bagac' },
-    { id: 'proj-3', name: 'Orion' },
-  ];
+  // attendance projects & assignments — no seeded mock projects when Supabase is not configured
+  const mockProjects: any[] = [];
   const mockAssignments: Record<string, string> = {};
 
   app.get('/api/attendance/projects', requireAuth, (_req, res) => {
+    // return an empty list when running without Supabase
     res.json({ projects: mockProjects });
   });
 
   app.post('/api/attendance/projects', requireAuth, (req: any, res) => {
+    // allow creating projects in-memory, but do not seed any defaults
     const name = String(req.body?.name || '').trim();
     if (!name) return res.status(400).json({ message: 'name is required' });
     const existing = mockProjects.find((p) => p.name.toLowerCase() === name.toLowerCase());

@@ -6,30 +6,8 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-const employees = [
-  {
-    id: 1,
-    employeeId: 'HR-1001',
-    fullName: 'Amelia Hart',
-    email: 'amelia.hart@example.com',
-    department: 'Human Resources',
-    position: 'Lead HR Administrator',
-    status: 'Active',
-    manager: 'Jordan Cole',
-    salary: 98000,
-  },
-  {
-    id: 2,
-    employeeId: 'PAY-1023',
-    fullName: 'Noah Bennett',
-    email: 'noah.bennett@example.com',
-    department: 'Payroll',
-    position: 'Payroll Manager',
-    status: 'Active',
-    manager: 'Amelia Hart',
-    salary: 92000,
-  },
-];
+// No seeded mock employees in the lightweight JS server
+const employees = [];
 
 app.get('/', (_, res) => res.json({ message: 'HR & Payroll Management System API (JS server)' }));
 
