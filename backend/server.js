@@ -38,7 +38,7 @@ app.get('/api/employees', (_, res) => res.json({ employees }));
 app.get('/api/employees/:id', (req, res) => {
   const id = Number(req.params.id);
   const employee = employees.find((e) => e.id === id);
-  if (!employee) return res.status(404).json({ message: 'Employee not found' });
+  if (!employee) return res.status(404).json({ message: 'Worker / Employee not found' });
   res.json({ employee });
 });
 

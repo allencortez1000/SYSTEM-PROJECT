@@ -54,7 +54,7 @@ Enterprise-grade HR and payroll management platform for small, medium, and large
 ## Features
 
 - Executive HR dashboard
-- Employee management
+- Worker / Employee management
 - Attendance and leave overview
 - Payroll calculation engine
 - Role-based authentication
@@ -64,8 +64,8 @@ Enterprise-grade HR and payroll management platform for small, medium, and large
 
 - `GET /api/` - Status check
 - `POST /api/auth/login` - Authenticate user
-- `GET /api/employees` - Retrieve sample employee list
-- `GET /api/employees/:id` - Get employee record
+- `GET /api/employees` - Retrieve sample worker / employee list
+- `GET /api/employees/:id` - Get worker / employee record
 - `POST /api/payroll/calculate` - Compute payroll components
 
 ## Tech Stack

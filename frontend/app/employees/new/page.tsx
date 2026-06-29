@@ -76,7 +76,7 @@ export default function NewEmployeePage() {
         throw new Error(data?.message || "Failed to create employee");
       }
 
-      notify("Employee created");
+      notify("Worker / Employee created");
       router.push("/employees");
     } catch (err) {
       setError((err as Error).message);
@@ -98,11 +98,11 @@ export default function NewEmployeePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
               </div>
-              <p className="text-sm font-bold uppercase tracking-wider text-white/90">New employee</p>
+              <p className="text-sm font-bold uppercase tracking-wider text-white/90">New worker / employee</p>
             </div>
             <h2 className="mt-4 break-words text-2xl font-black tracking-tight sm:text-5xl">
-              Add employee record
-            </h2>
+                              Add worker or employee
+                            </h2>
             <p className="mt-3 max-w-2xl text-lg text-white/90">
               Create a new employee profile with Philippine Peso compensation details.
             </p>

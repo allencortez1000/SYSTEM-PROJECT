@@ -23,7 +23,7 @@ async function main() {
   );
 
   if (rowsToUpdate.length === 0) {
-    console.log('No employee deduction values need normalization.');
+    console.log('No worker / employee deduction values need normalization.');
     return;
   }
 
@@ -44,17 +44,14 @@ async function main() {
       throw updateError;
     }
 
-    console.log(
-      `Updated ${employee.employee_no || employee.id} (${employee.full_name || 'Unknown'}) -> ` +
-        `SSS=${payload.sss_amount}, Pag-IBIG=${payload.pagibig_amount}, PhilHealth=${payload.philhealth_amount}`,
-    );
+    console.log(`Updated ${employee.employee_no || employee.id} (${employee.full_name || 'Unknown'}) -> SSS=${payload.sss_amount}, Pag-IBIG=${payload.pagibig_amount}, PhilHealth=${payload.philhealth_amount}`);
   }
 
-  console.log(`Done. Normalized ${rowsToUpdate.length} employee record(s).`);
+  console.log(`Done. Normalized ${rowsToUpdate.length} worker / employee record(s).`);
 }
 
 main().catch((error) => {
-  console.error('Failed to normalize employee deductions:');
+  console.error('Failed to normalize worker / employee deductions:');
   console.error(error);
   process.exit(1);
 });
