@@ -249,7 +249,7 @@ router.post('/department-head', requireSuperAdmin, async (req, res) => {
         full_name: cleanedFullName,
         email: cleanedEmail,
         username: cleanedUsername,
-        password_hash: passwordHash,
+        password: passwordHash,
         role: 'department-head-admin',
         is_active: true,
       })
@@ -338,7 +338,7 @@ router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
         full_name: cleanedFullName,
         email: cleanedEmail,
         username: cleanedUsername,
-        password_hash: passwordHash,
+        password: passwordHash,
         role: 'sub-admin',
         is_active: true,
         permissions: cleanedPermissions,

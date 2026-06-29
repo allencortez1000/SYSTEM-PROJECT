@@ -68,9 +68,9 @@ begin
   -- 2. Ensure default super admin exists and capture its password hash
   --    The backend also self-heals this account on login.
   ------------------------------------------------------------------
-  select id, password_hash
-    into v_admin, v_admin_hash
-  from app_users
+  select id, password
+      into v_admin, v_admin_hash
+    from app_users
   where username = 'admin'
   limit 1;
 
@@ -80,7 +80,7 @@ begin
       full_name,
       email,
       username,
-      password_hash,
+      password,
       role,
       is_active
     )
@@ -93,7 +93,7 @@ begin
       'super-admin',
       true
     )
-    returning id, password_hash into v_admin, v_admin_hash;
+    returning id, password into v_admin, v_admin_hash;
   end if;
 
   ------------------------------------------------------------------

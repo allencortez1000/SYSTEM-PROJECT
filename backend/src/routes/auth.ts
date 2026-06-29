@@ -10,7 +10,7 @@ type AppUser = {
   id: string;
   username: string;
   email: string;
-  password_hash: string;
+  password?: string; // hashed password stored in DB column `password`
   role: string;
   full_name: string;
   is_active: boolean;
@@ -71,7 +71,7 @@ async function ensureAdminUser() {
 
   const { data: existingUsers, error: existingError } = await supabase
     .from('app_users')
-    .select('id, username, email, password_hash, role, full_name, is_active')
+    .select('id, username, email, password, role, full_name, is_active')
     .eq('username', 'admin')
     .limit(1);
 
@@ -85,17 +85,17 @@ async function ensureAdminUser() {
     const { data: updatedAdmin, error: updateError } = await supabase
       .from('app_users')
       .update({
-        organization_id: organizationId,
-        email: 'admin@hrpayroll.local',
-        username: 'admin',
-        password_hash: passwordHash,
-        role: 'super-admin',
-        full_name: 'System Administrator',
-        is_active: true,
-      })
-      .eq('id', existingAdmin.id)
-      .select('id, username, email, password_hash, role, full_name, is_active')
-      .single();
+              organization_id: organizationId,
+              email: 'admin@hrpayroll.local',
+              username: 'admin',
+              password: passwordHash,
+              role: 'super-admin',
+              full_name: 'System Administrator',
+              is_active: true,
+            })
+            .eq('id', existingAdmin.id)
+            .select('id, username, email, password, role, full_name, is_active')
+            .single();
 
     if (updateError) {
       throw updateError;
@@ -107,16 +107,16 @@ async function ensureAdminUser() {
   const { data: createdAdmin, error: createError } = await supabase
     .from('app_users')
     .insert({
-      organization_id: organizationId,
-      full_name: 'System Administrator',
-      email: 'admin@hrpayroll.local',
-      username: 'admin',
-      password_hash: passwordHash,
-      role: 'super-admin',
-      is_active: true,
-    })
-    .select('id, username, email, password_hash, role, full_name, is_active')
-    .single();
+          organization_id: organizationId,
+          full_name: 'System Administrator',
+          email: 'admin@hrpayroll.local',
+          username: 'admin',
+          password: passwordHash,
+          role: 'super-admin',
+          is_active: true,
+        })
+        .select('id, username, email, password, role, full_name, is_active')
+        .single();
 
   if (createError) {
     throw createError;
@@ -158,7 +158,7 @@ router.post('/login', async (req, res) => {
 
     const { data: users, error } = await supabase
       .from('app_users')
-      .select('id, username, email, password_hash, role, full_name, is_active')
+      .select('id, username, email, password, role, full_name, is_active')
       .eq('username', loginName)
       .limit(1);
 
@@ -172,7 +172,21 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const isValid = bcrypt.compareSync(loginPassword, user.password_hash || '');
+    const isValid = bcrypt.compareSync(loginPassword, user.password || '');
+
+    // Also support legacy password_hash column if present
+    if (!isValid && user.password_hash) {
+      const legacyValid = bcrypt.compareSync(loginPassword, user.password_hash || '');
+      if (legacyValid) {
+        // migrate: write to new `password` column
+        try {
+          await supabase.from('app_users').update({ password: user.password_hash }).eq('id', user.id);
+        } catch (err) {
+          console.warn('Failed to migrate legacy password for user', user.id, err);
+        }
+        return loginSuccess(user);
+      }
+    }
 
     if (!isValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
