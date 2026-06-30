@@ -24,7 +24,7 @@ body {
   background:
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 32rem),
     radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.14), transparent 28rem),
-    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.12), transparent 30rem),
+    radial-gradient(circle at bottom right, rgba(8, 145, 178, 0.12), transparent 30rem),
     linear-gradient(180deg, #f8fbff 0%, #eef2ff 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -64,7 +64,8 @@ select {
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    background-color 0.2s ease;
 }
 
 input:focus,
@@ -73,6 +74,12 @@ select:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
 }
 
 /* Shared layout helpers */
@@ -160,14 +167,14 @@ select:focus {
 }
 
 .primary-button {
-  background: #020617;
+  background: linear-gradient(135deg, #1d4ed8 0%, #0891b2 100%);
   color: #ffffff;
   box-shadow: 0 10px 15px rgba(15, 23, 42, 0.2);
 }
 
 .primary-button:hover {
   transform: translateY(-0.125rem);
-  background: #1d4ed8;
+  filter: brightness(1.05);
 }
 
 .primary-button:disabled {
@@ -185,6 +192,7 @@ select:focus {
   transform: translateY(-0.125rem);
   border-color: #bfdbfe;
   color: #1d4ed8;
+  background: #f8fbff;
 }
 
 .soft-table {
@@ -201,7 +209,7 @@ select:focus {
   line-height: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: #64748b;
+  color: #475569;
 }
 
 .soft-table th {
@@ -229,6 +237,7 @@ select:focus {
   .metric-card {
     border-radius: 1.1rem;
     padding: 0.875rem;
+    backdrop-filter: blur(18px);
   }
 
   .soft-table {

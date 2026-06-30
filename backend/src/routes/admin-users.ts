@@ -240,7 +240,7 @@ router.post('/department-head', requireSuperAdmin, async (req, res) => {
     }
 
     const organizationId = await getDefaultOrganizationId();
-    const passwordHash = bcrypt.hashSync(cleanedPassword, 10);
+    const passwordHash = cleanedPassword;
 
     const { data: createdUser, error: createUserError } = await supabase
       .from('app_users')
@@ -329,7 +329,7 @@ router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
     }
 
     const organizationId = await getDefaultOrganizationId();
-    const passwordHash = bcrypt.hashSync(cleanedPassword, 10);
+    const passwordHash = cleanedPassword;
 
     const { data: createdUser, error: createUserError } = await supabase
       .from('app_users')

@@ -11,6 +11,7 @@ type AppUser = {
   username: string;
   email: string;
   password?: string; // hashed password stored in DB column `password`
+  password_hash?: string; // legacy fallback during migration
   role: string;
   full_name: string;
   is_active: boolean;
@@ -67,7 +68,7 @@ async function getDefaultOrganizationId() {
 
 async function ensureAdminUser() {
   const organizationId = await getDefaultOrganizationId();
-  const passwordHash = bcrypt.hashSync('admin', 10);
+  const passwordHash = 'admin';
 
   const { data: existingUsers, error: existingError } = await supabase
     .from('app_users')
@@ -135,26 +136,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    /*
-      Guaranteed default admin login.
-      This also creates/updates the admin record in Supabase.
-    */
-    if (loginName === 'admin' && loginPassword === 'admin') {
-      const adminUser = await ensureAdminUser();
-      const token = createToken(adminUser);
 
-      return res.json({
-        token,
-        user: {
-          id: adminUser.id,
-          username: adminUser.username,
-          email: adminUser.email,
-          role: adminUser.role,
-          name: adminUser.full_name,
-          permissions: adminUser.permissions || [],
-        },
-      });
-    }
 
     const { data: users, error } = await supabase
       .from('app_users')
@@ -166,33 +148,18 @@ router.post('/login', async (req, res) => {
       throw error;
     }
 
-    const user = users && users.length > 0 ? users[0] : null;
+    const user = users && users.length > 0 ? (users[0] as AppUser) : null;
 
     if (!user || !user.is_active) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const isValid = bcrypt.compareSync(loginPassword, user.password || '');
-
-    // Also support legacy password_hash column if present
-    if (!isValid && user.password_hash) {
-      const legacyValid = bcrypt.compareSync(loginPassword, user.password_hash || '');
-      if (legacyValid) {
-        // migrate: write to new `password` column
-        try {
-          await supabase.from('app_users').update({ password: user.password_hash }).eq('id', user.id);
-        } catch (err) {
-          console.warn('Failed to migrate legacy password for user', user.id, err);
-        }
-        return loginSuccess(user);
-      }
-    }
+    const typedUser = user as AppUser;
+    const isValid = String(typedUser.password || '') === loginPassword;
 
     if (!isValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
-    const typedUser = user as AppUser;
 
     // fetch permissions for the user if present in DB
     const { data: permsResult, error: permsError } = await supabase
