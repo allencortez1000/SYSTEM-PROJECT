@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNotification } from "../../components/notification";
+import { triggerAppDataRefresh } from "../../../lib/supabaseRealtime";
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -77,6 +78,7 @@ export default function NewEmployeePage() {
       }
 
       notify("Worker / Employee created");
+      triggerAppDataRefresh(["employees", "attendance_records", "employee_project_deployments"]);
       router.push("/employees");
     } catch (err) {
       setError((err as Error).message);

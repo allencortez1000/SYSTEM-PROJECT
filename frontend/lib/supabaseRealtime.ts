@@ -22,6 +22,16 @@ type RealtimeTable = {
   schema?: string;
 };
 
+const APP_DATA_CHANGED_EVENT = "app-data-changed";
+
+type AppDataChangedDetail = {
+  tables?: string[];
+};
+
+export function triggerAppDataRefresh(tables: string[] = []) {
+  window.dispatchEvent(new CustomEvent<AppDataChangedDetail>(APP_DATA_CHANGED_EVENT, { detail: { tables } }));
+}
+
 export function useSupabaseTableRefresh(tables: RealtimeTable[], onChange: () => void) {
   useEffect(() => {
     if (!supabase) return;
@@ -47,5 +57,23 @@ export function useSupabaseTableRefresh(tables: RealtimeTable[], onChange: () =>
     return () => {
       void supabase.removeChannel(channel);
     };
+  }, [onChange, tables]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<AppDataChangedDetail>;
+      const changedTables = customEvent.detail?.tables || [];
+      if (changedTables.length === 0) {
+        onChange();
+        return;
+      }
+
+      if (tables.some((table) => changedTables.includes(table.table))) {
+        onChange();
+      }
+    };
+
+    window.addEventListener(APP_DATA_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(APP_DATA_CHANGED_EVENT, handler);
   }, [onChange, tables]);
 }

@@ -365,7 +365,7 @@ router.get('/', async (req, res) => {
     const limit = Number(req.query.limit || 25);
     const offset = Number(req.query.offset || 0);
 
-    let employeesQuery = supabase.from('employees').select(EMPLOYEE_SELECT).order('last_name', { ascending: true }).order('first_name', { ascending: true }) as any;
+    let employeesQuery = supabase.from('employees').select(EMPLOYEE_SELECT, { count: 'exact' }).order('last_name', { ascending: true }).order('first_name', { ascending: true }) as any;
 
     if (departmentIds !== null) {
       employeesQuery = employeesQuery.in(
@@ -422,9 +422,11 @@ router.get('/', async (req, res) => {
       );
     }
 
+    const exactCount = search ? filteredRows.length : rows.length;
+
     res.json({
       employees: filteredRows.map((row) => toEmployeeApi(row, lookups, projectSitesMap.get(row.id) || 'Unassigned')),
-      count: search ? filteredRows.length : (employeesResult.count as number) || rows.length,
+      count: exactCount,
     });
   } catch (error) {
     const message = (error as Error).message;

@@ -46,6 +46,7 @@ function pesos(value: number) {
 
 export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeeCount, setEmployeeCount] = useState(0);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export default function Home() {
         : undefined;
 
       const [empRes, attRes] = await Promise.all([
-        fetch(`${API_BASE}/employees`, fetchOptions),
+        fetch(`${API_BASE}/employees?limit=0`, fetchOptions),
         fetch(`${API_BASE}/attendance`, fetchOptions),
       ]);
 
@@ -77,6 +78,7 @@ export default function Home() {
 
       const empData = await empRes.json();
       setEmployees(empData.employees || []);
+      setEmployeeCount(Number(empData.count ?? empData.employees?.length ?? 0));
 
       if (attRes.ok) {
         const attData = await attRes.json();
@@ -112,7 +114,7 @@ export default function Home() {
   });
 
   const stats = useMemo(() => {
-    const totalEmployees = employees.length;
+    const totalEmployees = employeeCount || employees.length;
     const activeEmployees = employees.filter(
       (e) => (e.status || "Active").toLowerCase() === "active",
     ).length;

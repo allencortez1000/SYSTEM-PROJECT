@@ -60,7 +60,7 @@ export default function PayrollIndex() {
 
       const [runsRes, empRes, departmentsRes, projectsRes] = await Promise.all([
         fetch(`${API_BASE}/data/payroll-runs`, fetchOptions),
-        fetch(`${API_BASE}/employees`, fetchOptions),
+        fetch(`${API_BASE}/employees?limit=0`, fetchOptions),
         fetch(`${API_BASE}/admin-users/departments`, fetchOptions),
         fetch(`${API_BASE}/attendance/projects`, fetchOptions),
       ]);
@@ -71,7 +71,7 @@ export default function PayrollIndex() {
       if (empRes.ok) {
         const empData = await empRes.json();
         const employees = empData.employees || [];
-        setEmployeeCount(employees.length);
+        setEmployeeCount(Number(empData.count ?? employees.length));
         setPayrollCost(
           employees
             .filter((e: any) => String(pick(e, ["status", "employeeStatus"]) || "").toLowerCase() !== "inactive" && String(pick(e, ["status"]) || "").toLowerCase() !== "terminated")

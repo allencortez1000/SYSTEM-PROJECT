@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { useNotification } from "../components/notification";
-import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+import { triggerAppDataRefresh, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 type SessionUser = {
   role?: string;
@@ -119,6 +119,7 @@ export default function AdminUsersPage() {
 
   // Employee management state
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeeCount, setEmployeeCount] = useState(0);
   const [projectSites, setProjectSites] = useState<ProjectSite[]>([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [employeePage, setEmployeePage] = useState(1);
@@ -172,7 +173,7 @@ export default function AdminUsersPage() {
       const [usersRes, departmentsRes, employeesRes, projectsRes] = await Promise.all([
         fetch(`${API_BASE}/admin-users`, { headers }),
         fetch(`${API_BASE}/admin-users/departments`, { headers }),
-        fetch(`${API_BASE}/employees`, { headers }),
+        fetch(`${API_BASE}/employees?limit=0`, { headers }),
         fetch(`${API_BASE}/attendance/projects`, { headers }),
       ]);
 
@@ -192,11 +193,13 @@ export default function AdminUsersPage() {
       const nextUsers = usersData.users || [];
       const nextDepartments = departmentsData.departments || [];
       const nextEmployees = employeesData.employees || [];
+      const nextEmployeeCount = Number(employeesData.count ?? nextEmployees.length);
       const nextProjects = projectsData.projects || [];
 
       setUsers(nextUsers);
       setDepartments(nextDepartments);
       setEmployees(nextEmployees);
+      setEmployeeCount(nextEmployeeCount);
       setProjectSites(nextProjects);
       setWorkerDepartment((current) => current || String(nextDepartments[0]?.name || ""));
       setWorkerProjectSite((current) => current || String(nextProjects[0]?.name || ""));
@@ -374,6 +377,7 @@ export default function AdminUsersPage() {
       setWorkerStatus("Active");
 
       await loadData();
+      triggerAppDataRefresh(["employees", "attendance_records", "employee_project_deployments", "departments"]);
       notify(editingEmployeeId ? "Worker updated successfully" : "Worker added successfully");
     } catch (err) {
       const message = (err as Error).message;
@@ -1110,7 +1114,7 @@ export default function AdminUsersPage() {
             searchPlaceholder="Search by name or email..."
             summary={
               <div className="text-sm font-semibold text-slate-600">
-                Showing <span className="text-slate-900">{filteredEmployees.length}</span> employee{filteredEmployees.length !== 1 ? "s" : ""}
+                Showing <span className="text-slate-900">{employeeCount || filteredEmployees.length}</span> employee{(employeeCount || filteredEmployees.length) !== 1 ? "s" : ""}
               </div>
             }
             onClearFilters={() => {
@@ -1122,7 +1126,7 @@ export default function AdminUsersPage() {
 
           {/* Employee List with Pagination */}
           <div className="mt-6 space-y-3">
-            {filteredEmployees.length === 0 && !loading && (
+            {(employeeCount || filteredEmployees.length) === 0 && !loading && (
               <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
                 <svg className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1191,8 +1195,7 @@ export default function AdminUsersPage() {
             <div className="mt-6 flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-slate-600">
                 Showing {paginatedEmployees.length > 0 ? (employeePage - 1) * employeesPerPage + 1 : 0} to{" "}
-                {Math.min(employeePage * employeesPerPage, filteredEmployees.length)} of{" "}
-                {filteredEmployees.length}
+                {Math.min(employeePage * employeesPerPage, employeeCount || filteredEmployees.length)} of {employeeCount || filteredEmployees.length}
               </p>
 
               <div className="flex flex-wrap gap-2">

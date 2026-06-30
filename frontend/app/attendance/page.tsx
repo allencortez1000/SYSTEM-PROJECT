@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
-import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+import { triggerAppDataRefresh, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
 type AttendanceStatus = (typeof statusOptions)[number];
@@ -39,6 +39,16 @@ type Employee = {
 
 type ProjectAssignmentMap = Record<string, string>;
 
+type DepartmentRow = {
+  id: string;
+  name: string;
+};
+
+type ProjectSiteRow = {
+  id: string;
+  name: string;
+};
+
 type DraftEntry = {
   status: AttendanceStatus;
   checkIn: string;
@@ -60,10 +70,8 @@ type DeleteTarget = {
   date: string;
 } | null;
 
-const PROJECTS_STORAGE_KEY = "attendance_project_sites_v1";
-const ASSIGNMENTS_STORAGE_KEY = "attendance_project_assignments_v1";
-
 const defaultProjects: string[] = [];
+const defaultDepartments: string[] = [];
 const defaultDraftEntry: DraftEntry = {
   status: "Present",
   checkIn: "07:00",
@@ -205,10 +213,10 @@ function computeAutoOvertime(checkIn: string, checkOut: string) {
   return Math.max(0, Math.round((computeWorkedHours(checkIn, checkOut) - 8) * 100) / 100);
 }
 
-function uniqueByName(employees: Employee[]) {
+function uniqueById(employees: Employee[]) {
   const seen = new Set<string>();
   return employees.filter((employee) => {
-    const key = employee.fullName.trim().toLowerCase();
+    const key = employee.id.trim();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -249,9 +257,11 @@ export default function AttendancePage() {
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<string[]>(defaultDepartments);
   const [projects, setProjects] = useState<string[]>(defaultProjects);
   const [assignments, setAssignments] = useState<ProjectAssignmentMap>({});
   const [drafts, setDrafts] = useState<DraftMap>({});
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedProject, setSelectedProject] = useState(defaultProjects[0]);
   const [periodMode, setPeriodMode] = useState<PeriodMode>("weekly");
   const [rangeStartDate, setRangeStartDate] = useState(isoDate(new Date()));
@@ -265,37 +275,14 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [assignmentSavingId, setAssignmentSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "date-desc" | "date-asc" | "status">("date-desc");
   const anchorDateInitializedRef = useRef(false);
 
   useEffect(() => {
-    try {
-      const storedProjects = JSON.parse(localStorage.getItem(PROJECTS_STORAGE_KEY) || "null");
-      if (Array.isArray(storedProjects) && storedProjects.length > 0) {
-        const cleaned = storedProjects.map((value) => String(value).trim()).filter(Boolean);
-        if (cleaned.length > 0) {
-          setProjects(cleaned);
-          setSelectedProject(cleaned[0]);
-        }
-      }
-
-      const storedAssignments = JSON.parse(localStorage.getItem(ASSIGNMENTS_STORAGE_KEY) || "null");
-      if (storedAssignments && typeof storedAssignments === "object") {
-        setAssignments(storedAssignments);
-      }
-    } catch {
-      // ignore invalid browser cache
-    }
+    // Source of truth is Supabase; avoid stale browser-cached assignments/projects.
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
-  }, [projects]);
-
-  useEffect(() => {
-    localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(assignments));
-  }, [assignments]);
 
   useEffect(() => {
     if (!projects.includes(selectedProject)) {
@@ -303,25 +290,60 @@ export default function AttendancePage() {
     }
   }, [projects, selectedProject]);
 
+  useEffect(() => {
+    if (!selectedDepartment) return;
+
+    if (selectedDepartment.toLowerCase() !== "construction") {
+      if (selectedProject !== "Main Office") {
+        setSelectedProject("Main Office");
+      }
+      return;
+    }
+
+    if (employees.length === 0 || projects.length === 0) return;
+
+    const hasMatches = employees.some((employee) => {
+      const matchesDepartment = String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase();
+      const matchesProject = !selectedProject || assignments[employee.id] === selectedProject;
+      return matchesDepartment && matchesProject;
+    });
+
+    if (hasMatches) return;
+
+    const nextProject = projects.find((project) =>
+      employees.some((employee) =>
+        String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase() &&
+        assignments[employee.id] === project,
+      ),
+    );
+
+    if (nextProject && nextProject !== selectedProject) {
+      setSelectedProject(nextProject);
+    }
+  }, [assignments, employees, projects, selectedDepartment, selectedProject]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setSyncStatus(null);
 
     try {
       const token = localStorage.getItem("hr_token");
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
-      const [attendanceRes, employeesRes, projectsRes, assignmentsRes] = await Promise.all([
+      const [attendanceRes, employeesRes, projectsRes, assignmentsRes, departmentsRes] = await Promise.all([
         fetch("/api/attendance", { headers }),
-        fetch("/api/employees", { headers }),
+        fetch("/api/employees?limit=0", { headers }),
         fetch("/api/attendance/projects", { headers }),
         fetch("/api/attendance/assignments", { headers }),
+        fetch("/api/admin-users/departments", { headers }),
       ]);
 
       const attendanceData = await attendanceRes.json().catch(() => ({}));
       const employeesData = await employeesRes.json().catch(() => ({}));
       const projectsData = await projectsRes.json().catch(() => ({}));
       const assignmentsData = await assignmentsRes.json().catch(() => ({}));
+      const departmentsData = await departmentsRes.json().catch(() => ({}));
 
       if (!attendanceRes.ok) {
         throw new Error(attendanceData?.message || "Failed to load attendance");
@@ -331,7 +353,7 @@ export default function AttendancePage() {
         throw new Error(employeesData?.message || "Failed to load employees");
       }
 
-      const uniqueEmployees = uniqueByName(employeesData?.employees || []);
+      const uniqueEmployees = uniqueById(employeesData?.employees || []);
       const loadedRecords = attendanceData?.attendance || [];
       setRecords(loadedRecords);
       setEmployees(uniqueEmployees);
@@ -354,8 +376,17 @@ export default function AttendancePage() {
       const dbProjects = Array.isArray(projectsData?.projects)
         ? projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean)
         : [];
+      const dbDepartments = Array.isArray(departmentsData?.departments)
+        ? departmentsData.departments.map((department: { name: string }) => String(department.name).trim()).filter(Boolean)
+        : [];
       const mergedProjects = Array.from(new Set([...defaultProjects, ...dbProjects]));
       setProjects(mergedProjects);
+      const mergedDepartments = Array.from(new Set([...defaultDepartments, ...dbDepartments]));
+      setDepartments(mergedDepartments);
+      setSelectedDepartment((current) => {
+        const currentMatch = mergedDepartments.find((department) => department.toLowerCase() === String(current || "").toLowerCase());
+        return currentMatch || mergedDepartments[0] || "";
+      });
       setSelectedProject((current) => {
         const currentMatch = mergedProjects.find((project) => project.toLowerCase() === String(current || "").toLowerCase());
         const latestMatch = latestRecordProject
@@ -364,19 +395,51 @@ export default function AttendancePage() {
         return currentMatch || latestMatch || mergedProjects[0] || "";
       });
 
-      setAssignments((current) => {
-        const dbAssignments = assignmentsData?.assignments && typeof assignmentsData.assignments === "object"
-          ? (assignmentsData.assignments as ProjectAssignmentMap)
-          : {};
-        const next = { ...current, ...dbAssignments };
-        const fallbackProject = mergedProjects[0] || defaultProjects[0];
-        uniqueEmployees.forEach((employee: Employee) => {
-          if (!next[employee.id] || !mergedProjects.includes(next[employee.id])) {
-            next[employee.id] = fallbackProject;
-          }
+      const dbAssignments = assignmentsData?.assignments && typeof assignmentsData.assignments === "object"
+        ? (assignmentsData.assignments as ProjectAssignmentMap)
+        : {};
+      const normalizedAssignments = uniqueEmployees.reduce<ProjectAssignmentMap>((accumulator, employee) => {
+        const department = String(employee.department || "").toLowerCase();
+        const savedProject = dbAssignments[employee.id];
+        if (department === "construction") {
+          accumulator[employee.id] = savedProject || mergedProjects[0] || "";
+        } else {
+          accumulator[employee.id] = "Main Office";
+        }
+        return accumulator;
+      }, {});
+      setAssignments(normalizedAssignments);
+
+      const normalizationUpdates = uniqueEmployees
+        .filter((employee) => {
+          const department = String(employee.department || "").toLowerCase();
+          const desiredProject = department === "construction" ? (dbAssignments[employee.id] || mergedProjects[0] || "") : "Main Office";
+          return desiredProject && dbAssignments[employee.id] !== desiredProject;
+        })
+        .map((employee) => ({
+          employeeId: employee.id,
+          projectName: String(employee.department || "").toLowerCase() === "construction" ? (dbAssignments[employee.id] || mergedProjects[0] || "") : "Main Office",
+        }));
+
+      if (normalizationUpdates.length > 0) {
+        void Promise.all(
+          normalizationUpdates.map((update) =>
+            fetch("/api/attendance/assignments", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify(update),
+            }),
+          ),
+        ).then(() => {
+          triggerAppDataRefresh(["employees", "attendance_records", "employee_project_deployments"]);
+          setSyncStatus(`Department assignments synchronized (${normalizationUpdates.length})`);
         });
-        return next;
-      });
+      } else {
+        setSyncStatus("Department assignments synchronized");
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -413,11 +476,14 @@ export default function AttendancePage() {
   const periodDates = useMemo(() => getPeriodDates(rangeStartDate, rangeEndDate), [rangeStartDate, rangeEndDate]);
 
   const assignedEmployees = useMemo(() => {
-    if (!selectedProject) return [];
     return employees
-      .filter((employee) => assignments[employee.id] === selectedProject)
+      .filter((employee) => {
+        const matchesProject = !selectedProject || assignments[employee.id] === selectedProject;
+        const matchesDepartment = !selectedDepartment || String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase();
+        return matchesProject && matchesDepartment;
+      })
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
-  }, [assignments, employees, selectedProject]);
+  }, [assignments, employees, selectedDepartment, selectedProject]);
 
   const latestRecords = useMemo(() => {
     const selectedDateSet = new Set(periodDates);
@@ -511,12 +577,49 @@ export default function AttendancePage() {
     return counts;
   }, [periodDates, records, assignedEmployees]);
 
-  const projectCounts = useMemo(() => {
-    return projects.map((project) => ({
-      project,
-      count: employees.filter((employee) => assignments[employee.id] === project).length,
+  const departmentCounts = useMemo(() => {
+    return departments.map((department) => ({
+      department,
+      count: employees.filter((employee) => String(employee.department || "").toLowerCase() === department.toLowerCase()).length,
     }));
+  }, [departments, employees]);
+
+  const filteredAssignmentCount = useMemo(() => {
+    return assignedEmployees.length;
+  }, [assignedEmployees.length]);
+
+  const groupedEmployees = useMemo(() => {
+    const groups = new Map<string, Employee[]>();
+    employees.forEach((employee) => {
+      const matchesProject = !selectedProject || assignments[employee.id] === selectedProject;
+      const matchesDepartment = !selectedDepartment || String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase();
+      if (!matchesProject || !matchesDepartment) return;
+      const key = employee.department || "Unassigned";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(employee);
+    });
+
+    return Array.from(groups.entries()).map(([department, workers]) => ({
+      department,
+      workers: workers.sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    }));
+  }, [assignments, employees, selectedDepartment, selectedProject]);
+
+  const getFirstDepartmentProject = useCallback((departmentName: string) => {
+    const normalizedDepartment = departmentName.toLowerCase();
+    const departmentWorkers = employees.filter((employee) => String(employee.department || "").toLowerCase() === normalizedDepartment);
+
+    for (const project of projects) {
+      if (departmentWorkers.some((employee) => assignments[employee.id] === project)) {
+        return project;
+      }
+    }
+
+    return projects[0] || defaultProjects[0] || "";
   }, [assignments, employees, projects]);
+
+  const isConstructionDepartment = selectedDepartment.toLowerCase() === "construction";
+  const effectiveProject = isConstructionDepartment ? selectedProject : "Main Office";
 
   useEffect(() => {
     if (activeCell) {
@@ -614,6 +717,7 @@ export default function AttendancePage() {
       setSelectedProject(trimmed);
       setNewProjectName("");
       setError(null);
+      triggerAppDataRefresh(["attendance_records", "employee_project_deployments"]);
       notify("Project site added");
     } catch (err) {
       setError((err as Error).message);
@@ -621,8 +725,10 @@ export default function AttendancePage() {
   }
 
   async function assignEmployee(employeeId: string, project: string) {
+    const employee = employees.find((item) => item.id === employeeId);
+    const forcedProject = employee && String(employee.department || "").toLowerCase() !== "construction" ? "Main Office" : project;
     const previous = assignments[employeeId] || selectedProject || "";
-    setAssignments((current) => ({ ...current, [employeeId]: project }));
+    setAssignments((current) => ({ ...current, [employeeId]: forcedProject }));
     setAssignmentSavingId(employeeId);
     setError(null);
 
@@ -630,7 +736,7 @@ export default function AttendancePage() {
       const res = await fetch("/api/attendance/assignments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeId, projectName: project }),
+        body: JSON.stringify({ employeeId, projectName: forcedProject }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -882,30 +988,45 @@ export default function AttendancePage() {
         )}
 
         {/* Project Stats Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
-          {projectCounts.map((item) => (
-            <div
-              key={item.project}
-              className={`group rounded-2xl border bg-white p-5 shadow-sm transition-all hover:shadow-lg ${
-                selectedProject === item.project
-                  ? "border-blue-500 ring-2 ring-blue-100"
-                  : "border-slate-200 hover:border-blue-300"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                    </svg>
-                    <p className="text-sm font-bold text-slate-600">{item.project}</p>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+          {departmentCounts.map((item) => {
+            const flexible = item.department.toLowerCase() === "construction";
+            return (
+              <button
+                key={item.department}
+                type="button"
+                onClick={() => {
+                  setSelectedDepartment(item.department);
+                  setSelectedProject(getFirstDepartmentProject(item.department));
+                }}
+                className={`group rounded-2xl border bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                  selectedDepartment === item.department
+                    ? "border-blue-500 ring-2 ring-blue-100"
+                    : "border-slate-200 hover:border-blue-300"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <p className="truncate text-sm font-bold text-slate-700">{item.department}</p>
+                    </div>
+                    <p className="mt-3 text-2xl font-black tracking-tight text-slate-950">{item.count}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">Employees in department</p>
                   </div>
-                  <p className="mt-3 text-2xl font-black text-slate-900">{item.count}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">Assigned Workers</p>
                 </div>
-              </div>
-            </div>
-          ))}
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${flexible ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                    {flexible ? "Flexible Projects" : "Main Office Only"}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-600 opacity-75 transition group-hover:opacity-100">Open</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Main Content Grid */}
@@ -918,23 +1039,49 @@ export default function AttendancePage() {
                 <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
                 </svg>
-                <h3 className="text-lg font-black text-slate-900">Project Sites</h3>
+                <h3 className="text-lg font-black text-slate-900">Departments & Project Sites</h3>
               </div>
 
-              <label className="block mb-4">
-                <span className="text-sm font-bold text-slate-700">Active Project</span>
-                <select
-                  value={selectedProject}
-                  onChange={(event) => setSelectedProject(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                >
-                  {projects.map((project) => (
-                    <option key={project} value={project}>{project}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-700">Active Department</span>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(event) => setSelectedDepartment(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  >
+                    {departments.length === 0 ? (
+                      <option value="">No departments found</option>
+                    ) : (
+                      departments.map((department) => (
+                        <option key={department} value={department}>{department}</option>
+                      ))
+                    )}
+                  </select>
+                </label>
 
-              <div className="space-y-2">
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-700">Active Project</span>
+                  <select
+                    value={effectiveProject}
+                    onChange={(event) => {
+                      if (isConstructionDepartment) {
+                        setSelectedProject(event.target.value);
+                      } else {
+                        setSelectedProject("Main Office");
+                      }
+                    }}
+                    disabled={!isConstructionDepartment}
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    {projects.map((project) => (
+                      <option key={project} value={project}>{project}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="space-y-2 mt-4">
                 <label className="block">
                   <span className="text-sm font-bold text-slate-700">New Project Site</span>
                   <input
@@ -954,6 +1101,14 @@ export default function AttendancePage() {
               </div>
 
               <div className="mt-4 rounded-xl border border-purple-100 bg-purple-50/50 p-4">
+                <p className="mb-3 text-xs font-semibold text-purple-900">
+                  Current selection: {selectedDepartment || "No department selected"} · {selectedProject || "No project selected"}
+                </p>
+                {syncStatus ? (
+                  <p className="mb-3 rounded-lg bg-white px-3 py-2 text-[11px] font-bold text-emerald-700 shadow-sm">
+                    {syncStatus}
+                  </p>
+                ) : null}
                 <div className="flex items-start gap-2">
                   <svg className="w-4 h-4 text-purple-600 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
@@ -967,14 +1122,17 @@ export default function AttendancePage() {
 
             {/* Worker Roster Card */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                </svg>
-                <h3 className="text-lg font-black text-slate-900">Worker Assignments</h3>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                  <h3 className="text-lg font-black text-slate-900">Worker Assignments</h3>
+                </div>
+                <p className="text-xs font-semibold text-slate-500">Showing {employees.length} employees</p>
               </div>
 
-              <div className="max-h-[500px] space-y-3 overflow-auto pr-1">
+              <div className="max-h-[560px] space-y-3 overflow-auto pr-1">
                 {employees.length === 0 ? (
                   <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
                     <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -984,34 +1142,47 @@ export default function AttendancePage() {
                     <p className="mt-1 text-xs text-slate-500">Add employees to get started</p>
                   </div>
                 ) : (
-                  employees.map((employee) => (
-                    <div key={employee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm">
-                            {employee.fullName.charAt(0)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
-                            <p className="mt-0.5 text-xs font-medium text-slate-500">
-                              {employee.position || "Employee"} · {employee.department || "Unassigned"}
-                            </p>
-                          </div>
-                        </div>
-                        <select
-                        value={assignments[employee.id] || ""}
-                        onChange={(event) => assignEmployee(employee.id, event.target.value)}
-                        disabled={assignmentSavingId === employee.id}
-                        className={filterSelectCompactClassName}
-                      >
-                          {projects.map((project) => (
-                            <option key={project} value={project}>{project}</option>
-                          ))}
-                        </select>
+                groupedEmployees.map((group) => (
+                  <div key={group.department} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">{group.department}</p>
+                        <p className="text-xs font-semibold text-slate-500">{group.workers.length} employees</p>
                       </div>
                     </div>
-                  ))
-                )}
+
+                    <div className="space-y-3">
+                      {group.workers.map((employee) => (
+                        <div key={employee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm">
+                                {employee.fullName.charAt(0)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
+                                <p className="mt-0.5 text-xs font-medium text-slate-500">
+                                  {employee.position || "Employee"} · Department: {employee.department || "Unassigned"}
+                                </p>
+                              </div>
+                            </div>
+                            <select
+                              value={String(employee.department || "").toLowerCase() === "construction" ? (assignments[employee.id] || "") : "Main Office"}
+                              onChange={(event) => assignEmployee(employee.id, event.target.value)}
+                              disabled={assignmentSavingId === employee.id || String(employee.department || "").toLowerCase() !== "construction"}
+                              className={filterSelectCompactClassName}
+                            >
+                              {projects.map((project) => (
+                                <option key={project} value={project}>{project}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
               </div>
             </div>
           </div>
@@ -1028,7 +1199,9 @@ export default function AttendancePage() {
                     </svg>
                     <span className="text-sm font-bold uppercase tracking-wider text-blue-600">Attendance Workspace</span>
                   </div>
-                  <h2 className="text-3xl font-black text-slate-900">{selectedProject}</h2>
+                  <h2 className="text-3xl font-black text-slate-900">
+                    {selectedDepartment ? `${selectedDepartment} · ` : ""}{selectedProject || "Unassigned"}
+                  </h2>
                   <p className="mt-2 text-sm text-slate-600">{describePeriod(periodDates, periodMode)}</p>
                 </div>
 
@@ -1322,10 +1495,10 @@ export default function AttendancePage() {
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance workspace</p>
                   <h3 className="break-words pr-2 text-base font-black text-slate-950">
-                    {selectedProject} daily time and overtime table
+                    {selectedDepartment ? `${selectedDepartment} · ` : ""}{selectedProject || "Unassigned"} daily time and overtime table
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {assignedEmployees.length} assigned workers · {periodDates.length} day columns · Sunday is rest day
+                    {filteredAssignmentCount} assigned workers · {periodDates.length} day columns · Sunday is rest day
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -1518,11 +1691,12 @@ export default function AttendancePage() {
               </div>
 
               <div className="hidden overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm xl:block">
-                <table className="min-w-[1200px] border-collapse text-left text-sm">
+                <table className="min-w-[1400px] border-collapse text-left text-sm">
                 <thead className="bg-slate-950 text-white">
                   <tr>
                     <th className="sticky left-0 z-20 min-w-[260px] bg-slate-950 px-4 py-3 text-xs font-black">Worker</th>
-                    <th className="sticky left-[260px] z-20 min-w-[180px] bg-slate-950 px-4 py-3 text-xs font-black">Position</th>
+                    <th className="sticky left-[260px] z-20 min-w-[180px] bg-slate-950 px-4 py-3 text-xs font-black">Department</th>
+                    <th className="sticky left-[440px] z-20 min-w-[180px] bg-slate-950 px-4 py-3 text-xs font-black">Position</th>
                     {periodDates.map((date) => (
                       <th key={date} className="min-w-[180px] px-4 py-3 text-xs font-black">
                         <span className="block text-[10px] uppercase tracking-[0.18em] text-white/60">{formatWeekdayLabel(date)}</span>
@@ -1533,14 +1707,15 @@ export default function AttendancePage() {
                 </thead>
                 <tbody className="bg-white align-top">
                   {loading ? (
-                    <tr><td colSpan={periodDates.length + 2} className="px-4 py-8 text-center text-slate-500">Loading attendance workspace...</td></tr>
+                    <tr><td colSpan={periodDates.length + 3} className="px-4 py-8 text-center text-slate-500">Loading attendance workspace...</td></tr>
                   ) : assignedEmployees.length === 0 ? (
-                    <tr><td colSpan={periodDates.length + 2} className="px-4 py-8 text-center text-slate-500">No workers are assigned to this project yet. Assign workers from Admin Access to start encoding attendance.</td></tr>
+                    <tr><td colSpan={periodDates.length + 3} className="px-4 py-8 text-center text-slate-500">No workers are assigned to this department/project yet. Assign workers from Admin Access to start encoding attendance.</td></tr>
                   ) : (
                     assignedEmployees.map((employee) => (
                       <tr key={employee.id} className="border-b border-slate-100 hover:bg-slate-50/70">
                         <td className="sticky left-0 z-10 min-w-[260px] bg-white px-4 py-4 font-black text-slate-950">{employee.fullName}</td>
-                        <td className="sticky left-[260px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.position || "Employee"}</td>
+                        <td className="sticky left-[260px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.department || "Unassigned"}</td>
+                        <td className="sticky left-[440px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.position || "Employee"}</td>
                         {periodDates.map((date) => {
                           const isSunday = parseIsoDate(date).getDay() === 0;
                           const draft = ensureDraft(employee.id, date);
