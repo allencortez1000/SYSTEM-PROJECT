@@ -34,6 +34,8 @@ export default function EmployeeDetail() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -94,15 +96,22 @@ export default function EmployeeDetail() {
               </svg>
               Back to employees
             </Link>
-            <button
-              disabled
-              title="Edit functionality coming soon"
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white/50 backdrop-blur-sm"
-            >
+            <Link href={`/employees/${id}/edit`} className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               Edit Employee
+            </Link>
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(true)}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-red-300 bg-red-500/10 px-5 py-2.5 font-bold text-red-100 backdrop-blur-sm transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-6 0h6" />
+              </svg>
+              {deleting ? "Deleting..." : "Delete Employee"}
             </button>
           </div>
         </div>
@@ -134,6 +143,61 @@ export default function EmployeeDetail() {
           <div>
             <p className="font-bold text-red-900">Error loading employee</p>
             <p className="mt-1 text-sm font-semibold text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h18.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-black text-slate-950">Delete employee?</h3>
+                <p className="mt-2 text-sm text-slate-600">This action can only be performed by the super admin and cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(false)}
+                className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={async () => {
+                  try {
+                    setDeleting(true);
+                    const token = localStorage.getItem("hr_token");
+                    const res = await fetch(`/api/employees/${id}`, {
+                      method: "DELETE",
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      throw new Error(data?.message || data?.error || "Failed to delete employee");
+                    }
+                    setDeleteModalOpen(false);
+                    window.location.href = "/employees";
+                  } catch (err) {
+                    setError((err as Error).message);
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                className="rounded-2xl bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleting ? "Deleting..." : "Delete employee"}
+              </button>
+            </div>
           </div>
         </div>
       )}

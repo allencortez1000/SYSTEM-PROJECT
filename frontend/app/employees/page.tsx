@@ -32,6 +32,8 @@ export default function EmployeesPage() {
   const [selectedProjectSite, setSelectedProjectSite] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortMode, setSortMode] = useState<SortMode>("name-asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 12;
   const { notify } = useNotification();
 
   const employeeList = employees ?? [];
@@ -96,6 +98,13 @@ export default function EmployeesPage() {
     });
   }, [employeeList, searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
+  const paginatedEmployees = useMemo(() => {
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    return filteredEmployees.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, filteredEmployees, totalPages]);
+
   const stats = useMemo(() => {
     const activeStaff = employeeList.filter((employee) => String(employee.status || "").toLowerCase() === "active").length;
     const departments = new Set(employeeList.map((employee) => employee.department).filter(Boolean)).size;
@@ -110,7 +119,7 @@ export default function EmployeesPage() {
   const load = useCallback(async () => {
     try {
       const token = localStorage.getItem("hr_token");
-      const res = await fetch("/api/employees", {
+      const res = await fetch("/api/employees?limit=0", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json().catch(() => ({}));
@@ -120,10 +129,12 @@ export default function EmployeesPage() {
       }
 
       setEmployees(data.employees || []);
+      setCurrentPage(1);
       setError(null);
 
     } catch (err) {
       setError((err as Error).message);
+      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
@@ -132,6 +143,10 @@ export default function EmployeesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
 
   useSupabaseTableRefresh([{ table: "employees" }], () => {
     void load();
@@ -369,8 +384,9 @@ export default function EmployeesPage() {
 
         {/* Employee Grid */}
         {!loading && !error && filteredEmployees.length > 0 && (
-          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredEmployees.map((employee) => {
+          <div className="mt-6 space-y-4">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedEmployees.map((employee) => {
               const displayName = employee.fullName || "Unnamed employee";
               const initials = displayName
                 .split(" ")
@@ -468,6 +484,33 @@ export default function EmployeesPage() {
                 </Link>
               );
             })}
+            </div>
+
+            {filteredEmployees.length > pageSize && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-slate-600">
+                  Page <span className="text-slate-900">{Math.min(currentPage, totalPages)}</span> of <span className="text-slate-900">{totalPages}</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    disabled={currentPage <= 1}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

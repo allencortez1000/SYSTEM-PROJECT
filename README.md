@@ -20,10 +20,7 @@ Enterprise-grade HR and payroll management platform for small, medium, and large
 - Frontend dev server: `http://localhost:3000`
 - Backend API: `http://127.0.0.1:4000`
 - The frontend proxies `/api/*` requests to the backend through `frontend/next.config.mjs`.
-- If `SUPABASE_URL` and `SUPABASE_SECRET_KEY` are missing, the backend now starts in a local mock mode instead of crashing. This keeps login and the main demo flows working locally.
-- Default local mock credentials:
-  - Username: `admin`
-  - Password: `admin`
+- If `SUPABASE_URL` and `SUPABASE_SECRET_KEY` are missing, the backend now starts in a local readonly mode instead of crashing. This keeps the app booting safely for development without demo credentials.
 - If `3000` or `4000` is already in use, stop the old Node processes first, then rerun `npm run dev`.
 
 ## Demo data and Supabase sync

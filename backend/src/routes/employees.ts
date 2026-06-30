@@ -1,6 +1,6 @@
 ﻿import { Router } from 'express';
 import { supabase } from '../lib/supabase';
-import { AuthRequest, verifyToken } from '../middleware/auth';
+import { AuthRequest, requireSuperAdmin, verifyToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -775,20 +775,13 @@ router.patch('/:id/activate', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
-    const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
-
-    let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
-
-    if (departmentIds !== null) {
-      employeeQuery = employeeQuery.in(
-        'department_id',
-        departmentIds.length > 0 ? departmentIds : ['00000000-0000-0000-0000-000000000000'],
-      );
-    }
-
-    const existingResult = await employeeQuery.maybeSingle();
+    const existingResult = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', req.params.id)
+      .maybeSingle();
 
     if (existingResult.error) {
       throw existingResult.error;
@@ -796,13 +789,6 @@ router.delete('/:id', async (req, res) => {
 
     if (!existingResult.data) {
       return res.status(404).json({ message: 'Employee not found' });
-    }
-
-    if (departmentIds !== null) {
-      const deptId = existingResult.data.department_id;
-      if (deptId && !departmentIds.includes(deptId)) {
-        return res.status(403).json({ message: 'You can only delete employees in your assigned department(s)' });
-      }
     }
 
     const { error } = await supabase.from('employees').delete().eq('id', req.params.id);

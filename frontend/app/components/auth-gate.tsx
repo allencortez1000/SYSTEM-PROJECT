@@ -172,13 +172,8 @@ export default function AuthGate({ children }: AuthGateProps) {
 
               {mode === "signin" && (
                 <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-                  <p className="font-black">Default credentials</p>
-                  <p className="mt-1">
-                    Username: <span className="font-black">admin</span>
-                  </p>
-                  <p>
-                    Password: <span className="font-black">admin</span>
-                  </p>
+                  <p className="font-black">Login required</p>
+                  <p className="mt-1">Use your assigned username and password to sign in.</p>
                 </div>
               )}
 

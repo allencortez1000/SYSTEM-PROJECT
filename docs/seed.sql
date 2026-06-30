@@ -486,18 +486,18 @@ begin
   -- 14. Admin access sample for admin-users screen
   ------------------------------------------------------------------
   insert into app_users (
-    organization_id, full_name, email, username, password_hash, role, is_active
+    organization_id, full_name, email, username, password, role, is_active
   )
   values (
-    v_org, 'Elena Cruz', 'elena.cruz@democompany.ph', 'eng.head', coalesce(v_admin_hash, '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'), 'department-head-admin', true
+    v_org, 'Elena Cruz', 'elena.cruz@democompany.ph', 'eng.head', coalesce(v_admin_hash, 'admin'), 'department-head-admin', true
   )
   returning id into u_eng_head;
 
   insert into app_users (
-    organization_id, full_name, email, username, password_hash, role, is_active
+    organization_id, full_name, email, username, password, role, is_active
   )
   values (
-    v_org, 'Paolo Ramos', 'paolo.ramos@democompany.ph', 'ops.head', coalesce(v_admin_hash, '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'), 'department-head-admin', true
+    v_org, 'Paolo Ramos', 'paolo.ramos@democompany.ph', 'ops.head', coalesce(v_admin_hash, 'admin'), 'department-head-admin', true
   )
   returning id into u_ops_head;
 
