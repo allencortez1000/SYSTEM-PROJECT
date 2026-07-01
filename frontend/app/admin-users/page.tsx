@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { useNotification } from "../components/notification";
+import { canonicalDepartmentName, uniqueCanonicalDepartments } from "../../lib/departmentNames";
 import { triggerAppDataRefresh, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 type SessionUser = {
@@ -191,7 +192,12 @@ export default function AdminUsersPage() {
       }
 
       const nextUsers = usersData.users || [];
-      const nextDepartments = departmentsData.departments || [];
+      const nextDepartments = Array.isArray(departmentsData.departments)
+        ? uniqueCanonicalDepartments(departmentsData.departments.map((department: { id?: string; name: string }) => ({
+            id: department.id || department.name,
+            name: canonicalDepartmentName(department.name),
+          })))
+        : [];
       const nextEmployees = employeesData.employees || [];
       const nextEmployeeCount = Number(employeesData.count ?? nextEmployees.length);
       const nextProjects = projectsData.projects || [];

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useSupabaseTableRefresh } from "../lib/supabaseRealtime";
+import { canonicalDepartmentName } from "../lib/departmentNames";
 
 const API_BASE = "/api";
 
@@ -130,11 +131,11 @@ export default function Home() {
     const deptMap = new Map<string, number>();
     employees.forEach((e) => {
       const dept = e.department || "Unassigned";
-      deptMap.set(dept, (deptMap.get(dept) || 0) + 1);
+      const canonicalDept = canonicalDepartmentName(dept);
+      deptMap.set(canonicalDept, (deptMap.get(canonicalDept) || 0) + 1);
     });
     const departments = Array.from(deptMap.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
       .map(([name, count], index) => ({
         name,
         count,

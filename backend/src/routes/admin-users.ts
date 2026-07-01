@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { supabase } from '../lib/supabase';
+import { canonicalDepartmentName } from '../lib/departmentNames';
 import { verifyToken, requireSuperAdmin } from '../middleware/auth';
 
 const router = Router();
@@ -278,7 +279,7 @@ router.post('/department-head', requireSuperAdmin, async (req, res) => {
         fullName: (createdUser as AppUserRow).full_name,
         isActive: (createdUser as AppUserRow).is_active,
         departmentIds: cleanedDepartmentIds,
-        departments: departments.map((department) => department.name as string),
+        departments: departments.map((department) => canonicalDepartmentName(department.name as string)),
       },
     });
   } catch (error) {

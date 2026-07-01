@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import * as XLSX from "xlsx";
 import { filterInputClassName } from "../../components/filter-config";
 import { useNotification } from "../../components/notification";
+import { uniqueCanonicalDepartments } from "../../../lib/departmentNames";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
 
@@ -278,6 +279,7 @@ export default function NewPayrollPage() {
   const [selectedProject, setSelectedProject] = useState(searchParams.get("projectSite") || "");
   const [selectedDepartment, setSelectedDepartment] = useState(searchParams.get("department") || "");
   const [projects, setProjects] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const tableSectionRef = useRef<HTMLDivElement | null>(null);
   const lastSyncKeyRef = useRef<string | null>(null);
   const [preparedBy, setPreparedBy] = useState("");
@@ -318,16 +320,18 @@ export default function NewPayrollPage() {
 
     try {
       const authHeaders = getAuthHeaders();
-      const [employeesResponse, projectsResponse] = await Promise.all([
+      const [employeesResponse, projectsResponse, departmentsResponse] = await Promise.all([
         authHeaders
           ? fetch(`${API_BASE}/employees`, {
               headers: authHeaders,
             })
           : Promise.resolve(null),
         fetch(`${API_BASE}/attendance/projects`),
+        fetch(`${API_BASE}/admin-users/departments`, authHeaders ? { headers: authHeaders } : undefined),
       ]);
       const data = employeesResponse ? await employeesResponse.json().catch(() => null) : null;
       const projectsData = await projectsResponse.json().catch(() => null);
+      const departmentsData = await departmentsResponse.json().catch(() => null);
 
       if (employeesResponse?.ok) {
         setEmployees(data?.employees || []);
@@ -345,6 +349,18 @@ export default function NewPayrollPage() {
             return trimmed || "";
           });
         }
+      }
+
+      if (departmentsResponse.ok && Array.isArray(departmentsData?.departments)) {
+        const loadedDepartments = uniqueCanonicalDepartments(departmentsData.departments)
+          .map((department: { id: string; name: string }) => ({ id: department.id, name: department.name }))
+          .filter((department: { id: string; name: string }) => Boolean(department.name));
+        setDepartments(loadedDepartments);
+        setSelectedDepartment((current) => {
+          const trimmed = current.trim();
+          const match = loadedDepartments.find((department: { name: string }) => department.name.toLowerCase() === trimmed.toLowerCase());
+          return match?.name || trimmed || "";
+        });
       }
 
     } catch (err) {
@@ -628,6 +644,7 @@ export default function NewPayrollPage() {
 
     try {
       const query = new URLSearchParams({
+        department: selectedDepartment,
         projectSite: selectedProject,
         startDate: periodStart,
         endDate: periodEnd,
@@ -977,7 +994,7 @@ export default function NewPayrollPage() {
   const worksheet = (
     <section className="payroll-print-sheet flex h-full min-h-0 flex-col bg-white print:block">
       <div className="shrink-0 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-3 backdrop-blur print:border-0 print:bg-white print:p-0">
-        <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_560px] 2xl:items-start">
+        <div className="grid gap-3 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] 2xl:items-start">
           <div className="space-y-3">
             <div className="rounded-[1.5rem] border border-white/80 bg-white/90 p-4 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1009,28 +1026,50 @@ export default function NewPayrollPage() {
             </div>
 
             <div className="grid min-w-0 gap-3 md:grid-cols-[1fr_1fr]">
-            <label className="min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 print:text-slate-700">Payroll covered</span>
-              <input
-                value={coveredPeriod}
-                readOnly
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-black tracking-tight text-slate-950 print:border-0 print:px-0"
-              />
-            </label>
-            <label className="min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project / company</span>
-              <input
-                value={projectName}
-                onChange={(event) => setProjectName(event.target.value)}
-                className={`${filterInputClassName} mt-1 print:border-0 print:bg-white print:px-0`}
-              />
-            </label>
+              <label className="min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 print:text-slate-700">Payroll covered</span>
+                <input
+                  value={coveredPeriod}
+                  readOnly
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-black tracking-tight text-slate-950 print:border-0 print:px-0"
+                />
+              </label>
+              <label className="min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project / company</span>
+                <input
+                  value={projectName}
+                  onChange={(event) => setProjectName(event.target.value)}
+                  className={`${filterInputClassName} mt-1 print:border-0 print:bg-white print:px-0`}
+                />
+              </label>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
-              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project location</span>
+          <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-6">
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm 2xl:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Department</span>
+                <span className="rounded-full bg-blue-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Editable</span>
+              </div>
+              <select
+                value={selectedDepartment}
+                onChange={(event) => setSelectedDepartment(event.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
+              >
+                <option value="">Select department</option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.name}>{department.name}</option>
+                ))}
+              </select>
+              <p className="mt-2 text-[11px] font-semibold leading-snug text-slate-500">Choose any department, then adjust the project site separately.</p>
+            </label>
+            <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm 2xl:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project location</span>
+                <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${selectedDepartment.toLowerCase() === "construction" ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-600"}`}>
+                  {selectedDepartment.toLowerCase() === "construction" ? "Construction can switch" : "Main Office by default"}
+                </span>
+              </div>
               <select
                 value={selectedProject}
                 onChange={(event) => setSelectedProject(event.target.value)}
@@ -1040,7 +1079,7 @@ export default function NewPayrollPage() {
                   <option key={project} value={project}>{project}</option>
                 ))}
               </select>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Attendance-linked workers and days will refresh for the selected site.</p>
+              <p className="mt-2 text-[11px] font-semibold leading-snug text-slate-500">You can change this anytime. Construction may use another site; other departments stay on Main Office in attendance logic.</p>
             </label>
             <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Payroll date</span>
@@ -1080,7 +1119,7 @@ export default function NewPayrollPage() {
                 className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
               />
             </label>
-            <div className="flex items-end">
+            <div className="flex items-end 2xl:col-span-2">
               <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canSyncAttendance}>
                 {syncingAttendance ? "Syncing..." : "Sync from attendance"}
               </button>
@@ -1093,6 +1132,7 @@ export default function NewPayrollPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project</p>
             <p className="mt-1 text-sm font-black text-slate-950">{selectedProject}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">Current payroll location</p>
+            <p className="mt-2 text-[11px] font-semibold leading-snug text-slate-500">Department stays primary; Construction can switch project sites, while other departments remain on Main Office.</p>
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Workers</p>

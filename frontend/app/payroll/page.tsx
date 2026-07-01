@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName } from "../components/filter-config";
+import { uniqueCanonicalDepartments } from "../../lib/departmentNames";
 
 const API_BASE = "/api";
 
@@ -80,7 +81,9 @@ export default function PayrollIndex() {
       }
       if (departmentsRes.ok) {
         const departmentsData = await departmentsRes.json();
-        const nextDepartments = departmentsData.departments || [];
+        const nextDepartments = Array.isArray(departmentsData.departments)
+          ? uniqueCanonicalDepartments(departmentsData.departments)
+          : [] as Department[];
         setDepartments(nextDepartments);
         setSelectedDepartment((current) => current || "");
       }
@@ -266,25 +269,31 @@ export default function PayrollIndex() {
         <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-lg">
           <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-6 py-8 text-white sm:px-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex-1">
-                <div className="mb-3 flex items-center gap-2">
-                  <svg className="h-6 w-6 text-blue-200" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-                  </svg>
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-200">
-                    Estimated Monthly
-                  </span>
-                </div>
-                <h2 className="text-2xl font-black sm:text-3xl">
-                  Total Payroll Cost
-                </h2>
-                <p className="mt-3 text-3xl font-black sm:text-5xl">
-                  {pesos(payrollCost)}
-                </p>
-                <p className="mt-3 text-sm font-semibold text-blue-100">
-                  Computed from {employeeCount} employee salary records
-                </p>
+            <div className="flex-1">
+              <div className="mb-3 flex items-center gap-2">
+                <svg className="h-6 w-6 text-blue-200" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                </svg>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-200">
+                  Estimated Monthly
+                </span>
               </div>
+              <h2 className="text-2xl font-black sm:text-3xl">
+                Total Payroll Cost
+              </h2>
+              <p className="mt-3 text-3xl font-black sm:text-5xl">
+                {pesos(payrollCost)}
+              </p>
+              <p className="mt-3 text-sm font-semibold text-blue-100">
+                Computed from {employeeCount} employee salary records
+              </p>
+              <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm">
+                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">Department first</span>
+                <span>{selectedDepartment || "All departments"}</span>
+                <span className="text-white/60">·</span>
+                <span>{selectedDepartment.toLowerCase() === "construction" ? (selectedProjectSite || "Any project site") : "Main Office only"}</span>
+              </div>
+            </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={() => { setModalDepartment(""); setModalProjectSite(""); setCalculatorOpen(true); }}
@@ -345,7 +354,7 @@ export default function PayrollIndex() {
               clearLabel="Clear filters"
             >
               <div>
-                <label className="text-sm font-semibold text-slate-700">Department</label>
+                <span className="text-sm font-semibold text-slate-700">Department filter</span>
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
@@ -359,7 +368,7 @@ export default function PayrollIndex() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">Project Site</label>
+                <label className="text-sm font-semibold text-slate-700">Project-site filter</label>
                 <select
                   value={selectedProjectSite}
                   onChange={(e) => setSelectedProjectSite(e.target.value)}
@@ -461,7 +470,7 @@ export default function PayrollIndex() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900">Start Payroll</h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-600">Select department and project site</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">Select a department first, then choose the project site if applicable</p>
                   </div>
                 </div>
                 <button
@@ -500,13 +509,18 @@ export default function PayrollIndex() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
-                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-                    </svg>
-                    Project Site
-                  </span>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-sm font-black text-slate-700">
+                      <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                      </svg>
+                      Project Site
+                    </span>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${modalDepartment.toLowerCase() === "construction" ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-600"}`}>
+                      {modalDepartment.toLowerCase() === "construction" ? "Construction only" : "Main Office locked"}
+                    </span>
+                  </div>
                   <select
                     value={modalProjectSite}
                     onChange={(event) => setModalProjectSite(event.target.value)}
@@ -519,6 +533,7 @@ export default function PayrollIndex() {
                       </option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Choose the department first; only Construction can use a different project site. Everyone else stays on Main Office.</p>
                 </label>
               </div>
 

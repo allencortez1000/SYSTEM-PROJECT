@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
+import { canonicalDepartmentName, uniqueCanonicalDepartments } from "../../lib/departmentNames";
 import { triggerAppDataRefresh, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
@@ -285,7 +286,7 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
-    if (!projects.includes(selectedProject)) {
+    if (!selectedProject && projects.length > 0) {
       setSelectedProject(projects[0] || defaultProjects[0]);
     }
   }, [projects, selectedProject]);
@@ -293,34 +294,10 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!selectedDepartment) return;
 
-    if (selectedDepartment.toLowerCase() !== "construction") {
-      if (selectedProject !== "Main Office") {
-        setSelectedProject("Main Office");
-      }
-      return;
+    if (selectedDepartment.toLowerCase() !== "construction" && selectedProject !== "Main Office") {
+      setSelectedProject("Main Office");
     }
-
-    if (employees.length === 0 || projects.length === 0) return;
-
-    const hasMatches = employees.some((employee) => {
-      const matchesDepartment = String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase();
-      const matchesProject = !selectedProject || assignments[employee.id] === selectedProject;
-      return matchesDepartment && matchesProject;
-    });
-
-    if (hasMatches) return;
-
-    const nextProject = projects.find((project) =>
-      employees.some((employee) =>
-        String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase() &&
-        assignments[employee.id] === project,
-      ),
-    );
-
-    if (nextProject && nextProject !== selectedProject) {
-      setSelectedProject(nextProject);
-    }
-  }, [assignments, employees, projects, selectedDepartment, selectedProject]);
+  }, [selectedDepartment, selectedProject]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -368,11 +345,6 @@ export default function AttendancePage() {
         anchorDateInitializedRef.current = true;
       }
 
-      const latestRecordProject = loadedRecords
-        .slice()
-        .sort((a: AttendanceRecord, b: AttendanceRecord) => String(b.date || "").localeCompare(String(a.date || "")))[0]?.projectSite
-        ?.trim();
-
       const dbProjects = Array.isArray(projectsData?.projects)
         ? projectsData.projects.map((project: { name: string }) => String(project.name).trim()).filter(Boolean)
         : [];
@@ -381,7 +353,9 @@ export default function AttendancePage() {
         : [];
       const mergedProjects = Array.from(new Set([...defaultProjects, ...dbProjects]));
       setProjects(mergedProjects);
-      const mergedDepartments = Array.from(new Set([...defaultDepartments, ...dbDepartments]));
+      const mergedDepartments = uniqueCanonicalDepartments(
+        [...defaultDepartments, ...dbDepartments].map((department) => ({ id: department, name: canonicalDepartmentName(department) })),
+      ).map((department) => department.name);
       setDepartments(mergedDepartments);
       setSelectedDepartment((current) => {
         const currentMatch = mergedDepartments.find((department) => department.toLowerCase() === String(current || "").toLowerCase());
@@ -389,10 +363,7 @@ export default function AttendancePage() {
       });
       setSelectedProject((current) => {
         const currentMatch = mergedProjects.find((project) => project.toLowerCase() === String(current || "").toLowerCase());
-        const latestMatch = latestRecordProject
-          ? mergedProjects.find((project) => project.toLowerCase() === latestRecordProject.toLowerCase())
-          : undefined;
-        return currentMatch || latestMatch || mergedProjects[0] || "";
+        return currentMatch || current || mergedProjects[0] || "";
       });
 
       const dbAssignments = assignmentsData?.assignments && typeof assignmentsData.assignments === "object"
@@ -402,7 +373,7 @@ export default function AttendancePage() {
         const department = String(employee.department || "").toLowerCase();
         const savedProject = dbAssignments[employee.id];
         if (department === "construction") {
-          accumulator[employee.id] = savedProject || mergedProjects[0] || "";
+          accumulator[employee.id] = savedProject || "";
         } else {
           accumulator[employee.id] = "Main Office";
         }
@@ -411,14 +382,10 @@ export default function AttendancePage() {
       setAssignments(normalizedAssignments);
 
       const normalizationUpdates = uniqueEmployees
-        .filter((employee) => {
-          const department = String(employee.department || "").toLowerCase();
-          const desiredProject = department === "construction" ? (dbAssignments[employee.id] || mergedProjects[0] || "") : "Main Office";
-          return desiredProject && dbAssignments[employee.id] !== desiredProject;
-        })
+        .filter((employee) => String(employee.department || "").toLowerCase() !== "construction" && dbAssignments[employee.id] !== "Main Office")
         .map((employee) => ({
           employeeId: employee.id,
-          projectName: String(employee.department || "").toLowerCase() === "construction" ? (dbAssignments[employee.id] || mergedProjects[0] || "") : "Main Office",
+          projectName: "Main Office",
         }));
 
       if (normalizationUpdates.length > 0) {
@@ -591,19 +558,32 @@ export default function AttendancePage() {
   const groupedEmployees = useMemo(() => {
     const groups = new Map<string, Employee[]>();
     employees.forEach((employee) => {
-      const matchesProject = !selectedProject || assignments[employee.id] === selectedProject;
-      const matchesDepartment = !selectedDepartment || String(employee.department || "").toLowerCase() === selectedDepartment.toLowerCase();
-      if (!matchesProject || !matchesDepartment) return;
-      const key = employee.department || "Unassigned";
+      const employeeDepartment = String(employee.department || "").toLowerCase();
+      const employeeProject = employeeDepartment === "construction" ? (assignments[employee.id] || "Unassigned") : "Main Office";
+      const matchesDepartment = !selectedDepartment || employeeDepartment === selectedDepartment.toLowerCase();
+      const matchesProject = !selectedProject || employeeProject === selectedProject || (selectedProject === "Unassigned" && employeeProject === "Unassigned");
+      if (!matchesDepartment || !matchesProject) return;
+      const key = `${employee.department || "Unassigned"} :: ${employeeProject}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(employee);
     });
 
-    return Array.from(groups.entries()).map(([department, workers]) => ({
-      department,
-      workers: workers.sort((a, b) => a.fullName.localeCompare(b.fullName)),
-    }));
+    return Array.from(groups.entries()).map(([key, workers]) => {
+      const [department, project] = key.split(" :: ");
+      return {
+        department,
+        project,
+        workers: workers.sort((a, b) => a.fullName.localeCompare(b.fullName)),
+      };
+    });
   }, [assignments, employees, selectedDepartment, selectedProject]);
+
+  const unassignedConstructionWorkers = useMemo(() => {
+    return employees
+      .filter((employee) => String(employee.department || "").toLowerCase() === "construction")
+      .filter((employee) => !assignments[employee.id])
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }, [assignments, employees]);
 
   const getFirstDepartmentProject = useCallback((departmentName: string) => {
     const normalizedDepartment = departmentName.toLowerCase();
@@ -726,8 +706,9 @@ export default function AttendancePage() {
 
   async function assignEmployee(employeeId: string, project: string) {
     const employee = employees.find((item) => item.id === employeeId);
-    const forcedProject = employee && String(employee.department || "").toLowerCase() !== "construction" ? "Main Office" : project;
-    const previous = assignments[employeeId] || selectedProject || "";
+    const isConstruction = String(employee?.department || "").toLowerCase() === "construction";
+    const forcedProject = isConstruction ? project : "Main Office";
+    const previous = assignments[employeeId] || "";
     setAssignments((current) => ({ ...current, [employeeId]: forcedProject }));
     setAssignmentSavingId(employeeId);
     setError(null);
@@ -1035,20 +1016,20 @@ export default function AttendancePage() {
           <div className="space-y-6">
             {/* Project Management Card */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <div className="mb-4 flex items-center gap-2">
+                <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
                 </svg>
                 <h3 className="text-lg font-black text-slate-900">Departments & Project Sites</h3>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-700">Active Department</span>
+              <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <label className="block rounded-2xl border border-slate-100 bg-slate-50 p-5 min-w-0">
+                  <span className="text-sm font-bold text-slate-700">Department</span>
                   <select
                     value={selectedDepartment}
                     onChange={(event) => setSelectedDepartment(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="mt-2 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     {departments.length === 0 ? (
                       <option value="">No departments found</option>
@@ -1058,10 +1039,16 @@ export default function AttendancePage() {
                       ))
                     )}
                   </select>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Choose a department to load its workers into the attendance table.</p>
                 </label>
 
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-700">Active Project</span>
+                <label className="block rounded-2xl border border-slate-100 bg-slate-50 p-5 min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-700">Project site</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${isConstructionDepartment ? "bg-amber-100 text-amber-700" : "bg-slate-200 text-slate-600"}`}>
+                      {isConstructionDepartment ? "Construction only" : "Main Office locked"}
+                    </span>
+                  </div>
                   <select
                     value={effectiveProject}
                     onChange={(event) => {
@@ -1072,12 +1059,13 @@ export default function AttendancePage() {
                       }
                     }}
                     disabled={!isConstructionDepartment}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="mt-2 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     {projects.map((project) => (
                       <option key={project} value={project}>{project}</option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Only Construction can choose a different project site. Everyone else stays on Main Office.</p>
                 </label>
               </div>
 
@@ -1136,53 +1124,108 @@ export default function AttendancePage() {
                 {employees.length === 0 ? (
                   <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
                     <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 6.375 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                     </svg>
                     <p className="mt-3 text-sm font-semibold text-slate-600">No employees found</p>
                     <p className="mt-1 text-xs text-slate-500">Add employees to get started</p>
                   </div>
                 ) : (
-                groupedEmployees.map((group) => (
-                  <div key={group.department} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-black text-slate-900">{group.department}</p>
-                        <p className="text-xs font-semibold text-slate-500">{group.workers.length} employees</p>
-                      </div>
-                    </div>
+                  <>
+                    {unassignedConstructionWorkers.length > 0 && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black text-amber-900">Unassigned Construction</p>
+                            <p className="text-xs font-semibold text-amber-700">{unassignedConstructionWorkers.length} workers need a site</p>
+                          </div>
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Action needed</span>
+                        </div>
 
-                    <div className="space-y-3">
-                      {group.workers.map((employee) => (
-                        <div key={employee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-start gap-3 min-w-0">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm">
-                                {employee.fullName.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
-                                <p className="mt-0.5 text-xs font-medium text-slate-500">
-                                  {employee.position || "Employee"} · Department: {employee.department || "Unassigned"}
-                                </p>
+                        <div className="space-y-3">
+                          {unassignedConstructionWorkers.map((employee) => (
+                            <div key={employee.id} className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-3 min-w-0">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold text-sm">
+                                    {employee.fullName.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
+                                    <p className="mt-0.5 text-xs font-medium text-slate-500">{employee.position || "Employee"} · Construction</p>
+                                    <div className="mt-1 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">
+                                      Current site: Unassigned
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="min-w-[220px]">
+                                  <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Assign site</label>
+                                  <select
+                                    value="Unassigned"
+                                    onChange={(event) => assignEmployee(employee.id, event.target.value)}
+                                    className={`${filterSelectCompactClassName} w-full`}
+                                  >
+                                    <option value="Unassigned">Unassigned</option>
+                                    {projects.map((project) => (
+                                      <option key={project} value={project}>{project}</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
                             </div>
-                            <select
-                              value={String(employee.department || "").toLowerCase() === "construction" ? (assignments[employee.id] || "") : "Main Office"}
-                              onChange={(event) => assignEmployee(employee.id, event.target.value)}
-                              disabled={assignmentSavingId === employee.id || String(employee.department || "").toLowerCase() !== "construction"}
-                              className={filterSelectCompactClassName}
-                            >
-                              {projects.map((project) => (
-                                <option key={project} value={project}>{project}</option>
-                              ))}
-                            </select>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {groupedEmployees.map((group) => (
+                      <div key={`${group.department}-${group.project}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{group.department}</p>
+                            <p className="text-xs font-semibold text-slate-500">{group.project} · {group.workers.length} employees</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
+
+                        <div className="space-y-3">
+                          {group.workers.map((employee) => (
+                            <div key={employee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-3 min-w-0">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm">
+                                    {employee.fullName.charAt(0)}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
+                                    <p className="mt-0.5 text-xs font-medium text-slate-500">
+                                      {employee.position || "Employee"} · Department: {employee.department || "Unassigned"}
+                                    </p>
+                                    <div className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">
+                                      Current site: {String(employee.department || "").toLowerCase() === "construction" ? (assignments[employee.id] || "Unassigned") : "Main Office"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="min-w-[220px]">
+                                  <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Assign site</label>
+                                  <select
+                                    value={String(employee.department || "").toLowerCase() === "construction" ? (assignments[employee.id] || "Unassigned") : "Main Office"}
+                                    onChange={(event) => assignEmployee(employee.id, event.target.value)}
+                                    disabled={assignmentSavingId === employee.id || String(employee.department || "").toLowerCase() !== "construction"}
+                                    className={`${filterSelectCompactClassName} w-full`}
+                                  >
+                                    <option value="Unassigned">Unassigned</option>
+                                    {projects.map((project) => (
+                                      <option key={project} value={project}>{project}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1584,7 +1627,7 @@ export default function AttendancePage() {
 
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Department / Project</p>
                   <select
                     value={selectedProject}
                     onChange={(event) => setSelectedProject(event.target.value)}
@@ -1594,6 +1637,7 @@ export default function AttendancePage() {
                       <option key={project} value={project}>{project}</option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Choose the department first; only Construction can use a different project site. All other departments stay on Main Office.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Workers</p>

@@ -244,79 +244,55 @@ router.get('/attendance-summary', async (req, res) => {
 
 router.get('/project-sync', async (req, res) => {
   try {
+    const department = String(req.query.department || '').trim();
     const projectSite = String(req.query.projectSite || '').trim();
     const startDate = String(req.query.startDate || '').trim();
     const endDate = String(req.query.endDate || '').trim();
 
-    if (!projectSite || !startDate || !endDate) {
-      return res.status(400).json({ message: 'projectSite, startDate, and endDate are required' });
+    if (!department || !projectSite || !startDate || !endDate) {
+      return res.status(400).json({ message: 'department, projectSite, startDate, and endDate are required' });
     }
+
+    const departmentIsConstruction = department.toLowerCase() === 'construction';
+    const effectiveProjectSite = departmentIsConstruction ? projectSite : 'Main Office';
+
+    const { data: departmentRows, error: departmentError } = await supabase
+      .from('departments')
+      .select('id, name')
+      .ilike('name', department);
+
+    if (departmentError) throw departmentError;
+
+    const departmentIds = Array.from(new Set((departmentRows || []).map((row: any) => String(row.id)).filter(Boolean)));
+    if (departmentIds.length === 0) {
+      return res.status(404).json({ message: `Department not found: ${department}` });
+    }
+
+    const { data: employees, error: employeesError } = await supabase
+      .from('employees')
+      .select('id, department_id')
+      .in('department_id', departmentIds);
+
+    if (employeesError) throw employeesError;
+
+    const departmentEmployeeIds = Array.from(new Set((employees || []).map((row: any) => String(row.id)).filter(Boolean)));
 
     const { data: assignments, error: assignmentsError } = await supabase
       .from('employee_project_deployments')
       .select('employee_id, project_sites!inner(name)')
-      .eq('is_active', true);
-
-    const normalizedProjectSite = projectSite.toLowerCase();
-    const matchesProjectSite = (value: unknown) => String(value || '').trim().toLowerCase() === normalizedProjectSite;
-    const matchingAssignments = (assignments || []).filter((row: any) =>
-      matchesProjectSite(row?.project_sites?.name),
-    );
+      .eq('is_active', true)
+      .in('employee_id', departmentEmployeeIds.length > 0 ? departmentEmployeeIds : ['00000000-0000-0000-0000-000000000000']);
 
     if (assignmentsError) throw assignmentsError;
 
-    const deploymentEmployeeIds = Array.from(new Set(matchingAssignments.map((row: any) => String(row.employee_id)).filter(Boolean)));
+    const normalizedProjectSite = effectiveProjectSite.toLowerCase();
+    const matchesProjectSite = (value: unknown) => String(value || '').trim().toLowerCase() === normalizedProjectSite;
+    const matchingAssignments = (assignments || []).filter((row: any) => matchesProjectSite(row?.project_sites?.name));
 
-    const attendanceIdResult = deploymentEmployeeIds.length > 0
-      ? { data: null, error: null }
-      : await supabase
-          .from('attendance_records')
-          .select('employee_id, project_site')
-          .gte('attendance_date', startDate)
-          .lte('attendance_date', endDate)
-          .order('attendance_date', { ascending: true });
-
-    if (attendanceIdResult.error) throw attendanceIdResult.error;
-
-    const attendanceEmployeeIds = Array.from(
-      new Set(
-        ((attendanceIdResult.data || []) as any[])
-          .filter((row) => matchesProjectSite(row.project_site))
-          .map((row) => String(row.employee_id))
-          .filter(Boolean),
-      ),
-    );
-    const employeeIds = Array.from(new Set([...deploymentEmployeeIds, ...attendanceEmployeeIds]));
-
-    if (deploymentEmployeeIds.length === 0 && attendanceEmployeeIds.length > 0) {
-      const project = await findOrCreateProjectSite(projectSite);
-      const existingDeploymentRows = await supabase
-        .from('employee_project_deployments')
-        .select('employee_id')
-        .eq('project_site_id', project.id)
-        .eq('is_active', true)
-        .in('employee_id', attendanceEmployeeIds);
-
-      if (existingDeploymentRows.error) throw existingDeploymentRows.error;
-
-      const existingIds = new Set((existingDeploymentRows.data || []).map((row) => String(row.employee_id)));
-      const missingIds = attendanceEmployeeIds.filter((employeeId) => !existingIds.has(employeeId));
-
-      if (missingIds.length > 0) {
-        const insertRows = missingIds.map((employeeId) => ({
-          employee_id: employeeId,
-          project_site_id: project.id,
-          assigned_at: new Date().toISOString(),
-          is_active: true,
-        }));
-
-        const { error: insertError } = await supabase
-          .from('employee_project_deployments')
-          .insert(insertRows);
-
-        if (insertError) throw insertError;
-      }
-    }
+    const assignmentEmployeeIds = Array.from(new Set(matchingAssignments.map((row: any) => String(row.employee_id)).filter(Boolean)));
+    const employeeIds = departmentIsConstruction
+      ? assignmentEmployeeIds
+      : departmentEmployeeIds;
 
     if (employeeIds.length === 0) {
       return res.json({ workers: [] });

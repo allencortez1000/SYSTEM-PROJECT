@@ -1,5 +1,6 @@
 ﻿import { Router } from 'express';
 import { supabase } from '../lib/supabase';
+import { canonicalDepartmentName } from '../lib/departmentNames';
 import { AuthRequest, requireSuperAdmin, verifyToken } from '../middleware/auth';
 
 const router = Router();
@@ -289,7 +290,7 @@ async function getDefaultOrganizationId() {
 }
 
 async function getOrCreateDepartment(organizationId: string, name: string) {
-  const departmentName = name?.trim() || 'Unassigned';
+  const departmentName = canonicalDepartmentName(name) || 'Unassigned';
 
   const { data: existingDepartments, error: existingError } = await supabase
     .from('departments')
@@ -454,7 +455,7 @@ router.get('/:id', async (req, res) => {
       );
     }
 
-    const [employeeResult, lookups] = await Promise.all([employeeQuery.maybeSingle(), getLookupMaps()]);
+    const [employeeResult, lookups, projectSite] = await Promise.all([employeeQuery.maybeSingle(), getLookupMaps(), getEmployeeProjectSite(req.params.id)]);
 
     if (employeeResult.error) {
       throw employeeResult.error;
@@ -465,7 +466,7 @@ router.get('/:id', async (req, res) => {
     }
 
     res.json({
-      employee: toEmployeeApi(employeeResult.data as EmployeeRow, lookups),
+      employee: toEmployeeApi(employeeResult.data as EmployeeRow, lookups, projectSite),
     });
   } catch (error) {
     const message = (error as Error).message;
@@ -563,7 +564,7 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
+    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, projectSite, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
     let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
@@ -597,7 +598,7 @@ router.patch('/:id', async (req, res) => {
 
     const nextDepartmentId = await getOrCreateDepartment(
       organizationId,
-      department || currentDepartmentName,
+      canonicalDepartmentName(department || currentDepartmentName),
     );
 
     if (departmentIds !== null && !departmentIds.includes(nextDepartmentId)) {
@@ -613,12 +614,31 @@ router.patch('/:id', async (req, res) => {
     const mergedFullName = String(fullName || existing.full_name || [existing.first_name, existing.last_name].filter(Boolean).join(' ')).trim();
     const { firstName, lastName } = splitFullName(mergedFullName);
 
+    if (projectSite !== undefined) {
+      const desiredProjectSite = String(projectSite || '').trim() || 'Main Office';
+      const { data: projectSiteRecord, error: projectSiteError } = await supabase
+        .from('project_sites')
+        .select('id, name')
+        .ilike('name', desiredProjectSite)
+        .limit(1)
+        .maybeSingle();
+
+      if (projectSiteError) {
+        throw projectSiteError;
+      }
+
+      const resolvedProjectSiteName = projectSiteRecord?.name || desiredProjectSite;
+      if (resolvedProjectSiteName) {
+        await setEmployeeProjectSite(existing.id, resolvedProjectSiteName);
+      }
+    }
+
     const { data, error } = await supabase
       .from('employees')
       .update({
         first_name: firstName,
         last_name: lastName,
-        email: email === undefined ? existing.email : email,
+        email: email === undefined ? existing.email : (String(email || '').trim() || null),
         department_id: nextDepartmentId,
         position_id: nextPositionId,
         status: status || existing.status || 'Active',
@@ -646,21 +666,22 @@ router.patch('/:id', async (req, res) => {
     }
 
     const refreshedLookups = await getLookupMaps();
+    const refreshedProjectSite = await getEmployeeProjectSite(String(data.id));
 
     res.json({
-      employee: toEmployeeApi(data as EmployeeRow, refreshedLookups),
+      employee: toEmployeeApi(data as EmployeeRow, refreshedLookups, refreshedProjectSite),
     });
   } catch (error) {
-    const message = (error as Error).message;
-    if (message === 'Insufficient permissions') {
-      return res.status(403).json({ message });
-    }
-
-    res.status(500).json({
-      message: 'Failed to update employee in Supabase',
-      error: message,
-    });
+  const message = (error as Error).message;
+  if (message === 'Insufficient permissions') {
+    return res.status(403).json({ message });
   }
+
+  res.status(500).json({
+    message: message || 'Failed to update employee in Supabase',
+    error: message,
+  });
+}
 });
 
 router.patch('/:id/deactivate', async (req, res) => {
