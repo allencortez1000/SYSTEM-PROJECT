@@ -117,7 +117,7 @@ export default function RecruitmentPage() {
         {metrics.map(({ label, value, icon, gradient, bgGradient }) => (
           <div
             key={label}
-            className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${bgGradient} p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
+            className={`group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${bgGradient} p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
           >
             <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
               <div className={`rounded-full bg-gradient-to-br ${gradient} p-3 text-white`}>

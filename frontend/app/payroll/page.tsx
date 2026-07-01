@@ -207,7 +207,7 @@ export default function PayrollIndex() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <div className="mb-8">
+        <div className="hero-panel mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 shadow-lg transition-transform hover:scale-105">
               <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -243,7 +243,7 @@ export default function PayrollIndex() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className={`group relative overflow-hidden rounded-2xl border ${stat.borderColor} bg-gradient-to-br ${stat.bgLight} p-6 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
+              className={`metric-card group relative overflow-hidden rounded-[1.5rem] border ${stat.borderColor} bg-gradient-to-br ${stat.bgLight} p-6 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">

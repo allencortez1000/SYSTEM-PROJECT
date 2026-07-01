@@ -156,7 +156,7 @@ export default function EmployeesPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <div className="mb-6">
+        <div className="hero-panel mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
@@ -180,7 +180,7 @@ export default function EmployeesPage() {
 
         {/* Stats Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+          <div className="metric-card group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Active Employees</p>
@@ -194,7 +194,7 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+          <div className="metric-card group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Departments</p>
@@ -208,7 +208,7 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+          <div className="metric-card group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Total Records</p>

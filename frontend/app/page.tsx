@@ -150,7 +150,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Hero Section */}
-        <div className="mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg shadow-slate-900/20 sm:p-12">
+        <div className="hero-panel mb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg shadow-slate-900/20 sm:p-12 rounded-[1.75rem] border border-white/10">
           <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold backdrop-blur-sm">

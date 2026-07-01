@@ -87,7 +87,7 @@ export default function CompliancePage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-green-50 to-emerald-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
             <div className="rounded-full bg-gradient-to-br from-green-500 to-emerald-500 p-3 text-white">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -102,7 +102,7 @@ export default function CompliancePage() {
           <p className="mt-2 text-sm font-semibold text-slate-500">Active compliance items</p>
         </div>
 
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
             <div className="rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 p-3 text-white">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -117,7 +117,7 @@ export default function CompliancePage() {
           <p className="mt-2 text-sm font-semibold text-slate-500">Items overdue or past due date</p>
         </div>
 
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        <div className="group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-blue-50 to-cyan-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
             <div className="rounded-full bg-gradient-to-br from-slate-700 to-slate-900 p-3 text-white">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

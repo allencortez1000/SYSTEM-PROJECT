@@ -91,7 +91,7 @@ export default function ReportsPage() {
             <Link
               key={card.href}
               href={card.href}
-              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+              className="group relative overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
             >
               {/* Gradient border effect on hover */}
               <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${card.gradient} opacity-0 transition-opacity group-hover:opacity-5`} />
