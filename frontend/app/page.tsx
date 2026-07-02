@@ -147,112 +147,49 @@ export default function Home() {
   }, [employees, attendance]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="page-shell">
         {/* Hero Section */}
-        <div className="hero-panel mb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg shadow-slate-900/20 sm:p-12 rounded-[1.75rem] border border-white/10">
-          <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold backdrop-blur-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-white"></span>
-                </span>
-                Live Dashboard
-              </div>
-              <h1 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-                HR Command Center
-              </h1>
-              <p className="mt-4 text-lg text-slate-300">
-                Manage payroll, people operations, and compliance with real-time workforce data from Supabase.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/employees"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Manage Employees
-                </Link>
-                <Link
-                  href="/payroll/new"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/20"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Create Payroll
-                </Link>
-              </div>
-            </div>
-
-            {/* Live Stats Widget */}
-            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-xl shadow-black/20 backdrop-blur-md">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-300">Workforce Overview</h3>
-                <span className="flex h-2 w-2">
-                  <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400"></span>
-                </span>
-              </div>
-              <div className="mt-4 text-5xl font-black text-white">{stats.totalEmployees}</div>
-              <p className="mt-1 text-sm text-slate-300">Total Employees</p>
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-white/10 bg-white/10 p-3 text-center backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-white">{stats.activeEmployees}</div>
-                  <div className="mt-1 text-xs text-slate-300">Active</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/10 p-3 text-center backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-white">{stats.presentToday}</div>
-                  <div className="mt-1 text-xs text-slate-300">Present</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/10 p-3 text-center backdrop-blur-sm">
-                  <div className="text-2xl font-bold text-white">{stats.onLeave}</div>
-                  <div className="mt-1 text-xs text-slate-300">On Leave</div>
-                </div>
-              </div>
-            </div>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Live Dashboard</p>
+            <h1 className="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Rabino Home Builders HR</h1>
+            <p className="mt-1 text-sm text-slate-500">Real-time workforce data · {stats.totalEmployees} employees</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              Manage Employees
+            </Link>
+            <Link href="/payroll/new" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              Create Payroll
+            </Link>
           </div>
         </div>
 
         {/* Loading & Error States */}
         {loading && (
-          <div className="mb-8 flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-8">
-            <div className="text-center">
-              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
-              <p className="mt-4 text-sm font-medium text-slate-600">Loading dashboard data...</p>
-            </div>
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
           </div>
         )}
 
         {error && (
-          <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 p-6">
-            <div className="flex items-start gap-3">
-              <svg className="h-6 w-6 flex-shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <h3 className="text-sm font-semibold text-red-900">Error loading dashboard</h3>
-                <p className="mt-1 text-sm text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
+          <div className="rounded-[0.875rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         )}
 
         {/* Metric Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Total Employees */}
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-lg">
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Total Employees</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{stats.totalEmployees}</p>
                 <p className="mt-1 text-sm font-medium text-green-600">{stats.activeEmployees} active</p>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 p-3">
-                <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
@@ -260,15 +197,15 @@ export default function Home() {
           </div>
 
           {/* Monthly Payroll */}
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-lg">
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Monthly Payroll</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{pesos(stats.payrollCost)}</p>
                 <p className="mt-1 text-sm font-medium text-slate-600">Total cost</p>
               </div>
-              <div className="rounded-xl bg-emerald-100 p-3">
-                <svg className="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -276,15 +213,15 @@ export default function Home() {
           </div>
 
           {/* Present Today */}
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-lg">
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Present Today</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{stats.presentToday}</p>
                 <p className="mt-1 text-sm font-medium text-slate-600">Attendance records</p>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 p-3">
-                <svg className="h-6 w-6 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -292,15 +229,15 @@ export default function Home() {
           </div>
 
           {/* On Leave */}
-          <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-lg">
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">On Leave</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{stats.onLeave}</p>
                 <p className="mt-1 text-sm font-medium text-slate-600">Leave entries</p>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 p-3">
-                <svg className="h-6 w-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -311,7 +248,7 @@ export default function Home() {
         {/* Department Analytics & Latest Employees */}
         <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
           {/* Department Chart */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Department Distribution</h3>
@@ -319,7 +256,7 @@ export default function Home() {
               </div>
               <Link
                 href="/reports"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-all hover:border-blue-300 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:border-slate-300"
               >
                 <span>Reports</span>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -364,7 +301,7 @@ export default function Home() {
           </div>
 
           {/* Latest Employees */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Recent Employees</h3>
@@ -407,8 +344,8 @@ export default function Home() {
                         {employee.position} · {employee.department}
                       </p>
                     </div>
-                    <div className={`flex-shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
-                      isActive ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"
+                    <div className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
                     }`}>
                       {employee.status || "Active"}
                     </div>
@@ -429,7 +366,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

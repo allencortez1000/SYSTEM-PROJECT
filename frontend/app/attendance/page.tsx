@@ -926,22 +926,14 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-            </svg>
-            <span className="text-sm font-bold uppercase tracking-wider text-blue-600">Attendance Hub</span>
+    <div className="page-shell">
+        {/* Page header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Attendance management</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Project Attendance & Deployment</h1>
+            <p className="mt-1 text-sm text-slate-500">Manage worker assignments, track daily attendance, and monitor project deployment across all sites.</p>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">
-            Project Attendance & Deployment
-          </h1>
-          <p className="mt-3 max-w-3xl text-lg text-slate-600">
-            Manage worker assignments, track daily attendance, and monitor project deployment across all sites.
-          </p>
         </div>
 
         {/* Loading State */}
@@ -980,7 +972,7 @@ export default function AttendancePage() {
                   setSelectedDepartment(item.department);
                   setSelectedProject(getFirstDepartmentProject(item.department));
                 }}
-                className={`group rounded-2xl border bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                className={`group rounded-[0.875rem] border bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                   selectedDepartment === item.department
                     ? "border-blue-500 ring-2 ring-blue-100"
                     : "border-slate-200 hover:border-blue-300"
@@ -1015,7 +1007,7 @@ export default function AttendancePage() {
           {/* Left Sidebar */}
           <div className="space-y-6">
             {/* Project Management Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
@@ -1109,7 +1101,7 @@ export default function AttendancePage() {
             </div>
 
             {/* Worker Roster Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1141,35 +1133,33 @@ export default function AttendancePage() {
                           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Action needed</span>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           {unassignedConstructionWorkers.map((employee) => (
-                            <div key={employee.id} className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex items-start gap-3 min-w-0">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold text-sm">
-                                    {employee.fullName.charAt(0)}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
-                                    <p className="mt-0.5 text-xs font-medium text-slate-500">{employee.position || "Employee"} · Construction</p>
-                                    <div className="mt-1 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">
-                                      Current site: Unassigned
-                                    </div>
-                                  </div>
+                            <div key={employee.id} className="overflow-hidden rounded-lg border border-amber-200 bg-white shadow-sm">
+                              {/* Employee identity row */}
+                              <div className="flex items-center gap-2.5 p-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">
+                                  {employee.fullName.charAt(0)}
                                 </div>
-                                <div className="min-w-[220px]">
-                                  <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Assign site</label>
-                                  <select
-                                    value="Unassigned"
-                                    onChange={(event) => assignEmployee(employee.id, event.target.value)}
-                                    className={`${filterSelectCompactClassName} w-full`}
-                                  >
-                                    <option value="Unassigned">Unassigned</option>
-                                    {projects.map((project) => (
-                                      <option key={project} value={project}>{project}</option>
-                                    ))}
-                                  </select>
+                                <div className="min-w-0 flex-1 overflow-hidden">
+                                  <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
+                                  <p className="truncate text-xs text-amber-600 font-semibold">{employee.position || "Employee"}</p>
                                 </div>
+                                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">Unassigned</span>
+                              </div>
+                              {/* Site selector — visually separated footer */}
+                              <div className="border-t border-amber-100 bg-amber-50/60 px-3 py-2.5">
+                                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">Assign to site</p>
+                                <select
+                                  value="Unassigned"
+                                  onChange={(event) => assignEmployee(employee.id, event.target.value)}
+                                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                                >
+                                  <option value="Unassigned">— Select a site —</option>
+                                  {projects.map((project) => (
+                                    <option key={project} value={project}>{project}</option>
+                                  ))}
+                                </select>
                               </div>
                             </div>
                           ))}
@@ -1186,31 +1176,41 @@ export default function AttendancePage() {
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          {group.workers.map((employee) => (
-                            <div key={employee.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex items-start gap-3 min-w-0">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm">
+                        <div className="space-y-2">
+                          {group.workers.map((employee) => {
+                            const isConstruction = String(employee.department || "").toLowerCase() === "construction";
+                            const currentSite = isConstruction ? (assignments[employee.id] || "Unassigned") : "Main Office";
+                            const isSaving = assignmentSavingId === employee.id;
+                            return (
+                              <div key={employee.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                                {/* Employee identity row */}
+                                <div className="flex items-center gap-2.5 p-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                                     {employee.fullName.charAt(0)}
                                   </div>
-                                  <div className="min-w-0 flex-1">
+                                  <div className="min-w-0 flex-1 overflow-hidden">
                                     <p className="truncate text-sm font-bold text-slate-900">{employee.fullName}</p>
-                                    <p className="mt-0.5 text-xs font-medium text-slate-500">
-                                      {employee.position || "Employee"} · Department: {employee.department || "Unassigned"}
-                                    </p>
-                                    <div className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">
-                                      Current site: {String(employee.department || "").toLowerCase() === "construction" ? (assignments[employee.id] || "Unassigned") : "Main Office"}
-                                    </div>
+                                    <p className="truncate text-xs text-slate-500">{employee.position || "Employee"}</p>
                                   </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                                    isConstruction
+                                      ? "bg-blue-100 text-blue-700"
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}>
+                                    {isConstruction ? "Flex" : "Fixed"}
+                                  </span>
                                 </div>
-                                <div className="min-w-[220px]">
-                                  <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Assign site</label>
+                                {/* Site indicator/selector — visually separated footer */}
+                                <div className="border-t border-slate-100 bg-slate-50 px-3 py-2.5">
+                                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current site</p>
+                                    {isSaving && <span className="text-[10px] font-semibold text-blue-600 animate-pulse">Saving…</span>}
+                                  </div>
                                   <select
-                                    value={String(employee.department || "").toLowerCase() === "construction" ? (assignments[employee.id] || "Unassigned") : "Main Office"}
+                                    value={currentSite}
                                     onChange={(event) => assignEmployee(employee.id, event.target.value)}
-                                    disabled={assignmentSavingId === employee.id || String(employee.department || "").toLowerCase() !== "construction"}
-                                    className={`${filterSelectCompactClassName} w-full`}
+                                    disabled={isSaving || !isConstruction}
+                                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                                   >
                                     <option value="Unassigned">Unassigned</option>
                                     {projects.map((project) => (
@@ -1219,8 +1219,8 @@ export default function AttendancePage() {
                                   </select>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -1390,7 +1390,7 @@ export default function AttendancePage() {
 
             {/* Info Cards */}
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
@@ -1400,7 +1400,7 @@ export default function AttendancePage() {
                 <p className="text-xl font-black text-slate-900">{selectedProject}</p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -1410,7 +1410,7 @@ export default function AttendancePage() {
                 <p className="text-xl font-black text-slate-900">{assignedEmployees.length}</p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
@@ -1422,7 +1422,7 @@ export default function AttendancePage() {
             </div>
 
             {/* Recent Records */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1527,7 +1527,6 @@ export default function AttendancePage() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Attendance Table Modal */}
       {isWorkspaceOpen && (

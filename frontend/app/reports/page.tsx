@@ -54,35 +54,19 @@ const reportCards = [
 export default function ReportsPage() {
   return (
     <div className="page-shell">
-      <section className="hero-panel relative overflow-hidden">
-        {/* Gradient background decoration */}
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 opacity-50 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-gradient-to-tr from-cyan-100 to-blue-100 opacity-50 blur-3xl" />
-
-        <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-lg">
-                <ChartBarIcon className="h-6 w-6 text-white" />
-              </div>
-              <p className="eyebrow">Reports studio</p>
-            </div>
-            <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Choose a report section
-            </h2>
-            <p className="mt-3 max-w-2xl text-slate-600">
-              Open individual HR, payroll, attendance, and compliance reports connected to the rest of the system.
-            </p>
-          </div>
-
-          <Link
-            href="/"
-            className="group inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
-          >
-            Back to dashboard
-          </Link>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Reports studio</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Reports</h1>
+          <p className="mt-1 text-sm text-slate-500">Open individual HR, payroll, attendance, and compliance reports.</p>
         </div>
-      </section>
+        <Link
+          href="/"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          Back to dashboard
+        </Link>
+      </div>
 
       <section className="grid min-w-0 gap-4 md:grid-cols-2">
         {reportCards.map((card) => {
@@ -91,29 +75,26 @@ export default function ReportsPage() {
             <Link
               key={card.href}
               href={card.href}
-              className="group relative overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
+              className="flex flex-col rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md hover:border-blue-200"
             >
-              {/* Gradient border effect on hover */}
-              <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${card.gradient} opacity-0 transition-opacity group-hover:opacity-5`} />
-
               {/* Icon */}
-              <div className={`relative flex h-12 w-12 items-center justify-center rounded-2xl ${card.iconBg} shadow-sm transition-all group-hover:scale-110 group-hover:shadow-md`}>
-                <IconComponent className={`h-7 w-7 ${card.iconColor}`} />
+              <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.iconBg}`}>
+                <IconComponent className={`h-6 w-6 ${card.iconColor}`} />
               </div>
 
               {/* Content */}
-              <h3 className="relative mt-6 break-words text-xl font-black text-slate-950 transition-colors group-hover:bg-gradient-to-r group-hover:from-slate-950 group-hover:to-slate-700 group-hover:bg-clip-text group-hover:text-transparent">
+              <h3 className="mt-4 text-lg font-bold text-slate-900">
                 {card.title}
               </h3>
 
-              <p className="relative mt-3 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm text-slate-500">
                 {card.description}
               </p>
 
-              {/* Action button */}
-              <div className="relative mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 transition-all group-hover:bg-gradient-to-r group-hover:from-slate-100 group-hover:to-slate-50">
+              {/* Action link */}
+              <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">
                 {card.action}
-                <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRightIcon className="h-4 w-4" />
               </div>
             </Link>
           );

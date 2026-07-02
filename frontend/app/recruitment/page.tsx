@@ -98,36 +98,25 @@ export default function RecruitmentPage() {
 
   return (
     <div className="page-shell">
-      <section className="hero-panel">
-        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-4 py-1.5">
-          <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-          </svg>
-          <span className="text-sm font-bold text-blue-700">Recruitment Pipeline</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Talent Acquisition</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Recruitment Pipeline</h1>
+          <p className="mt-1 text-sm text-slate-500">Live candidates and open roles with real-time tracking.</p>
         </div>
-        <h2 className="mt-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent">
-          Hire with visibility
-        </h2>
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">
-          Live candidates and open roles pulled from your Supabase database with real-time tracking.
-        </p>
-      </section>
+      </div>
 
       <section className="grid gap-4 md:grid-cols-2">
-        {metrics.map(({ label, value, icon, gradient, bgGradient }) => (
+        {metrics.map(({ label, value, icon }) => (
           <div
             key={label}
-            className={`group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${bgGradient} p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
+            className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md"
           >
-            <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
-              <div className={`rounded-full bg-gradient-to-br ${gradient} p-3 text-white`}>
-                {icon}
-              </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              {icon}
             </div>
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-600">{label}</p>
-            <p className={`mt-3 bg-gradient-to-br ${gradient} bg-clip-text text-3xl font-black text-transparent`}>
-              {value}
-            </p>
+            <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
           </div>
         ))}
       </section>
@@ -197,54 +186,45 @@ export default function RecruitmentPage() {
                     key={String(candidate.id ?? index)}
                     type="button"
                     onClick={() => setActiveRow(candidate)}
-                    className={`group relative overflow-hidden rounded-2xl border-2 p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-                      isActive
-                        ? "border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg"
-                        : "border-slate-200 bg-white hover:border-blue-200"
+                    className={`w-full rounded-[0.875rem] border bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md hover:border-blue-200 text-left ${
+                      isActive ? "border-blue-300" : "border-slate-200"
                     }`}
                   >
-                    <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 opacity-50 transition-transform duration-300 group-hover:scale-150"></div>
-
-                    <div className="relative">
-                      <div className="flex items-start justify-between">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
-                          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        </svg>
+                      </div>
+                      {isActive && (
+                        <div className="rounded-full bg-blue-500 p-1">
+                          <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                           </svg>
                         </div>
-                        {isActive && (
-                          <div className="rounded-full bg-blue-500 p-1 shadow-md">
-                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
+                      )}
+                    </div>
 
-                      <p className="mt-4 text-lg font-black text-slate-950">
-                        {pick(candidate, ["full_name", "name", "first_name"])}
-                      </p>
-                      <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    <p className="mt-4 text-lg font-black text-slate-950">
+                      {pick(candidate, ["full_name", "name", "first_name"])}
+                    </p>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                      </svg>
+                      {pick(candidate, ["email", "phone"])}
+                    </p>
+
+                    <div className="mt-6 flex items-center justify-between gap-3">
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        {pick(candidate, ["source"])}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
                         </svg>
-                        {pick(candidate, ["email", "phone"])}
-                      </p>
-
-                      <div className="mt-6 flex items-center justify-between gap-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 px-3 py-1.5 text-xs font-black text-emerald-800 shadow-sm">
-                          <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
-                            <circle cx="4" cy="4" r="3" />
-                          </svg>
-                          {pick(candidate, ["source"])}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-slate-950 to-slate-800 px-3 py-1.5 text-xs font-black text-white shadow-md transition-all group-hover:from-blue-600 group-hover:to-cyan-500">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                          </svg>
-                          Details
-                        </span>
-                      </div>
+                        Details
+                      </span>
                     </div>
                   </button>
                 );
@@ -278,7 +258,7 @@ export default function RecruitmentPage() {
         )}
 
         {openings.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+          <div className="mt-6 rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -293,10 +273,10 @@ export default function RecruitmentPage() {
                     const statusVal = pick(opening, ["status"]);
                     const statusClass =
                       statusVal.toLowerCase().includes("open") || statusVal.toLowerCase().includes("active")
-                        ? "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800"
+                        ? "bg-emerald-100 text-emerald-700"
                         : statusVal.toLowerCase().includes("close") || statusVal.toLowerCase().includes("filled")
-                        ? "bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600"
-                        : "bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-800";
+                        ? "bg-slate-100 text-slate-600"
+                        : "bg-blue-100 text-blue-700";
                     return (
                       <tr key={String(opening.id ?? index)} className="cursor-pointer transition-colors hover:bg-gradient-to-r hover:from-slate-50 hover:to-white" onClick={() => setActiveRow(opening)}>
                         <td className="px-5 py-4 font-black text-slate-950">
@@ -306,7 +286,7 @@ export default function RecruitmentPage() {
                           {pick(opening, ["department"])}
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black ${statusClass}`}>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusClass}`}>
                             {statusVal}
                           </span>
                         </td>

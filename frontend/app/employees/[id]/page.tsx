@@ -68,88 +68,59 @@ export default function EmployeeDetail() {
 
   return (
     <div className="page-shell">
-      {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <p className="text-sm font-bold uppercase tracking-wider text-white/90">Employee profile</p>
-            </div>
-            <h2 className="mt-4 break-words text-3xl font-black tracking-tight sm:text-5xl">
-              {employee?.fullName || "Employee details"}
-            </h2>
-            <p className="mt-3 max-w-2xl text-lg text-white/90">
-              Review employee role, department, manager, and Philippine Peso salary information.
-            </p>
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-xl font-black text-white shadow-sm">
+            {employee?.fullName?.split(" ").map((name) => name?.[0] ?? "").filter(Boolean).slice(0, 2).join("") || "?"}
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/employees" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to employees
-            </Link>
-            <Link href={`/employees/${id}/edit`} className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Edit Employee
-            </Link>
-            <button
-              type="button"
-              onClick={() => setDeleteModalOpen(true)}
-              disabled={deleting}
-              className="inline-flex items-center gap-2 rounded-2xl border-2 border-red-300 bg-red-500/10 px-5 py-2.5 font-bold text-red-100 backdrop-blur-sm transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-6 0h6" />
-              </svg>
-              {deleting ? "Deleting..." : "Delete Employee"}
-            </button>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Employee Profile</p>
+            <h1 className="text-xl font-black tracking-tight text-slate-950">{employee?.fullName || "Employee details"}</h1>
           </div>
         </div>
-      </section>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to employees
+          </Link>
+          <Link href={`/employees/${id}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit Employee
+          </Link>
+          <button
+            type="button"
+            onClick={() => setDeleteModalOpen(true)}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-6 0h6" />
+            </svg>
+            {deleting ? "Deleting..." : "Delete Employee"}
+          </button>
+        </div>
+      </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-12 shadow-xl">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center">
-              <svg className="h-12 w-12 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-            <p className="text-sm font-semibold text-slate-600">Loading employee details...</p>
-          </div>
+        <div className="flex items-center justify-center py-16">
+          <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
-            <svg className="h-6 w-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p className="font-bold text-red-900">Error loading employee</p>
-            <p className="mt-1 text-sm font-semibold text-red-700">{error}</p>
-          </div>
-        </div>
+        <div className="rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
       )}
 
       {deleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6">
+          <div className="w-full max-w-md rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-2xl">
             <div className="flex items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,7 +137,7 @@ export default function EmployeeDetail() {
               <button
                 type="button"
                 onClick={() => setDeleteModalOpen(false)}
-                className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -193,7 +164,7 @@ export default function EmployeeDetail() {
                     setDeleting(false);
                   }
                 }}
-                className="rounded-2xl bg-red-600 px-5 py-2.5 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Delete employee"}
               </button>
@@ -204,38 +175,25 @@ export default function EmployeeDetail() {
 
       {/* Employee Details */}
       {employee && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
-          <div className="grid gap-8 lg:grid-cols-[0.6fr_1.4fr]">
+        <div className="rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <div className="grid gap-6 p-6 lg:grid-cols-[0.6fr_1.4fr]">
             {/* Profile Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white shadow-lg">
-              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-gradient-to-br from-blue-600/20 to-cyan-400/20 blur-3xl"></div>
-              <div className="relative">
-                <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 text-3xl font-black shadow-lg">
-                  {employee.fullName.split(" ").map((name) => name?.[0] ?? "").filter(Boolean).slice(0, 2).join("")}
-                </div>
-                <h3 className="mt-6 break-words text-2xl font-black">{employee.fullName}</h3>
-                <p className="mt-3 flex items-center gap-2 text-base font-semibold text-slate-300">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  {employee.position || "Employee"}
-                </p>
-                <div className={`mt-6 inline-flex items-center gap-2 rounded-2xl px-4 py-2 backdrop-blur-sm ${
-                    /^(active)$/i.test(employee.status || "") ? "bg-emerald-500/20" :
-                    /^(inactive|terminated)$/i.test(employee.status || "") ? "bg-red-500/20" :
-                    "bg-slate-500/20"
-                  }`}>
-                  <div className={`h-2 w-2 rounded-full shadow-lg ${
-                    /^(active)$/i.test(employee.status || "") ? "bg-emerald-400 shadow-emerald-400/50" :
-                    /^(inactive|terminated)$/i.test(employee.status || "") ? "bg-red-400 shadow-red-400/50" :
-                    "bg-slate-400 shadow-slate-400/50"
-                  }`}></div>
-                  <span className={`text-sm font-black ${
-                    /^(active)$/i.test(employee.status || "") ? "text-emerald-300" :
-                    /^(inactive|terminated)$/i.test(employee.status || "") ? "text-red-300" :
-                    "text-slate-300"
-                  }`}>{employee.status || "Active"}</span>
-                </div>
+            <div className="rounded-[0.875rem] border border-slate-100 bg-slate-50 p-6">
+              <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-blue-600 text-2xl font-black text-white shadow-sm">
+                {employee.fullName.split(" ").map((name) => name?.[0] ?? "").filter(Boolean).slice(0, 2).join("")}
+              </div>
+              <h3 className="mt-4 break-words text-xl font-black text-slate-950">{employee.fullName}</h3>
+              <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {employee.position || "Employee"}
+              </p>
+              <div className="mt-4">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${/^(active)$/i.test(employee.status || "") ? "bg-emerald-100 text-emerald-700" : /^(inactive|terminated)$/i.test(employee.status || "") ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${/^(active)$/i.test(employee.status || "") ? "bg-emerald-500" : /^(inactive|terminated)$/i.test(employee.status || "") ? "bg-red-500" : "bg-slate-400"}`}></span>
+                  {employee.status || "Active"}
+                </span>
               </div>
             </div>
 
@@ -311,11 +269,11 @@ type InfoCardProps = {
 
 function InfoCard({ label, value, icon, gradient, highlight }: InfoCardProps) {
   return (
-    <div className={`group relative min-w-0 overflow-hidden rounded-2xl border ${highlight ? "md:col-span-2 border-slate-200" : "border-slate-100"} bg-white p-5 shadow-lg transition hover:shadow-xl`}>
+    <div className={`group relative min-w-0 overflow-hidden rounded-[0.875rem] border ${highlight ? "md:col-span-2 border-slate-200" : "border-slate-100"} bg-white p-5 shadow-sm transition hover:shadow-md`}>
       <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-gradient-to-br from-slate-50 to-blue-50 blur-2xl opacity-50 transition group-hover:opacity-100"></div>
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
-          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-lg`}>
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} text-white shadow-sm`}>
             {icon}
           </div>
         </div>

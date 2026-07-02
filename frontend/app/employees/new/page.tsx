@@ -89,40 +89,25 @@ export default function NewEmployeePage() {
 
   return (
     <div className="page-shell">
-      {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-              </div>
-              <p className="text-sm font-bold uppercase tracking-wider text-white/90">New worker / employee</p>
-            </div>
-            <h2 className="mt-4 break-words text-2xl font-black tracking-tight sm:text-5xl">
-                              Add worker or employee
-                            </h2>
-            <p className="mt-3 max-w-2xl text-lg text-white/90">
-              Create a new employee profile with Philippine Peso compensation details.
-            </p>
-          </div>
-
-          <Link href="/employees" className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to employees
-          </Link>
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">New Employee</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Add Worker or Employee</h1>
+          <p className="mt-1 text-sm text-slate-500">Create a new employee profile with compensation details.</p>
         </div>
-      </section>
+        <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to employees
+        </Link>
+      </div>
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
+      <form onSubmit={handleSubmit} className="rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div className="flex items-center gap-4 border-b border-slate-100 px-6 py-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
             <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -133,14 +118,14 @@ export default function NewEmployeePage() {
           </div>
         </div>
 
-        <div className="mt-8 space-y-6">
+        <div className="px-6 py-5 space-y-5">
           {/* Personal Information Section */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
+          <div className="rounded-[0.875rem] bg-slate-50 p-5">
             <div className="mb-4 flex items-center gap-2">
               <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">Personal Details</h4>
+              <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Personal Details</h4>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               <TextField
@@ -174,12 +159,12 @@ export default function NewEmployeePage() {
           </div>
 
           {/* Job Information Section */}
-          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
+          <div className="rounded-[0.875rem] bg-slate-50 p-5">
             <div className="mb-4 flex items-center gap-2">
               <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700">Job Details</h4>
+              <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Job Details</h4>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               <SelectField
@@ -241,8 +226,8 @@ export default function NewEmployeePage() {
                     step="0.01"
                     value={salary}
                     onChange={(event) => setSalary(Math.max(0, Number(event.target.value)))}
-                    className={
-                      "w-full rounded-2xl border bg-white py-3.5 pl-10 pr-4 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 " +
+        className={
+          "w-full rounded-lg border bg-white py-2.5 pl-10 pr-3.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 " +
                       (fieldErrors?.salary ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")
                     }
                     aria-invalid={fieldErrors?.salary ? "true" : "false"}
@@ -288,7 +273,7 @@ export default function NewEmployeePage() {
         </div>
 
         {error && (
-          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          <div className="mx-6 mt-4 flex items-start gap-3 rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             <svg className="mt-0.5 h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
@@ -296,11 +281,11 @@ export default function NewEmployeePage() {
           </div>
         )}
 
-        <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row">
+        <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 px-6 pt-5 pb-6 sm:flex-row">
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-8 py-3.5 font-bold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? (
               <>
@@ -319,7 +304,7 @@ export default function NewEmployeePage() {
               </>
             )}
           </button>
-          <Link href="/employees" className="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-8 py-3.5 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+          <Link href="/employees" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -345,7 +330,7 @@ type TextFieldProps = {
 function TextField({ id, label, value, onChange, error, type = "text", required = false, icon }: TextFieldProps) {
   return (
     <label className="block min-w-0">
-      <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+      <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
         {icon && <span className="text-slate-500">{icon}</span>}
         {label}
       </span>
@@ -355,7 +340,7 @@ function TextField({ id, label, value, onChange, error, type = "text", required 
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={
-          "mt-2 w-full rounded-2xl border bg-white px-4 py-3.5 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 " +
+          "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 " +
           (error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")
         }
         aria-invalid={error ? "true" : "false"}
@@ -387,7 +372,7 @@ type SelectFieldProps = {
 function SelectField({ id, label, value, onChange, options, icon, disabled }: SelectFieldProps) {
   return (
     <label className="block min-w-0">
-      <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+      <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
         {icon && <span className="text-slate-500">{icon}</span>}
         {label}
       </span>
@@ -396,7 +381,7 @@ function SelectField({ id, label, value, onChange, options, icon, disabled }: Se
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
-        className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {options.map((option) => (
           <option key={option} value={option}>

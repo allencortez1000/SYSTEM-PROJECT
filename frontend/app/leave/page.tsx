@@ -123,39 +123,38 @@ export default function LeavePage() {
 
   return (
     <div className="page-shell">
-      <section className="hero-panel">
-        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-4 py-1.5">
-          <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-          </svg>
-          <span className="text-sm font-bold text-blue-700">Leave Management</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Leave Management</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Leave Requests</h1>
+          <p className="mt-1 text-sm text-slate-500">Live leave requests with real-time updates.</p>
         </div>
-        <h2 className="mt-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent">
-          Balance time off and coverage
-        </h2>
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">
-          Live leave requests pulled from your Supabase database with real-time updates.
-        </p>
-      </section>
+      </div>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {summary.map(({ label, value, detail, icon, gradient, bgGradient }) => (
-          <div
-            key={label}
-            className={`group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br ${bgGradient} p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
-          >
-            <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
-              <div className={`rounded-full bg-gradient-to-br ${gradient} p-3 text-white`}>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {summary.map(({ label, value, detail, icon }) => {
+          const iconBg =
+            label === "Approved"
+              ? "bg-emerald-50 text-emerald-600"
+              : label === "Rejected"
+              ? "bg-red-50 text-red-600"
+              : label === "Pending"
+              ? "bg-amber-50 text-amber-600"
+              : "bg-blue-50 text-blue-600";
+          return (
+            <div
+              key={label}
+              className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md"
+            >
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
                 {icon}
               </div>
+              <p className="mt-3 text-2xl font-black text-slate-950">{value}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-700">{label}</p>
+              <p className="mt-0.5 text-xs text-slate-400">{detail}</p>
             </div>
-            <p className="text-sm font-bold uppercase tracking-wider text-slate-600">{label}</p>
-            <p className={`mt-3 bg-gradient-to-br ${gradient} bg-clip-text text-3xl font-black text-transparent`}>
-              {value}
-            </p>
-            <p className="mt-2 text-sm font-semibold text-slate-500">{detail}</p>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       <section className="section-card">
@@ -205,7 +204,7 @@ export default function LeavePage() {
         )}
 
         {rows.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+          <div className="mt-6 rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="soft-table">
                 <thead>
@@ -238,15 +237,12 @@ export default function LeavePage() {
                           const status = pick(row, ["status"]).toLowerCase();
                           const colorClass =
                             status === "approved"
-                              ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800"
+                              ? "bg-emerald-100 text-emerald-700"
                               : status === "rejected"
-                              ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
-                              : "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800";
+                              ? "bg-red-100 text-red-700"
+                              : "bg-amber-100 text-amber-700";
                           return (
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${colorClass}`}>
-                              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
-                                <circle cx="4" cy="4" r="3" />
-                              </svg>
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${colorClass}`}>
                               {pick(row, ["status"])}
                             </span>
                           );
@@ -260,12 +256,8 @@ export default function LeavePage() {
                               event.stopPropagation();
                               setActiveRow(row);
                             }}
-                            className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-950 to-slate-800 px-4 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:from-blue-600 hover:to-cyan-500 hover:shadow-lg"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
-                            <svg className="h-3.5 w-3.5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                            </svg>
                             View details
                           </button>
                           {String(pick(row, ["status"]) || "").toLowerCase() === "pending" && (

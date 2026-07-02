@@ -204,30 +204,19 @@ export default function PayrollIndex() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="hero-panel mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 shadow-lg transition-transform hover:scale-105">
-              <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-                Payroll Center
-              </h1>
-              <p className="mt-1 text-sm font-semibold text-slate-600">
-                Manage Philippine payroll with automated deductions
-              </p>
-            </div>
+    <div className="page-shell">
+        {/* Page header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Payroll management</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Payroll Center</h1>
+            <p className="mt-1 text-sm text-slate-500">Manage Philippine payroll with automated deductions</p>
           </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-white p-4 shadow-sm transition-all hover:shadow-md">
+          <div className="mb-6 flex items-start gap-3 rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3">
             <svg className="h-5 w-5 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
@@ -243,7 +232,7 @@ export default function PayrollIndex() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className={`metric-card group relative overflow-hidden rounded-[1.5rem] border ${stat.borderColor} bg-gradient-to-br ${stat.bgLight} p-6 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
+              className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -266,7 +255,7 @@ export default function PayrollIndex() {
         </div>
 
         {/* Main CTA Card */}
-        <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-lg">
+        <div className="mb-6 rounded-[0.875rem] overflow-hidden border border-blue-600/20 shadow-md">
           <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-6 py-8 text-white sm:px-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
@@ -320,7 +309,7 @@ export default function PayrollIndex() {
         </div>
 
         {/* Payroll Runs Table */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-lg transition-all duration-300 hover:shadow-xl">
+        <div className="rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
           <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/30 px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 shadow-sm">
@@ -454,7 +443,6 @@ export default function PayrollIndex() {
           </div>
           </div>
         </div>
-      </div>
 
       {/* Modal for Starting Payroll */}
       {calculatorOpen && (

@@ -547,9 +547,9 @@ export default function AdminUsersPage() {
   if (!loading && !canViewAdmins) {
     return (
       <div className="page-shell">
-        <div className="flex min-h-[60vh] items-center justify-center rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-12 shadow-xl">
+        <div className="rounded-[0.875rem] border border-red-200 bg-red-50 p-6">
           <div className="text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-red-100">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-red-100">
               <svg className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -565,62 +565,32 @@ export default function AdminUsersPage() {
 
   return (
     <div className="page-shell">
-      {/* Hero Section with Gradient */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-8 text-white shadow-lg">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <p className="text-sm font-bold uppercase tracking-wider text-white/90">System administration</p>
-          </div>
-          <h2 className="mt-4 break-words text-2xl font-black tracking-tight sm:text-5xl">
-            Admin Access Control
-          </h2>
-          <p className="mt-3 max-w-3xl text-lg text-white/90">
-            Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.
-          </p>
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">System Administration</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Admin Access Control</h1>
+          <p className="mt-1 text-sm text-slate-500">Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.</p>
         </div>
-      </section>
+      </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-12 shadow-xl">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center">
-              <svg className="h-12 w-12 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-            <p className="text-sm font-semibold text-slate-600">Loading admin data...</p>
-          </div>
+        <div className="flex items-center justify-center py-16">
+          <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-pink-50 p-6 shadow-xl">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
-            <svg className="h-6 w-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p className="font-bold text-red-900">Error</p>
-            <p className="mt-1 text-sm font-semibold text-red-700">{error}</p>
-          </div>
-        </div>
+        <div className="rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
       )}
 
       {/* Sub-Admin & Worker Creation Section */}
       {canCreateAdmins && (
         <section className="grid gap-6 xl:grid-cols-2">
           {/* Sub-Admin Creation Card */}
-          <article className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+          <article className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
@@ -724,7 +694,7 @@ export default function AdminUsersPage() {
               <button
                 type="submit"
                 disabled={saving || loading || selectedPermissions.length === 0}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3.5 font-bold text-white shadow-lg transition hover:from-blue-700 hover:to-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -747,7 +717,7 @@ export default function AdminUsersPage() {
           </article>
 
           {/* Worker Creation Card */}
-          <article className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+          <article className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-lg">
@@ -922,7 +892,7 @@ export default function AdminUsersPage() {
               <button
                 type="submit"
                 disabled={saving || loading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3.5 font-bold text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? (
                   <>
@@ -948,7 +918,7 @@ export default function AdminUsersPage() {
 
       {/* Admin Users List */}
       {canViewAdmins && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+        <section className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg">
@@ -1091,7 +1061,7 @@ export default function AdminUsersPage() {
 
       {/* Worker Management Section */}
       {canViewAdmins && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+        <section className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">

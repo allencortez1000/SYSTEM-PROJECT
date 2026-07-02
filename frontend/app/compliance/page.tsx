@@ -71,65 +71,52 @@ export default function CompliancePage() {
 
   return (
     <div className="page-shell">
-      <section className="hero-panel">
-        <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-1.5">
-          <svg className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-          </svg>
-          <span className="text-sm font-bold text-green-700">Compliance Command</span>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Risk &amp; Compliance</p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Compliance</h1>
+          <p className="mt-1 text-sm text-slate-500">Live compliance requirements with real-time monitoring.</p>
         </div>
-        <h2 className="mt-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-5xl font-black tracking-tight text-transparent">
-          Stay audit-ready every day
-        </h2>
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">
-          Live compliance requirements pulled from your Supabase database with real-time monitoring.
-        </p>
-      </section>
+      </div>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-green-50 to-emerald-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-          <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
-            <div className="rounded-full bg-gradient-to-br from-green-500 to-emerald-500 p-3 text-white">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
               </svg>
             </div>
+            <p className="text-sm font-semibold text-slate-500">Total requirements</p>
           </div>
-          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Total requirements</p>
-          <p className="mt-3 bg-gradient-to-br from-green-500 to-emerald-500 bg-clip-text text-3xl font-black text-transparent">
-            {rows.length}
-          </p>
-          <p className="mt-2 text-sm font-semibold text-slate-500">Active compliance items</p>
+          <p className="mt-3 text-3xl font-black text-slate-950">{rows.length}</p>
+          <p className="mt-1 text-xs text-slate-400">Active compliance items</p>
         </div>
 
-        <div className="group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-          <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
-            <div className="rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 p-3 text-white">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
               </svg>
             </div>
+            <p className="text-sm font-semibold text-slate-500">Overdue / At-risk</p>
           </div>
-          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Overdue / At-risk</p>
-          <p className="mt-3 bg-gradient-to-br from-blue-600 to-cyan-500 bg-clip-text text-3xl font-black text-transparent">
-            {overdueCount}
-          </p>
-          <p className="mt-2 text-sm font-semibold text-slate-500">Items overdue or past due date</p>
+          <p className="mt-3 text-3xl font-black text-slate-950">{overdueCount}</p>
+          <p className="mt-1 text-xs text-slate-400">Items overdue or past due date</p>
         </div>
 
-        <div className="group relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-blue-50 to-cyan-50 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-          <div className="absolute right-4 top-4 opacity-20 transition-opacity duration-300 group-hover:opacity-30">
-            <div className="rounded-full bg-gradient-to-br from-slate-700 to-slate-900 p-3 text-white">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
             </div>
+            <p className="text-sm font-semibold text-slate-500">Pending / Upcoming</p>
           </div>
-          <p className="text-sm font-bold uppercase tracking-wider text-slate-600">Pending / Upcoming</p>
-          <p className="mt-3 bg-gradient-to-br from-slate-700 to-slate-900 bg-clip-text text-3xl font-black text-transparent">
-            {pendingCount}
-          </p>
-          <p className="mt-2 text-sm font-semibold text-slate-500">Items pending or upcoming</p>
+          <p className="mt-3 text-3xl font-black text-slate-950">{pendingCount}</p>
+          <p className="mt-1 text-xs text-slate-400">Items pending or upcoming</p>
         </div>
       </section>
 
@@ -198,19 +185,15 @@ export default function CompliancePage() {
                     key={String(row.id ?? index)}
                     type="button"
                     onClick={() => setActiveRow(row)}
-                    className={`group flex w-full items-center justify-between rounded-2xl border-2 p-5 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${
-                      isActive
-                        ? "border-green-400 bg-gradient-to-r from-green-50 to-emerald-50 shadow-md"
-                        : "border-slate-200 bg-white hover:border-green-200"
+                    className={`flex w-full items-center justify-between rounded-[0.875rem] border bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/30 text-left ${
+                      isActive ? "border-blue-300" : "border-slate-200"
                     }`}
                   >
                     <div className="flex flex-1 items-center gap-4">
-                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-md transition-transform duration-300 group-hover:scale-110 ${
-                        isActive
-                          ? "from-green-500 to-emerald-500"
-                          : "from-slate-500 to-slate-600"
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"
                       }`}>
-                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
                       </div>
@@ -236,27 +219,20 @@ export default function CompliancePage() {
                         const isOverdue = !isCompleted && (s === "overdue" || (rowDue !== "" && rowDue < today));
                         const isPending = s === "pending" || s === "upcoming";
                         const badgeClass = isOverdue
-                          ? "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
+                          ? "bg-red-100 text-red-700"
                           : isPending
-                          ? "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800"
-                          : "bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800";
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-emerald-100 text-emerald-700";
                         return (
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black shadow-sm ${badgeClass}`}>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
                             {statusVal}
                           </span>
                         );
                       })()}
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1.5 text-xs font-black text-blue-800 shadow-sm">
-                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                        </svg>
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
                         {pick(row, ["frequency"])}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-slate-950 to-slate-800 px-4 py-2 text-xs font-black text-white shadow-md transition-all group-hover:from-green-600 group-hover:to-emerald-600">
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
                         View details
                       </span>
                     </div>
