@@ -1,7 +1,20 @@
 ﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import AuthGate from "./components/auth-gate";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const sora = Sora({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Rabino Home Builders Corporation",
@@ -19,7 +32,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
       <body>
         <AuthGate>{children}</AuthGate>
       </body>
