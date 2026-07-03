@@ -54,11 +54,11 @@ const reportCards = [
 export default function ReportsPage() {
   return (
     <div className="page-shell">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Reports studio</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Reports</h1>
-          <p className="mt-1 text-sm text-slate-500">Open individual HR, payroll, attendance, and compliance reports.</p>
+          <p className="eyebrow">Reports studio</p>
+          <h1 className="page-title mt-1">Reports</h1>
+          <p className="page-subtitle">Open individual HR, payroll, attendance, and compliance reports.</p>
         </div>
         <Link
           href="/"
@@ -75,7 +75,7 @@ export default function ReportsPage() {
             <Link
               key={card.href}
               href={card.href}
-              className="flex flex-col rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md hover:border-blue-200"
+              className="card group flex flex-col p-6 transition hover:-translate-y-1 hover:shadow-md hover:border-blue-200"
             >
               {/* Icon */}
               <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.iconBg}`}>

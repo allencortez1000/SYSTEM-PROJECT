@@ -547,7 +547,7 @@ export default function AdminUsersPage() {
   if (!loading && !canViewAdmins) {
     return (
       <div className="page-shell">
-        <div className="rounded-[0.875rem] border border-red-200 bg-red-50 p-6">
+        <div className="card border-red-200 bg-red-50 p-6">
           <div className="text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-red-100">
               <svg className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -566,11 +566,11 @@ export default function AdminUsersPage() {
   return (
     <div className="page-shell">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">System Administration</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Admin Access Control</h1>
-          <p className="mt-1 text-sm text-slate-500">Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.</p>
+          <p className="eyebrow">System Administration</p>
+          <h1 className="page-title mt-1">Admin Access Control</h1>
+          <p className="page-subtitle">Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.</p>
         </div>
       </div>
 
@@ -590,7 +590,7 @@ export default function AdminUsersPage() {
       {canCreateAdmins && (
         <section className="grid gap-6 xl:grid-cols-2">
           {/* Sub-Admin Creation Card */}
-          <article className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
+          <article className="card p-8">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
@@ -717,7 +717,7 @@ export default function AdminUsersPage() {
           </article>
 
           {/* Worker Creation Card */}
-          <article className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
+          <article className="card p-8">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-lg">
@@ -918,7 +918,7 @@ export default function AdminUsersPage() {
 
       {/* Admin Users List */}
       {canViewAdmins && (
-        <section className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg">
@@ -947,7 +947,7 @@ export default function AdminUsersPage() {
             )}
 
             {users.map((user) => (
-              <div key={user.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 shadow-lg transition hover:shadow-xl">
+              <div key={user.id} className="overflow-hidden rounded-[0.875rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-px hover:shadow-md">
                 <div className="p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1061,7 +1061,7 @@ export default function AdminUsersPage() {
 
       {/* Worker Management Section */}
       {canViewAdmins && (
-        <section className="rounded-[0.875rem] border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="card p-8">
           <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">

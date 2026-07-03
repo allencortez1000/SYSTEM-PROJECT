@@ -206,11 +206,11 @@ export default function PayrollIndex() {
   return (
     <div className="page-shell">
         {/* Page header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="page-header">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Payroll management</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Payroll Center</h1>
-            <p className="mt-1 text-sm text-slate-500">Manage Philippine payroll with automated deductions</p>
+            <p className="eyebrow">Payroll management</p>
+            <h1 className="page-title mt-1">Payroll Center</h1>
+            <p className="page-subtitle">Manage Philippine payroll with automated deductions</p>
           </div>
         </div>
 
@@ -232,7 +232,7 @@ export default function PayrollIndex() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md"
+              className="stat-card accent-blue group"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -255,10 +255,10 @@ export default function PayrollIndex() {
         </div>
 
         {/* Main CTA Card */}
-        <div className="mb-6 rounded-[0.875rem] overflow-hidden border border-blue-600/20 shadow-md">
+        <div className="mb-6 overflow-hidden rounded-[0.875rem] border border-blue-600/20 shadow-md">
           <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-6 py-8 text-white sm:px-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex-1">
+              <div className="flex-1">
               <div className="mb-3 flex items-center gap-2">
                 <svg className="h-6 w-6 text-blue-200" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
@@ -282,7 +282,7 @@ export default function PayrollIndex() {
                 <span className="text-white/60">·</span>
                 <span>{selectedDepartment.toLowerCase() === "construction" ? (selectedProjectSite || "Any project site") : "Main Office only"}</span>
               </div>
-            </div>
+              </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={() => { setModalDepartment(""); setModalProjectSite(""); setCalculatorOpen(true); }}

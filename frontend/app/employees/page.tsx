@@ -155,11 +155,11 @@ export default function EmployeesPage() {
   return (
     <div className="page-shell">
         {/* Header Section */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="page-header">
           <div>
             <p className="eyebrow">People management</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Employee Directory</h1>
-            <p className="mt-1 text-sm text-slate-500">Manage and view all employee records</p>
+            <h1 className="page-title mt-1">Employee Directory</h1>
+            <p className="page-subtitle">Manage and view all employee records</p>
           </div>
           <Link
             href="/employees/new"
@@ -174,13 +174,13 @@ export default function EmployeesPage() {
 
         {/* Stats Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-emerald">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Active Employees</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.activeStaff}</p>
+                <p className="text-sm font-semibold text-slate-500">Active Employees</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{stats.activeStaff}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -188,13 +188,13 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-blue">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Departments</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.departments}</p>
+                <p className="text-sm font-semibold text-slate-500">Departments</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{stats.departments}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
@@ -202,13 +202,13 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-cyan">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Total Records</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.totalRecords}</p>
+                <p className="text-sm font-semibold text-slate-500">Total Records</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{stats.totalRecords}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>

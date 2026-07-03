@@ -71,11 +71,11 @@ export default function CompliancePage() {
 
   return (
     <div className="page-shell">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Risk &amp; Compliance</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Compliance</h1>
-          <p className="mt-1 text-sm text-slate-500">Live compliance requirements with real-time monitoring.</p>
+          <p className="eyebrow">Risk &amp; Compliance</p>
+          <h1 className="page-title mt-1">Compliance</h1>
+          <p className="page-subtitle">Live compliance requirements with real-time monitoring.</p>
         </div>
       </div>
 

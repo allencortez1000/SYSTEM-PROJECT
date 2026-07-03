@@ -149,21 +149,23 @@ export default function Home() {
   return (
     <div className="page-shell">
         {/* Hero Section */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Live Dashboard</p>
-            <h1 className="mt-1.5 text-2xl font-black tracking-tight text-slate-950">Rabino Home Builders HR</h1>
-            <p className="mt-1 text-sm text-slate-500">Real-time workforce data · {stats.totalEmployees} employees</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              Manage Employees
-            </Link>
-            <Link href="/payroll/new" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-              Create Payroll
-            </Link>
+        <div className="hero-panel mb-6">
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Live Dashboard</p>
+              <h1 className="mt-1.5 text-2xl font-black tracking-tight text-white">Rabino Home Builders HR</h1>
+              <p className="mt-1 text-sm text-slate-200">Real-time workforce data · {stats.totalEmployees} employees</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-100">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                Manage Employees
+              </Link>
+              <Link href="/payroll/new" className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                Create Payroll
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -180,66 +182,54 @@ export default function Home() {
 
         {/* Metric Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Total Employees */}
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-blue">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Total Employees</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.totalEmployees}</p>
-                <p className="mt-1 text-sm font-medium text-green-600">{stats.activeEmployees} active</p>
+                <p className="text-sm font-semibold text-slate-500">Total Employees</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{stats.totalEmployees}</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-600">{stats.activeEmployees} active</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               </div>
             </div>
           </div>
 
-          {/* Monthly Payroll */}
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-emerald">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Monthly Payroll</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{pesos(stats.payrollCost)}</p>
-                <p className="mt-1 text-sm font-medium text-slate-600">Total cost</p>
+                <p className="text-sm font-semibold text-slate-500">Monthly Payroll</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{pesos(stats.payrollCost)}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Total cost</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
             </div>
           </div>
 
-          {/* Present Today */}
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-cyan">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Present Today</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.presentToday}</p>
-                <p className="mt-1 text-sm font-medium text-slate-600">Attendance records</p>
+                <p className="text-sm font-semibold text-slate-500">Present Today</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{stats.presentToday}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Attendance records</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
             </div>
           </div>
 
-          {/* On Leave */}
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
-            <div className="flex items-center justify-between">
+          <div className="stat-card accent-slate">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">On Leave</p>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{stats.onLeave}</p>
-                <p className="mt-1 text-sm font-medium text-slate-600">Leave entries</p>
+                <p className="text-sm font-semibold text-slate-500">On Leave</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{stats.onLeave}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-600">Leave entries</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </div>
             </div>
           </div>

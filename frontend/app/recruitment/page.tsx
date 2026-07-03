@@ -98,11 +98,11 @@ export default function RecruitmentPage() {
 
   return (
     <div className="page-shell">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Talent Acquisition</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Recruitment Pipeline</h1>
-          <p className="mt-1 text-sm text-slate-500">Live candidates and open roles with real-time tracking.</p>
+          <p className="eyebrow">Talent Acquisition</p>
+          <h1 className="page-title mt-1">Recruitment Pipeline</h1>
+          <p className="page-subtitle">Live candidates and open roles with real-time tracking.</p>
         </div>
       </div>
 
@@ -110,7 +110,7 @@ export default function RecruitmentPage() {
         {metrics.map(({ label, value, icon }) => (
           <div
             key={label}
-            className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md"
+            className="stat-card accent-blue"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               {icon}

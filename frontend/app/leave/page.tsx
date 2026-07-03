@@ -123,11 +123,11 @@ export default function LeavePage() {
 
   return (
     <div className="page-shell">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Leave Management</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Leave Requests</h1>
-          <p className="mt-1 text-sm text-slate-500">Live leave requests with real-time updates.</p>
+          <p className="eyebrow">Leave Management</p>
+          <h1 className="page-title mt-1">Leave Requests</h1>
+          <p className="page-subtitle">Live leave requests with real-time updates.</p>
         </div>
       </div>
 
@@ -144,7 +144,7 @@ export default function LeavePage() {
           return (
             <div
               key={label}
-              className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md"
+              className="stat-card accent-blue"
             >
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
                 {icon}
@@ -204,7 +204,7 @@ export default function LeavePage() {
         )}
 
         {rows.length > 0 && (
-          <div className="mt-6 rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-[0.875rem] border border-slate-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="soft-table">
                 <thead>
