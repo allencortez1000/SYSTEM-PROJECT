@@ -71,12 +71,10 @@ export default function PayrollIndex() {
       }
       if (empRes.ok) {
         const empData = await empRes.json();
-        const employees = empData.employees || [];
-        setEmployeeCount(Number(empData.count ?? employees.length));
+        const employees = (empData.employees || []).filter((e: any) => String(pick(e, ["status", "employeeStatus"]) || "").toLowerCase() === "active");
+        setEmployeeCount(Number(employees.length));
         setPayrollCost(
-          employees
-            .filter((e: any) => String(pick(e, ["status", "employeeStatus"]) || "").toLowerCase() !== "inactive" && String(pick(e, ["status"]) || "").toLowerCase() !== "terminated")
-            .reduce((sum: number, e: { salary?: number }) => sum + (Number(e.salary) || 0), 0),
+          employees.reduce((sum: number, e: { salary?: number }) => sum + (Number(e.salary) || 0), 0),
         );
       }
       if (departmentsRes.ok) {
@@ -211,6 +209,10 @@ export default function PayrollIndex() {
             <p className="eyebrow">Payroll management</p>
             <h1 className="page-title mt-1">Payroll Center</h1>
             <p className="page-subtitle">Manage Philippine payroll with automated deductions</p>
+            <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3.5 py-1.5 text-sm font-bold text-emerald-700 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Active employees only
+            </span>
           </div>
         </div>
 
@@ -320,6 +322,10 @@ export default function PayrollIndex() {
               <div>
                 <h3 className="text-xl font-black text-slate-900">Payment History</h3>
                 <p className="mt-1 text-sm font-semibold text-slate-600">Recent payroll runs and releases</p>
+                <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3.5 py-1.5 text-sm font-bold text-emerald-700 shadow-sm">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  Active employees only
+                </span>
               </div>
             </div>
           </div>
@@ -332,6 +338,9 @@ export default function PayrollIndex() {
               summary={
                 <div className="text-sm font-semibold text-slate-600">
                   Showing <span className="text-slate-900">{filteredRuns.length}</span> payroll run{filteredRuns.length !== 1 ? "s" : ""}
+                  <span className="ml-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                    Active employees only
+                  </span>
                 </div>
               }
               onClearFilters={() => {
@@ -343,7 +352,10 @@ export default function PayrollIndex() {
               clearLabel="Clear filters"
             >
               <div>
-                <span className="text-sm font-semibold text-slate-700">Department filter</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Department filter</span>
+                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Active employees only</span>
+                </div>
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
@@ -357,7 +369,10 @@ export default function PayrollIndex() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">Project-site filter</label>
+                <label className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700">
+                  <span>Project-site filter</span>
+                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Active employees only</span>
+                </label>
                 <select
                   value={selectedProjectSite}
                   onChange={(e) => setSelectedProjectSite(e.target.value)}
@@ -476,11 +491,14 @@ export default function PayrollIndex() {
             <div className="px-6 py-6">
               <div className="grid gap-5">
                 <label className="block">
-                  <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
-                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
-                    </svg>
-                    Department
+                  <span className="mb-2 flex items-center justify-between gap-2 text-sm font-black text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                      </svg>
+                      Department
+                    </span>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Active only</span>
                   </span>
                   <select
                     value={modalDepartment}
@@ -494,11 +512,12 @@ export default function PayrollIndex() {
                       </option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Only active employees are included in payroll calculations.</p>
                 </label>
 
                 <label className="block">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm font-black text-slate-700">
+                  <div className="mb-2 flex items-center justify-between gap-2 text-sm font-black text-slate-700">
+                    <span className="flex items-center gap-2">
                       <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
@@ -521,7 +540,7 @@ export default function PayrollIndex() {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">Choose the department first; only Construction can use a different project site. Everyone else stays on Main Office.</p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">Project assignment is only used for active staff.</p>
                 </label>
               </div>
 

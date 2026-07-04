@@ -299,7 +299,7 @@ router.get('/project-sync', async (req, res) => {
     }
 
     const [employeesResult, positionsResult, attendanceResult, overridesResult] = await Promise.all([
-      supabase.from('employees').select('id, full_name, salary, salary_basis, position_id').in('id', employeeIds),
+      supabase.from('employees').select('id, full_name, salary, salary_basis, position_id').in('id', employeeIds).eq('status', 'Active'),
       supabase.from('job_positions').select('id, title'),
       supabase
         .from('attendance_records')

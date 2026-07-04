@@ -115,6 +115,10 @@ export default function NewEmployeePage() {
           <div>
             <h3 className="text-2xl font-black text-slate-950">Employee Information</h3>
             <p className="mt-1 text-sm text-slate-600">Fill in the details below to create a new employee</p>
+            <span className="badge-active-only mt-3">
+                          <span className="badge-dot" />
+                          Active employees only
+                        </span>
           </div>
         </div>
 

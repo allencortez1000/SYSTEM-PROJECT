@@ -80,11 +80,11 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     .split(" ").map((n: string) => n?.[0] ?? "").filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] text-slate-950">
+    <div className="min-h-screen bg-transparent text-slate-950">
       {/* ── Sidebar ──────────────────────────────────────── */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col bg-[#0f172a] text-white xl:flex">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:flex">
           {/* Branding */}
-          <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-3 border-b border-white/10 px-6 py-6">
             <img
               src="/rabino-logo.svg"
               alt="RHBC logo"
@@ -100,10 +100,10 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">
               Navigation
             </p>
-            <ul className="space-y-0.5">
+            <ul className="space-y-1.5">
               {navigation.map((item) => {
                 const active = isActive(item.href);
                 return (
@@ -111,9 +111,9 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                     <Link
                       href={item.href}
                       className={
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all " +
+                        "group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 " +
                         (active
-                          ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                          ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"
                           : "text-slate-300 hover:bg-white/8 hover:text-white hover:translate-x-0.5")
                       }
                     >
@@ -169,16 +169,16 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         </aside>
 
         {/* ── Main content ─────────────────────────────────── */}
-        <div className="min-h-screen xl:pl-[260px]">
+        <div className="min-h-screen xl:pl-[292px]">
 
           {/* ── Top header ─────────────────────────────────── */}
-          <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-slate-200 bg-white px-4 shadow-sm sm:px-6">
+          <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
 
             {/* Mobile menu toggle */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 xl:hidden"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 xl:hidden"
               aria-label="Open menu"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -187,20 +187,20 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             </button>
 
             {/* Logo (mobile) */}
-            <div className="flex items-center gap-2 xl:hidden">
+            <div className="flex items-center gap-3 xl:hidden">
               <img src="/rabino-logo.svg" alt="RHBC" className="h-7 w-7 rounded-lg bg-white object-contain p-0.5 shadow-sm border border-slate-200" />
               <span className="text-sm font-bold text-slate-900">HR System</span>
             </div>
 
             {/* Search + breadcrumb */}
-            <div className="relative hidden flex-1 max-w-sm sm:block">
+            <div className="relative hidden flex-1 max-w-lg sm:block">
               <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input
                 type="search"
                 placeholder="Search people, payroll, reports…"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-base text-slate-700 placeholder-slate-400 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
               />
             </div>
 
@@ -208,7 +208,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             {(() => {
               const currentLabel = navigation.find(item => isActive(item.href))?.label ?? "";
               return currentLabel ? (
-                <div className="hidden items-center gap-1.5 xl:flex">
+                <div className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-4 py-2 xl:flex">
                   <span className="text-slate-300 text-sm select-none">/</span>
                   <span className="text-sm font-semibold text-slate-700">{currentLabel}</span>
                 </div>
@@ -228,7 +228,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               </button>
 
               {/* User chip */}
-              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
+              <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-[11px] font-black text-white">
                   {initials}
                 </div>
@@ -242,7 +242,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="hidden items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:inline-flex"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />

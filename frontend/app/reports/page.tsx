@@ -59,6 +59,10 @@ export default function ReportsPage() {
           <p className="eyebrow">Reports studio</p>
           <h1 className="page-title mt-1">Reports</h1>
           <p className="page-subtitle">Open individual HR, payroll, attendance, and compliance reports.</p>
+          <span className="badge-active-only mt-3">
+                      <span className="badge-dot" />
+                      Active employees only
+                    </span>
         </div>
         <Link
           href="/"

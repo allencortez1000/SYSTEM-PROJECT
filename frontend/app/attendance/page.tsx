@@ -332,9 +332,10 @@ export default function AttendancePage() {
       }
 
       const uniqueEmployees = uniqueById(employeesData?.employees || []);
+      const activeEmployees = uniqueEmployees.filter((employee) => String(employee.status || "").toLowerCase() === "active");
       const loadedRecords = attendanceData?.attendance || [];
       setRecords(loadedRecords);
-      setEmployees(uniqueEmployees);
+      setEmployees(activeEmployees);
 
       const latestRecordDate = loadedRecords
         .map((record: AttendanceRecord) => record.date)
@@ -382,7 +383,7 @@ export default function AttendancePage() {
       }, {});
       setAssignments(normalizedAssignments);
 
-      const normalizationUpdates = uniqueEmployees
+      const normalizationUpdates = activeEmployees
         .filter((employee) => String(employee.department || "").toLowerCase() !== "construction" && dbAssignments[employee.id] !== "Main Office")
         .map((employee) => ({
           employeeId: employee.id,
@@ -935,6 +936,10 @@ export default function AttendancePage() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Attendance management</p>
             <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Project Attendance & Deployment</h1>
             <p className="mt-1 text-sm text-slate-500">Manage worker assignments, track daily attendance, and monitor project deployment across all sites.</p>
+            <span className="badge-active-only mt-3">
+                          <span className="badge-dot" />
+                          Active employees only
+                        </span>
           </div>
         </div>
 
@@ -1562,7 +1567,7 @@ export default function AttendancePage() {
                     {selectedDepartment ? `${selectedDepartment} · ` : ""}{selectedProject || "Unassigned"} daily time and overtime table
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {filteredAssignmentCount} assigned workers · {periodDates.length} day columns · Sunday is rest day
+                    {filteredAssignmentCount} assigned active workers · {periodDates.length} day columns · Sunday is rest day
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">

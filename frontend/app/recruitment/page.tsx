@@ -103,6 +103,10 @@ export default function RecruitmentPage() {
           <p className="eyebrow">Talent Acquisition</p>
           <h1 className="page-title mt-1">Recruitment Pipeline</h1>
           <p className="page-subtitle">Live candidates and open roles with real-time tracking.</p>
+          <span className="badge-active-only mt-3">
+                      <span className="badge-dot" />
+                      Active employees only
+                    </span>
         </div>
       </div>
 
