@@ -89,6 +89,7 @@ export default function AdminUsersPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
 
@@ -637,14 +638,34 @@ export default function AdminUsersPage() {
 
                 <label className="block">
                   <span className="text-sm font-bold text-slate-700">Password</span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                    placeholder="minimum 4 characters"
-                    required
-                  />
+                  <div className="relative mt-2">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                      placeholder="minimum 4 characters"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute inset-y-0 right-2 my-auto inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.52 19.5 12 19.5c1.658 0 3.245-.404 4.646-1.127m3.447-2.86A10.49 10.49 0 0 0 22.066 12C20.774 7.662 16.48 4.5 12 4.5c-1.279 0-2.513.226-3.668.644m0 0L9.5 6.312m-1.168-.668L4.5 3m15 18-3.75-3.75m0 0A3 3 0 0 1 12 15a3 3 0 0 1-3-3m9.75 0a7.5 7.5 0 0 0-10.5-6.75" />
+                        </svg>
+                      ) : (
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c0-1.657 3.97-7.5 9.75-7.5S21.75 10.343 21.75 12 17.78 19.5 12 19.5 2.25 13.657 2.25 12Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </label>
 
                 <label className="block sm:col-span-2">
