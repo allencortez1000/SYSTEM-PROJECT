@@ -6,15 +6,29 @@ import { useParams } from "next/navigation";
 import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 type Employee = {
-  id: number;
+  id: number | string;
+  employeeId?: string;
   fullName: string;
   email?: string;
   department?: string;
   projectSite?: string;
   position?: string;
   salary?: number;
+  salaryBasis?: string;
   status?: string;
-  manager?: string;
+  manager?: string | null;
+  hasSss?: boolean;
+  hasPagIbig?: boolean;
+  hasPhilHealth?: boolean;
+  hasSssLoan?: boolean;
+  hasTax?: boolean;
+  hasAdditionalDeduction?: boolean;
+  sssAmount?: number;
+  pagIbigAmount?: number;
+  philHealthAmount?: number;
+  sssLoanAmount?: number;
+  taxAmount?: number;
+  additionalDeductionAmount?: number;
 };
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -200,6 +214,16 @@ export default function EmployeeDetail() {
             {/* Info Cards Grid */}
             <div className="grid gap-5 md:grid-cols-2">
               <InfoCard
+                label="Employee ID"
+                value={employee.employeeId || String(employee.id)}
+                icon={
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                }
+                gradient="from-indigo-500 to-blue-600"
+              />
+              <InfoCard
                 label="Email"
                 value={employee.email || "Not provided"}
                 icon={
@@ -231,6 +255,16 @@ export default function EmployeeDetail() {
                 gradient="from-cyan-500 to-blue-600"
               />
               <InfoCard
+                label="Salary Basis"
+                value={(employee.salaryBasis || "monthly").toUpperCase()}
+                icon={
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+                gradient="from-emerald-500 to-green-500"
+              />
+              <InfoCard
                 label="Manager"
                 value={employee.manager || "Not assigned"}
                 icon={
@@ -250,6 +284,23 @@ export default function EmployeeDetail() {
                 }
                 gradient="from-green-500 to-lime-500"
                 highlight
+              />
+              <InfoCard
+                label="Benefits"
+                value={[
+                  employee.hasSss ? "SSS" : null,
+                  employee.hasPagIbig ? "Pag-IBIG" : null,
+                  employee.hasPhilHealth ? "PhilHealth" : null,
+                  employee.hasTax ? "Tax" : null,
+                  employee.hasSssLoan ? "SSS Loan" : null,
+                  employee.hasAdditionalDeduction ? "Additional Deduction" : null,
+                ].filter(Boolean).join(", ") || "No benefits enabled"}
+                icon={
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+                gradient="from-cyan-500 to-blue-500"
               />
             </div>
           </div>

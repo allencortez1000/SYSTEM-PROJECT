@@ -278,6 +278,7 @@ export default function AttendancePage() {
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState("All");
   const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "date-desc" | "date-asc" | "status">("date-desc");
   const anchorDateInitializedRef = useRef(false);
 
@@ -464,6 +465,7 @@ export default function AttendancePage() {
         });
         if (!matchesAssignedEmployee) return false;
         if (!selectedDateSet.has(record.date)) return false;
+        if (attendanceStatusFilter !== "All" && String(record.status || "").toLowerCase() !== attendanceStatusFilter.toLowerCase()) return false;
 
         if (!query) return true;
         return [
@@ -496,7 +498,7 @@ export default function AttendancePage() {
           return b.date.localeCompare(a.date) || getEmployeeName(a).localeCompare(getEmployeeName(b));
       }
     }).slice(0, 20);
-  }, [assignedEmployees, records, periodDates, searchQuery, sortMode]);
+  }, [assignedEmployees, records, periodDates, searchQuery, attendanceStatusFilter, sortMode]);
 
   const exportVisibleAttendance = useCallback(() => {
     if (latestRecords.length === 0) {
@@ -1437,6 +1439,7 @@ export default function AttendancePage() {
                 searchLabel="Search records"
                 onClearFilters={() => {
                   setSearchQuery("");
+                  setAttendanceStatusFilter("All");
                   setSortMode("date-desc");
                 }}
                 summary={
@@ -1445,6 +1448,25 @@ export default function AttendancePage() {
                   </p>
                 }
               >
+                <div>
+                  <label htmlFor="attendance-status-filter" className="text-sm font-semibold text-slate-700">
+                    Status
+                  </label>
+                  <select
+                    id="attendance-status-filter"
+                    value={attendanceStatusFilter}
+                    onChange={(e) => setAttendanceStatusFilter(e.target.value)}
+                    className={filterInputClassName}
+                  >
+                    <option value="All">All</option>
+                    {statusOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label htmlFor="attendance-sort" className="text-sm font-semibold text-slate-700">
                     Sort by

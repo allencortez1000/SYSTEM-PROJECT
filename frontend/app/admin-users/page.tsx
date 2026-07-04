@@ -34,6 +34,7 @@ type Employee = {
   email: string;
   position: string;
   department: string;
+  status?: string;
   salary?: number;
   salaryBasis?: string;
   hasSss?: boolean;
@@ -123,6 +124,7 @@ export default function AdminUsersPage() {
   const [employeeCount, setEmployeeCount] = useState(0);
   const [projectSites, setProjectSites] = useState<ProjectSite[]>([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState("All");
   const [employeePage, setEmployeePage] = useState(1);
   const employeesPerPage = 10;
 
@@ -139,9 +141,10 @@ export default function AdminUsersPage() {
     return employees.filter((emp) => {
       const fullName = String(emp.fullName || "").toLowerCase();
       const email = String(emp.email || "").toLowerCase();
-      return fullName.includes(search) || email.includes(search);
+      const statusMatch = employeeStatusFilter === "All" || String(emp.status || "").toLowerCase() === employeeStatusFilter.toLowerCase();
+      return (fullName.includes(search) || email.includes(search)) && statusMatch;
     });
-  }, [employees, employeeSearch]);
+  }, [employees, employeeSearch, employeeStatusFilter]);
 
   const paginatedEmployees = useMemo(() => {
     const start = (employeePage - 1) * employeesPerPage;
@@ -1083,7 +1086,8 @@ export default function AdminUsersPage() {
           <FilterBar
             searchValue={employeeSearch}
             onSearchChange={(value) => {
-              setEmployeeSearch(value);
+              setEmployeeSearch("");
+              setEmployeeStatusFilter("All");
               setEmployeePage(1);
             }}
             searchLabel="Search employees"
@@ -1095,10 +1099,31 @@ export default function AdminUsersPage() {
             }
             onClearFilters={() => {
               setEmployeeSearch("");
+              setEmployeeStatusFilter("All");
               setEmployeePage(1);
             }}
             clearLabel="Clear search"
           />
+          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <label htmlFor="employee-status-filter" className="text-sm font-semibold text-slate-700">
+                Status
+              </label>
+              <select
+                id="employee-status-filter"
+                value={employeeStatusFilter}
+                onChange={(event) => {
+                  setEmployeeStatusFilter(event.target.value);
+                  setEmployeePage(1);
+                }}
+                className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+              >
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
 
           {/* Employee List with Pagination */}
           <div className="mt-6 space-y-3">
@@ -1108,7 +1133,7 @@ export default function AdminUsersPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 <p className="mt-4 text-sm font-semibold text-slate-500">
-                  {employeeSearch ? "No employees match your search." : "No employees found."}
+                  {employeeSearch || employeeStatusFilter !== "All" ? "No employees match your filters." : "No employees found."}
                 </p>
               </div>
             )}

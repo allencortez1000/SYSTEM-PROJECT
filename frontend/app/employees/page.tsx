@@ -21,7 +21,7 @@ type Employee = {
 };
 
 type FieldView = "both" | "department" | "projectSite";
-type SortMode = "name-asc" | "name-desc" | "department" | "projectSite" | "status";
+type SortMode = "name-asc" | "name-desc" | "department" | "projectSite" | "status-active" | "status-inactive";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[] | null>(null);
@@ -30,6 +30,7 @@ export default function EmployeesPage() {
   const [fieldView, setFieldView] = useState<FieldView>("both");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("All");
   const [selectedProjectSite, setSelectedProjectSite] = useState<string>("All");
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortMode, setSortMode] = useState<SortMode>("name-asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +63,7 @@ export default function EmployeesPage() {
     const filtered = employeeList.filter((employee) => {
       const departmentMatch = selectedDepartment === "All" || employee.department === selectedDepartment;
       const projectSiteMatch = selectedProjectSite === "All" || employee.projectSite === selectedProjectSite;
+      const statusMatch = selectedStatus === "All" || String(employee.status || "").toLowerCase() === selectedStatus.toLowerCase();
       const searchMatch =
         !query ||
         employee.fullName.toLowerCase().includes(query) ||
@@ -71,7 +73,7 @@ export default function EmployeesPage() {
         employee.position.toLowerCase().includes(query) ||
         String(employee.email || "").toLowerCase().includes(query);
 
-      return departmentMatch && projectSiteMatch && searchMatch;
+      return departmentMatch && projectSiteMatch && statusMatch && searchMatch;
     });
 
     const getSurname = (name: string) => {
@@ -89,14 +91,22 @@ export default function EmployeesPage() {
           return a.department.localeCompare(b.department) || a.fullName.localeCompare(b.fullName);
         case "projectSite":
           return String(a.projectSite || "").localeCompare(String(b.projectSite || "")) || a.fullName.localeCompare(b.fullName);
-        case "status":
-          return String(a.status || "").localeCompare(String(b.status || "")) || a.fullName.localeCompare(b.fullName);
+        case "status-active": {
+          const aActive = String(a.status || "").toLowerCase() === "active" ? 0 : 1;
+          const bActive = String(b.status || "").toLowerCase() === "active" ? 0 : 1;
+          return aActive - bActive || a.fullName.localeCompare(b.fullName);
+        }
+        case "status-inactive": {
+          const aInactive = String(a.status || "").toLowerCase() === "inactive" ? 0 : 1;
+          const bInactive = String(b.status || "").toLowerCase() === "inactive" ? 0 : 1;
+          return aInactive - bInactive || a.fullName.localeCompare(b.fullName);
+        }
         case "name-asc":
         default:
           return getSurname(a.fullName).localeCompare(getSurname(b.fullName)) || a.fullName.localeCompare(b.fullName);
       }
     });
-  }, [employeeList, searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
+  }, [employeeList, searchQuery, selectedDepartment, selectedProjectSite, selectedStatus, sortMode]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
   const paginatedEmployees = useMemo(() => {
@@ -146,7 +156,7 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
+  }, [searchQuery, selectedDepartment, selectedProjectSite, selectedStatus, sortMode]);
 
   useSupabaseTableRefresh([{ table: "employees" }], () => {
     void load();
@@ -231,6 +241,7 @@ export default function EmployeesPage() {
             setSearchQuery("");
             setSelectedDepartment("All");
             setSelectedProjectSite("All");
+            setSelectedStatus("All");
             setSortMode("name-asc");
           }}
         >
@@ -271,6 +282,22 @@ export default function EmployeesPage() {
           </div>
 
           <div>
+            <label htmlFor="status-filter" className="text-sm font-semibold text-slate-700">
+              Status
+            </label>
+            <select
+              id="status-filter"
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className={filterInputClassName}
+            >
+              <option value="All">All</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+
+          <div>
             <label htmlFor="sort-mode" className="text-sm font-semibold text-slate-700">
               Sort by
             </label>
@@ -284,7 +311,8 @@ export default function EmployeesPage() {
               <option value="name-desc">Name Z → A</option>
               <option value="department">Department</option>
               <option value="projectSite">Project site</option>
-              <option value="status">Status</option>
+              <option value="status-active">Status: Active first</option>
+              <option value="status-inactive">Status: Inactive first</option>
             </select>
           </div>
 
@@ -346,13 +374,14 @@ export default function EmployeesPage() {
               Showing <span className="text-slate-900">{filteredEmployees.length}</span> employee{filteredEmployees.length !== 1 ? "s" : ""}
               {searchQuery.trim() ? <> for <span className="text-slate-900">“{searchQuery.trim()}”</span></> : null}
             </p>
-            {(searchQuery || selectedDepartment !== "All" || selectedProjectSite !== "All" || sortMode !== "name-asc") && (
+            {(searchQuery || selectedDepartment !== "All" || selectedProjectSite !== "All" || selectedStatus !== "All" || sortMode !== "name-asc") && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedDepartment("All");
                   setSelectedProjectSite("All");
+                  setSelectedStatus("All");
                   setSortMode("name-asc");
                 }}
                 className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-white hover:text-blue-700"
@@ -503,15 +532,16 @@ export default function EmployeesPage() {
             </svg>
             <h3 className="mt-4 text-lg font-semibold text-slate-900">No employees found</h3>
             <p className="mt-2 text-sm text-slate-600">
-              {selectedDepartment !== "All" || selectedProjectSite !== "All"
+              {selectedDepartment !== "All" || selectedProjectSite !== "All" || selectedStatus !== "All"
                 ? "Try adjusting your filters to see more results."
                 : "Get started by adding your first employee."}
             </p>
-            {(selectedDepartment !== "All" || selectedProjectSite !== "All") && (
+            {(selectedDepartment !== "All" || selectedProjectSite !== "All" || selectedStatus !== "All") && (
               <button
                 onClick={() => {
                   setSelectedDepartment("All");
                   setSelectedProjectSite("All");
+                  setSelectedStatus("All");
                 }}
                 className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >

@@ -1,4 +1,5 @@
 ﻿import { Router } from 'express';
+import { hasEmployeeAccess } from '../lib/appUser';
 import { supabase } from '../lib/supabase';
 import { canonicalDepartmentName } from '../lib/departmentNames';
 import { AuthRequest, requireSuperAdmin, verifyToken } from '../middleware/auth';
@@ -85,23 +86,32 @@ function normalizeAmount(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function formatSurnameFirst(row: EmployeeRow) {
-  const lastName = String(row.last_name || '').trim();
+function formatDisplayName(row: EmployeeRow) {
   const firstName = String(row.first_name || '').trim();
   const middleName = String(row.middle_name || '').trim();
+  const lastName = String(row.last_name || '').trim();
 
-  const givenNames = [firstName, middleName].filter(Boolean).join(' ').trim();
-  if (lastName && givenNames) {
-    return `${lastName}, ${givenNames}`;
+  const normalizedFullName = String(row.full_name || '').trim();
+  const hasCommaInStoredFullName = normalizedFullName.includes(',');
+
+  const spaceJoinedName = [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
+
+  if (spaceJoinedName) {
+    return spaceJoinedName;
   }
-  return row.full_name || [firstName, middleName, lastName].filter(Boolean).join(' ').trim() || 'Unnamed employee';
+
+  if (normalizedFullName && !hasCommaInStoredFullName) {
+    return normalizedFullName;
+  }
+
+  return normalizedFullName || 'Unnamed employee';
 }
 
 function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Unassigned') {
   return {
     id: row.id,
     employeeId: row.employee_no,
-    fullName: formatSurnameFirst(row),
+    fullName: formatDisplayName(row),
     email: row.email,
     department: row.department_id ? lookups.departmentMap.get(row.department_id) || 'Unassigned' : 'Unassigned',
     projectSite,
@@ -230,20 +240,19 @@ async function getAllowedDepartmentIds(req: AuthRequest): Promise<string[] | nul
       .filter(Boolean);
   }
 
-  // Sub-admins: allow if they have the 'employees' permission
+  // Sub-admins: allow full access if they have admin_access or employees permission
   if (req.user.role === 'sub-admin') {
     const { data: userRows, error: userError } = await supabase
       .from('app_users')
-      .select('permissions')
+      .select('*')
       .eq('id', req.user.userId)
       .limit(1);
 
     if (userError) throw userError;
     const userRow = userRows && userRows[0];
-    const permissions = Array.isArray(userRow?.permissions) ? userRow.permissions.map((p: unknown) => String(p)) : [];
 
-    if (permissions.includes('employees')) {
-      // Give access to all departments for sub-admins with the employees permission
+    if (hasEmployeeAccess(userRow as Record<string, unknown> | null)) {
+      // Give access to all departments for sub-admins with dashboard/admin or employee access
       return null;
     }
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { filterInputClassName } from "./components/filter-config";
 
 import { useSupabaseTableRefresh } from "../lib/supabaseRealtime";
 import { canonicalDepartmentName } from "../lib/departmentNames";
@@ -51,6 +52,7 @@ export default function Home() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState("All");
 
   const load = useCallback(async () => {
     if (employees.length === 0) setLoading(true);
@@ -114,12 +116,17 @@ export default function Home() {
     void load();
   });
 
+  const filteredEmployees = useMemo(() => {
+    if (employeeStatusFilter === "All") return employees;
+    return employees.filter((employee) => String(employee.status || "").toLowerCase() === employeeStatusFilter.toLowerCase());
+  }, [employees, employeeStatusFilter]);
+
   const stats = useMemo(() => {
     const totalEmployees = employeeCount || employees.length;
-    const activeEmployees = employees.filter(
+    const activeEmployees = filteredEmployees.filter(
       (e) => (e.status || "Active").toLowerCase() === "active",
     ).length;
-    const payrollCost = employees
+    const payrollCost = filteredEmployees
       .filter((e) => String(e.status || "").toLowerCase() === "active" || String(e.status || "") === "")
       .reduce((sum, e) => sum + (Number(e.salary) || 0), 0);
     const today = new Date().toISOString().slice(0, 10);
@@ -129,7 +136,7 @@ export default function Home() {
     const onLeave = attendance.filter((r) => r.date === today && r.status === "Leave").length;
 
     const deptMap = new Map<string, number>();
-    employees.forEach((e) => {
+    filteredEmployees.forEach((e) => {
       const dept = e.department || "Unassigned";
       const canonicalDept = canonicalDepartmentName(dept);
       deptMap.set(canonicalDept, (deptMap.get(canonicalDept) || 0) + 1);
@@ -139,12 +146,12 @@ export default function Home() {
       .map(([name, count], index) => ({
         name,
         count,
-        value: Math.round((count / Math.max(1, totalEmployees)) * 100),
+        value: Math.round((count / Math.max(1, filteredEmployees.length)) * 100),
         color: deptColors[index % deptColors.length],
       }));
 
     return { totalEmployees, activeEmployees, payrollCost, presentToday, onLeave, departments };
-  }, [employees, attendance]);
+  }, [employees, filteredEmployees, attendance]);
 
   return (
     <div className="page-shell">
@@ -292,21 +299,39 @@ export default function Home() {
 
           {/* Latest Employees */}
           <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Recent Employees</h3>
-                <p className="mt-1 text-sm text-slate-600">Latest additions</p>
-              </div>
-              <Link
-                href="/employees"
-                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-              >
-                View all
-              </Link>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Recent Employees</h3>
+              <p className="mt-1 text-sm text-slate-600">Latest additions</p>
             </div>
+            <Link
+              href="/employees"
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+            >
+              View all
+            </Link>
+          </div>
 
-            <div className="mt-6 space-y-3">
-              {[...employees]
+          <div className="mt-4 flex items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <label htmlFor="home-employee-status-filter" className="text-sm font-semibold text-slate-700">
+                Status
+              </label>
+              <select
+                id="home-employee-status-filter"
+                value={employeeStatusFilter}
+                onChange={(event) => setEmployeeStatusFilter(event.target.value)}
+                className={filterInputClassName}
+              >
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {[...filteredEmployees]
                 .sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())
                 .slice(0, 5)
                 .map((employee) => {
@@ -342,7 +367,7 @@ export default function Home() {
                   </Link>
                 );
               })}
-              {employees.length === 0 && !loading && (
+              {filteredEmployees.length === 0 && !loading && (
                 <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center">
                   <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />

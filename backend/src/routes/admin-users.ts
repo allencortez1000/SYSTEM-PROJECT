@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import { hasAdminAccess, readPermissions } from '../lib/appUser';
 import { supabase } from '../lib/supabase';
 import { canonicalDepartmentName } from '../lib/departmentNames';
 import { verifyToken, requireSuperAdmin } from '../middleware/auth';
@@ -14,13 +15,12 @@ async function userHasAdminViewAccess(req: any) {
   if (!req.user) return false;
   if (req.user.role === 'super-admin') return true;
 
-  // sub-admins may have admin view permission stored in app_users.permissions
+  // sub-admins may have admin_access permission stored in app_users.permissions
   if (req.user.role === 'sub-admin') {
-    const { data, error } = await supabase.from('app_users').select('permissions').eq('id', req.user.userId).limit(1);
+    const { data, error } = await supabase.from('app_users').select('*').eq('id', req.user.userId).limit(1);
     if (error) return false;
     const row = data && data[0];
-    const permissions = Array.isArray(row?.permissions) ? row.permissions.map((p: unknown) => String(p)) : [];
-    return permissions.includes('admin_access');
+    return hasAdminAccess(row as Record<string, unknown> | null);
   }
 
   return false;
@@ -92,15 +92,13 @@ router.get('/departments', async (req: any, res) => {
 
     // For sub-admins: check if they have admin_access permission → show all
     if (role === 'sub-admin') {
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('app_users')
-        .select('permissions')
+        .select('*')
         .eq('id', userId)
         .limit(1);
-      const permissions = Array.isArray(userData?.[0]?.permissions)
-        ? userData![0].permissions.map((p: unknown) => String(p))
-        : [];
-      if (permissions.includes('admin_access')) {
+      const user = userError ? null : (userData?.[0] as Record<string, unknown> | null);
+      if (hasAdminAccess(user)) {
         const { data, error } = await supabase
           .from('departments')
           .select('id, name')
@@ -332,20 +330,40 @@ router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
     const organizationId = await getDefaultOrganizationId();
     const passwordHash = cleanedPassword;
 
-    const { data: createdUser, error: createUserError } = await supabase
+    const insertPayload = {
+      organization_id: organizationId,
+      full_name: cleanedFullName,
+      email: cleanedEmail,
+      username: cleanedUsername,
+      password: passwordHash,
+      role: 'sub-admin',
+      is_active: true,
+      permissions: cleanedPermissions,
+    };
+
+    let createdUserResult = await supabase
       .from('app_users')
-      .insert({
-        organization_id: organizationId,
-        full_name: cleanedFullName,
-        email: cleanedEmail,
-        username: cleanedUsername,
-        password: passwordHash,
-        role: 'sub-admin',
-        is_active: true,
-        permissions: cleanedPermissions,
-      })
+      .insert(insertPayload)
       .select('id, username, email, role, full_name, is_active')
       .single();
+
+    if (createdUserResult.error && String(createdUserResult.error.message || '').toLowerCase().includes('permissions')) {
+      createdUserResult = await supabase
+        .from('app_users')
+        .insert({
+          organization_id: organizationId,
+          full_name: cleanedFullName,
+          email: cleanedEmail,
+          username: cleanedUsername,
+          password: passwordHash,
+          role: 'sub-admin',
+          is_active: true,
+        })
+        .select('id, username, email, role, full_name, is_active')
+        .single();
+    }
+
+    const { data: createdUser, error: createUserError } = createdUserResult;
 
     if (createUserError) throw createUserError;
 

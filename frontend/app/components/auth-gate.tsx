@@ -15,7 +15,7 @@ export default function AuthGate({ children }: AuthGateProps) {
   const mode: "signin" = "signin";
 
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [password, setPassword] = useState("superadmin");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -96,7 +96,7 @@ export default function AuthGate({ children }: AuthGateProps) {
   function resetSigninDefaults() {
     setError("");
     setUsername("admin");
-    setPassword("admin");
+    setPassword("superadmin");
   }
 
   if (checkingAuth) {
@@ -184,7 +184,7 @@ export default function AuthGate({ children }: AuthGateProps) {
                   onClick={resetSigninDefaults}
                   className="ml-2 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-black text-slate-700"
                 >
-                  Reset admin defaults
+                  Reset super admin defaults
                 </button>
               </div>
 
@@ -208,7 +208,7 @@ export default function AuthGate({ children }: AuthGateProps) {
                     onChange={(event) => setPassword(event.target.value)}
                     type="password"
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                    placeholder="admin"
+                    placeholder="superadmin"
                     required
                   />
                 </label>

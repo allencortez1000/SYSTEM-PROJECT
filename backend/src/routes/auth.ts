@@ -1,6 +1,6 @@
 ﻿import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { readPermissions, passwordMatches, readStoredPassword } from '../lib/appUser';
 import { supabase } from '../lib/supabase';
 import { AuthRequest, verifyToken } from '../middleware/auth';
 
@@ -140,7 +140,7 @@ router.post('/login', async (req, res) => {
 
     const { data: users, error } = await supabase
       .from('app_users')
-      .select('id, username, email, password, role, full_name, is_active')
+      .select('*')
       .eq('username', loginName)
       .limit(1);
 
@@ -155,7 +155,8 @@ router.post('/login', async (req, res) => {
     }
 
     const typedUser = user as AppUser;
-    const isValid = String(typedUser.password || '') === loginPassword;
+    const storedPassword = readStoredPassword(typedUser as Record<string, unknown>);
+    const isValid = await passwordMatches(storedPassword, loginPassword);
 
     if (!isValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -164,13 +165,12 @@ router.post('/login', async (req, res) => {
     // fetch permissions for the user if present in DB
     const { data: permsResult, error: permsError } = await supabase
       .from('app_users')
-      .select('permissions')
+      .select('*')
       .eq('id', typedUser.id)
       .limit(1);
 
-    if (permsError) throw permsError;
-    const permsRow = permsResult && permsResult[0];
-    const permissions = Array.isArray(permsRow?.permissions) ? permsRow.permissions.map((p: unknown) => String(p)) : [];
+    const permsRow = permsError ? null : (permsResult && permsResult[0]);
+    const permissions = readPermissions(permsRow as Record<string, unknown> | null);
 
     // attach permissions to typedUser for token creation
     (typedUser as any).permissions = permissions;
@@ -199,11 +199,11 @@ router.post('/login', async (req, res) => {
 router.get('/me', verifyToken, async (req: AuthRequest, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'User not authenticated' });
-    const { data, error } = await supabase.from('app_users').select('id, username, email, role, full_name, is_active, permissions').eq('id', req.user.userId).limit(1);
+    const { data, error } = await supabase.from('app_users').select('*').eq('id', req.user.userId).limit(1);
     if (error) throw error;
     const row = data && data[0];
     if (!row) return res.status(404).json({ message: 'User not found' });
-    res.json({ user: { id: row.id, username: row.username, email: row.email, role: row.role, name: row.full_name, permissions: row.permissions || [] } });
+    res.json({ user: { id: row.id, username: row.username, email: row.email, role: row.role, name: row.full_name, permissions: readPermissions(row as Record<string, unknown>) } });
   } catch (err) {
     res.status(500).json({ message: 'Failed to load user', error: (err as Error).message });
   }
