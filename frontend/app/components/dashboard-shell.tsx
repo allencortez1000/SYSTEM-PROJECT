@@ -81,239 +81,155 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
   return (
     <div className="min-h-screen bg-transparent text-slate-950">
-      {/* ── Sidebar ──────────────────────────────────────── */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:flex">
-          {/* Branding */}
-          <div className="flex items-center gap-3 border-b border-white/10 px-6 py-6">
-            <img
-              src="/rabino-logo.svg"
-              alt="RHBC logo"
-              className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1 shadow-sm"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Rabino Home Builders
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:flex">
+        <div className="border-b border-white/10 px-6 py-5">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-white p-1.5 shadow-sm ring-1 ring-white/10">
+              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <p className="text-[10px] font-black uppercase leading-tight tracking-[0.18em] text-sky-300/90 sm:text-[11px]">
+                Rabino Home Builders Corporation
               </p>
-              <p className="truncate text-sm font-bold text-white">HR Command Center</p>
+              <p className="mt-0.5 text-sm font-semibold leading-tight text-slate-300/85 sm:text-[13px]">
+                HR Command Center
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Nav */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">
-              Navigation
-            </p>
-            <ul className="space-y-1.5">
-              {navigation.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={
-                        "group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 " +
-                        (active
-                          ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"
-                          : "text-slate-300 hover:bg-white/8 hover:text-white hover:translate-x-0.5")
-                      }
-                    >
-                      <span className={active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}>
-                        {item.icon}
-                      </span>
-                      {item.label}
-                      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/70" />}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">
+            Navigation
+          </p>
+          <ul className="space-y-1.5">
+            {navigation.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={
+                      "group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 " +
+                      (active
+                        ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"
+                        : "text-slate-300 hover:bg-white/8 hover:text-white hover:translate-x-0.5")
+                    }
+                  >
+                    <span className={active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}>
+                      {item.icon}
+                    </span>
+                    {item.label}
+                    {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/70" />}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-          {/* User info block */}
-          <div className="border-t border-white/10 px-4 py-3">
-            <div className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-white/5 transition-colors">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-[11px] font-black text-white shadow-sm">
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="truncate text-xs font-bold text-white leading-none">{sessionUser?.name || "User"}</p>
-                <p className="truncate text-[10px] text-slate-400 leading-none mt-0.5">{labelFromRole(sessionUser?.role)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-red-400"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                </svg>
-              </button>
+        <div className="border-t border-white/10 px-4 py-3">
+          <div className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-white/5 transition-colors">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-[11px] font-black text-white shadow-sm">
+              {initials}
             </div>
-          </div>
-
-          {/* System status */}
-          <div className="border-t border-white/10 px-4 py-4">
-            <div className="flex items-center gap-2.5 rounded-lg bg-emerald-500/10 px-3 py-2.5">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-emerald-300">System online</p>
-                <p className="truncate text-[10px] text-slate-400">v0.1.0 · All systems go</p>
-              </div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <p className="truncate text-xs font-bold text-white leading-none">{sessionUser?.name || "User"}</p>
+              <p className="truncate text-[10px] text-slate-400 leading-none mt-0.5">{labelFromRole(sessionUser?.role)}</p>
             </div>
-          </div>
-        </aside>
-
-        {/* ── Main content ─────────────────────────────────── */}
-        <div className="min-h-screen xl:pl-[292px]">
-
-          {/* ── Top header ─────────────────────────────────── */}
-          <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
-
-            {/* Mobile menu toggle */}
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 xl:hidden"
-              aria-label="Open menu"
+              onClick={handleLogout}
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-red-400"
+              aria-label="Sign out"
+              title="Sign out"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
               </svg>
             </button>
-
-            {/* Logo (mobile) */}
-            <div className="flex items-center gap-3 xl:hidden">
-              <img src="/rabino-logo.svg" alt="RHBC" className="h-7 w-7 rounded-lg bg-white object-contain p-0.5 shadow-sm border border-slate-200" />
-              <span className="text-sm font-bold text-slate-900">HR System</span>
-            </div>
-
-            {/* Search + breadcrumb */}
-            <div className="relative hidden flex-1 max-w-lg sm:block">
-              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-              <input
-                type="search"
-                placeholder="Search people, payroll, reports…"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-base text-slate-700 placeholder-slate-400 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
-              />
-            </div>
-
-            {/* Page breadcrumb (xl only) */}
-            {(() => {
-              const currentLabel = navigation.find(item => isActive(item.href))?.label ?? "";
-              return currentLabel ? (
-                <div className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-4 py-2 xl:flex">
-                  <span className="text-slate-300 text-sm select-none">/</span>
-                  <span className="text-sm font-semibold text-slate-700">{currentLabel}</span>
-                </div>
-              ) : null;
-            })()}
-
-            <div className="ml-auto flex items-center gap-2">
-              {/* Notification bell */}
-              <button
-                type="button"
-                aria-label="Notifications"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-              >
-                <svg className="h-4.5 w-4.5 h-[1.125rem] w-[1.125rem]" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
-              </button>
-
-              {/* User chip */}
-              <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-[11px] font-black text-white">
-                  {initials}
-                </div>
-                <div className="hidden min-w-0 sm:block">
-                  <p className="truncate text-xs font-semibold text-slate-900 leading-none">{sessionUser?.name || "User"}</p>
-                  <p className="truncate text-[10px] text-slate-400 leading-none mt-0.5">{labelFromRole(sessionUser?.role)}</p>
-                </div>
-              </div>
-
-              {/* Logout */}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="hidden items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:inline-flex"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                </svg>
-                Logout
-              </button>
-            </div>
-          </header>
-
-          {/* ── Mobile nav drawer ───────────────────────────── */}
-          {mobileMenuOpen && (
-            <div className="fixed inset-0 z-50 xl:hidden">
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-              <div className="absolute inset-y-0 left-0 w-72 bg-[#0f172a] text-white shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <img src="/rabino-logo.svg" alt="RHBC" className="h-9 w-9 rounded-xl bg-white object-contain p-1" />
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Rabino HB</p>
-                      <p className="text-sm font-bold">HR Command Center</p>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-white/10">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <nav className="px-3 py-4">
-                  <ul className="space-y-0.5">
-                    {navigation.map((item) => {
-                      const active = isActive(item.href);
-                      return (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={
-                              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all " +
-                              (active ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white")
-                            }
-                          >
-                            <span className={active ? "text-white" : "text-slate-400"}>{item.icon}</span>
-                            {item.label}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                    <li>
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/10"
-                      >
-                        <svg className="h-[1.0625rem] w-[1.0625rem]" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                        </svg>
-                        Logout
-                      </button>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            </div>
-          )}
-
-          {/* ── Page content ────────────────────────────────── */}
-          <main>
-            {children}
-          </main>
+          </div>
         </div>
+
+        <div className="border-t border-white/10 px-4 py-4">
+          <div className="flex items-center gap-2.5 rounded-lg bg-emerald-500/10 px-3 py-2.5">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-emerald-300">System online</p>
+              <p className="truncate text-[10px] text-slate-400">v0.1.0 · All systems go</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="min-h-screen xl:pl-[292px]">
+        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 xl:hidden"
+            aria-label="Open menu"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+
+          <div className="flex items-center gap-3 xl:hidden">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 shadow-sm border border-slate-200">
+              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
+            </div>
+            <div className="min-w-0">
+              <span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Rabino Home Builders Corporation</span>
+              <span className="block truncate text-sm font-bold text-slate-900">HR Command Center</span>
+            </div>
+          </div>
+
+          <div className="relative hidden flex-1 max-w-lg sm:block">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Search people, payroll, reports…"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-base text-slate-700 placeholder-slate-400 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
+            />
+          </div>
+
+          {(() => {
+            const currentLabel = navigation.find(item => isActive(item.href))?.label ?? "";
+            return currentLabel ? (
+              <div className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-4 py-2 xl:flex">
+                <span className="text-slate-300 text-sm select-none">/</span>
+                <span className="text-sm font-semibold text-slate-700">{currentLabel}</span>
+              </div>
+            ) : null;
+          })()}
+
+          <div className="ml-auto flex items-center gap-2">
+            <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a10.05 10.05 0 0 1-3.357.918m3.357-.918a3 3 0 0 0 1.928-2.805c0-1.702-.75-3.245-1.95-4.283M14.857 17.082l-2.486-.62a10.05 10.05 0 0 0-3.357.918m0 0a3 3 0 0 1-1.928-2.805c0-1.702.75-3.245 1.95-4.283m0 0a3 3 0 0 1 1.928 2.805m-1.928-2.805c0-1.702.75-3.245 1.95-4.283m0 0a6 6 0 1 1 7.715 0m-7.715 0a6 6 0 0 0-1.95 4.283m9.665-4.283a6 6 0 0 1-7.715 0" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-xs font-black text-white">SA</div>
+              <div className="hidden sm:block">
+                <p className="text-xs font-bold text-slate-900">System Administrator</p>
+                <p className="text-[10px] text-slate-400">Super Admin</p>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100">
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <main className="page-shell">{children}</main>
+      </div>
     </div>
   );
 }
