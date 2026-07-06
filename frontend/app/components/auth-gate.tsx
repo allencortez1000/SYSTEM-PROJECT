@@ -179,7 +179,7 @@ export default function AuthGate({ children }: AuthGateProps) {
               )}
 
               <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">
-                Public signup is disabled. Only the super admin can create department-head admins.
+                Public signup is disabled. Only the super admin can create department head admins.
                 <button
                   type="button"
                   onClick={resetSigninDefaults}

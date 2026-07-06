@@ -1,7 +1,10 @@
 ﻿import { Router } from 'express';
 import { supabase } from '../lib/supabase';
+import { verifyToken } from '../middleware/auth';
 
 const router = Router();
+
+router.use(verifyToken);
 
 type AttendanceRow = {
   id: string;

@@ -11,7 +11,7 @@ type SessionUser = { name?: string; role?: string };
 
 function labelFromRole(role?: string) {
   if (role === "super-admin") return "Super Admin";
-  if (role === "department-head-admin") return "Dept. Head Admin";
+  if (role === "department-head-admin") return "Department Head Admin";
   if (role === "sub-admin") return "Sub Admin";
   return "User";
 }

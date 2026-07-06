@@ -1,9 +1,14 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
+
+type SessionUser = {
+  role?: string;
+  permissions?: string[];
+};
 
 type Employee = {
   id: number | string;
@@ -50,8 +55,23 @@ export default function EmployeeDetail() {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+
+  const canDeleteEmployee = useMemo(() => sessionUser?.role === "super-admin", [sessionUser]);
 
   useEffect(() => {
+    const rawUser = localStorage.getItem("hr_user");
+    const user: SessionUser | null = rawUser
+      ? (() => {
+          try {
+            return JSON.parse(rawUser);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+    setSessionUser(user);
+
     async function load() {
       try {
         const token = localStorage.getItem("hr_token");
@@ -106,17 +126,19 @@ export default function EmployeeDetail() {
             </svg>
             Edit Employee
           </Link>
-          <button
-            type="button"
-            onClick={() => setDeleteModalOpen(true)}
-            disabled={deleting}
-            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-6 0h6" />
-            </svg>
-            {deleting ? "Deleting..." : "Delete Employee"}
-          </button>
+          {canDeleteEmployee && (
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(true)}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-6 0h6" />
+              </svg>
+              {deleting ? "Deleting..." : "Delete Employee"}
+            </button>
+          )}
         </div>
       </div>
 

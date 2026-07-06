@@ -44,7 +44,11 @@ export default function AttendanceInsightsReportPage() {
       setError(null);
 
       try {
-        const res = await fetch(`${API_BASE}/data/reports/attendance-insights`, { cache: "no-store" });
+        const token = localStorage.getItem("hr_token");
+        const res = await fetch(`${API_BASE}/data/reports/attendance-insights`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.message || "Failed to load attendance report from Supabase");
         setData(payload);
@@ -60,7 +64,11 @@ export default function AttendanceInsightsReportPage() {
   }, []);
 
   useSupabaseTableRefresh([{ table: "attendance_records" }, { table: "employees" }], () => {
-    void fetch(`${API_BASE}/data/reports/attendance-insights`, { cache: "no-store" }).then(async (res) => {
+    const token = localStorage.getItem("hr_token");
+    void fetch(`${API_BASE}/data/reports/attendance-insights`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }).then(async (res) => {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });

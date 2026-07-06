@@ -31,6 +31,9 @@ export default function LeavePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeRow, setActiveRow] = useState<LeaveRow | null>(null);
+  const [sessionUser, setSessionUser] = useState<{ role?: string } | null>(null);
+
+  const canManageLeave = sessionUser?.role === "super-admin";
 
   const load = useCallback(async () => {
     setError(null);
@@ -49,6 +52,18 @@ export default function LeavePage() {
   }, []);
 
   useEffect(() => {
+    const rawUser = localStorage.getItem("hr_user");
+    setSessionUser(
+      rawUser
+        ? (() => {
+            try {
+              return JSON.parse(rawUser);
+            } catch {
+              return null;
+            }
+          })()
+        : null,
+    );
     void load();
   }, [load]);
 
@@ -127,7 +142,7 @@ export default function LeavePage() {
         <div>
           <p className="eyebrow">Leave Management</p>
           <h1 className="page-title mt-1">Leave Requests</h1>
-          <p className="page-subtitle">Live leave requests with real-time updates.</p>
+          <p className="page-subtitle">Review leave requests with real-time updates.</p>
         </div>
       </div>
 
@@ -260,56 +275,56 @@ export default function LeavePage() {
                           >
                             View details
                           </button>
-                          {String(pick(row, ["status"]) || "").toLowerCase() === "pending" && (
+                          {canManageLeave && String(pick(row, ["status"]) || "").toLowerCase() === "pending" && (
                             <>
-                          <button
-                            type="button"
-                            onClick={async (event) => {
-                              event.stopPropagation();
-                              try {
-                                const token = localStorage.getItem("auth_token");
-                                const res = await fetch(`${API_BASE}/data/leave/${String(row.id)}`, {
-                                  method: "PATCH",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                                  },
-                                  body: JSON.stringify({ status: "approved" }),
-                                });
-                                if (!res.ok) throw new Error(await res.text());
-                                await load();
-                              } catch (err) {
-                                setError(`Approve failed: ${(err as Error).message}`);
-                              }
-                            }}
-                            className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async (event) => {
-                              event.stopPropagation();
-                              try {
-                                const token = localStorage.getItem("auth_token");
-                                const res = await fetch(`${API_BASE}/data/leave/${String(row.id)}`, {
-                                  method: "PATCH",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                                  },
-                                  body: JSON.stringify({ status: "rejected" }),
-                                });
-                                if (!res.ok) throw new Error(await res.text());
-                                await load();
-                              } catch (err) {
-                                setError(`Reject failed: ${(err as Error).message}`);
-                              }
-                            }}
-                            className="inline-flex items-center rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
-                          >
-                            Reject
-                          </button>
+                              <button
+                                type="button"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  try {
+                                    const token = localStorage.getItem("hr_token");
+                                    const res = await fetch(`${API_BASE}/data/leave/${String(row.id)}`, {
+                                      method: "PATCH",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                      },
+                                      body: JSON.stringify({ status: "approved" }),
+                                    });
+                                    if (!res.ok) throw new Error(await res.text());
+                                    await load();
+                                  } catch (err) {
+                                    setError(`Approve failed: ${(err as Error).message}`);
+                                  }
+                                }}
+                                className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-emerald-600 hover:shadow-md"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  try {
+                                    const token = localStorage.getItem("hr_token");
+                                    const res = await fetch(`${API_BASE}/data/leave/${String(row.id)}`, {
+                                      method: "PATCH",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                      },
+                                      body: JSON.stringify({ status: "rejected" }),
+                                    });
+                                    if (!res.ok) throw new Error(await res.text());
+                                    await load();
+                                  } catch (err) {
+                                    setError(`Reject failed: ${(err as Error).message}`);
+                                  }
+                                }}
+                                className="inline-flex items-center rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-red-600 hover:shadow-md"
+                              >
+                                Reject
+                              </button>
                             </>
                           )}
                         </div>

@@ -45,7 +45,11 @@ export default function HeadcountMovementReportPage() {
       setError(null);
 
       try {
-        const res = await fetch(`${API_BASE}/data/reports/headcount-movement`, { cache: "no-store" });
+        const token = localStorage.getItem("hr_token");
+        const res = await fetch(`${API_BASE}/data/reports/headcount-movement`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.message || "Failed to load headcount report from Supabase");
         setData(payload);
@@ -61,7 +65,11 @@ export default function HeadcountMovementReportPage() {
   }, []);
 
   useSupabaseTableRefresh([{ table: "employees" }, { table: "employee_project_deployments" }], () => {
-    void fetch(`${API_BASE}/data/reports/headcount-movement`, { cache: "no-store" }).then(async (res) => {
+    const token = localStorage.getItem("hr_token");
+    void fetch(`${API_BASE}/data/reports/headcount-movement`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }).then(async (res) => {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });

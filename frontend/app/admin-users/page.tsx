@@ -163,7 +163,15 @@ export default function AdminUsersPage() {
       if (!token) throw new Error("Missing login token. Please sign in again.");
 
       const rawUser = localStorage.getItem("hr_user");
-      const user: SessionUser | null = rawUser ? JSON.parse(rawUser) : null;
+      const user: SessionUser | null = rawUser
+        ? (() => {
+            try {
+              return JSON.parse(rawUser);
+            } catch {
+              return null;
+            }
+          })()
+        : null;
       setSessionUser(user);
 
       if (user?.role !== "super-admin" && !user?.permissions?.includes("admin_access")) {
@@ -574,7 +582,7 @@ export default function AdminUsersPage() {
         <div>
           <p className="eyebrow">System Administration</p>
           <h1 className="page-title mt-1">Admin Access Control</h1>
-          <p className="page-subtitle">Create and manage sub-admins and department-head admins. Assign specific permissions and department access as needed.</p>
+          <p className="page-subtitle">Create and manage sub-admins and department head admins. Assign specific permissions and department access as needed.</p>
         </div>
       </div>
 
@@ -1017,7 +1025,7 @@ export default function AdminUsersPage() {
                   )}
 
                   {/* Department head department assignment */}
-                  {user.role === "department-head-admin" && (
+                  {sessionUser?.role === "super-admin" && user.role === "department-head-admin" && (
                     <>
                       <div className="mt-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50/50 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1197,16 +1205,18 @@ export default function AdminUsersPage() {
                     </svg>
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-2xl border-2 border-red-200 bg-red-50 px-5 py-2.5 font-bold text-red-700 transition hover:border-red-300 hover:bg-red-100"
-                    onClick={() => deleteWorker(employee.id)}
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                  </button>
+                  {sessionUser?.role === "super-admin" && (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-2xl border-2 border-red-200 bg-red-50 px-5 py-2.5 font-bold text-red-700 transition hover:border-red-300 hover:bg-red-100"
+                      onClick={() => deleteWorker(employee.id)}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

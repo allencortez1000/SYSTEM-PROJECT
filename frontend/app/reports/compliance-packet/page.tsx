@@ -50,7 +50,11 @@ export default function CompliancePacketReportPage() {
       setError(null);
 
       try {
-        const res = await fetch(`${API_BASE}/data/reports/compliance-packet`, { cache: "no-store" });
+        const token = localStorage.getItem("hr_token");
+        const res = await fetch(`${API_BASE}/data/reports/compliance-packet`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.message || "Failed to load compliance packet from Supabase");
         setData(payload);
@@ -71,7 +75,11 @@ export default function CompliancePacketReportPage() {
     { table: "payroll_runs" },
     { table: "compliance_requirements" },
   ], () => {
-    void fetch(`${API_BASE}/data/reports/compliance-packet`, { cache: "no-store" }).then(async (res) => {
+    const token = localStorage.getItem("hr_token");
+    void fetch(`${API_BASE}/data/reports/compliance-packet`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }).then(async (res) => {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });

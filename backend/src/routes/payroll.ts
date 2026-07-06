@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { calculatePayroll, computeGovernmentContributions } from '../controllers/payroll';
 import { supabase } from '../lib/supabase';
-import { verifyToken } from '../middleware/auth';
+import { requireSuperAdmin, verifyToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -407,7 +407,7 @@ async function syncEmployeeFromPayrollOverride(employeeId: string, payload: {
   }
 }
 
-router.post('/attendance-overrides', async (req, res) => {
+router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
   try {
     const {
       employeeId,
@@ -480,7 +480,7 @@ router.post('/attendance-overrides', async (req, res) => {
   }
 });
 
-router.post('/save', async (req, res) => {
+router.post('/save', requireSuperAdmin, async (req, res) => {
   try {
     const {
       employeeName,

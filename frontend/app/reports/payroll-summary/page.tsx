@@ -54,7 +54,11 @@ export default function PayrollSummaryReportPage() {
       setError(null);
 
       try {
-        const res = await fetch(`${API_BASE}/data/reports/payroll-summary`, { cache: "no-store" });
+        const token = localStorage.getItem("hr_token");
+        const res = await fetch(`${API_BASE}/data/reports/payroll-summary`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.message || "Failed to load payroll summary from Supabase");
         setData(payload);
@@ -74,7 +78,11 @@ export default function PayrollSummaryReportPage() {
     { table: "payroll_runs" },
     { table: "payroll_items" },
   ], () => {
-    void fetch(`${API_BASE}/data/reports/payroll-summary`, { cache: "no-store" }).then(async (res) => {
+    const token = localStorage.getItem("hr_token");
+    void fetch(`${API_BASE}/data/reports/payroll-summary`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }).then(async (res) => {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });

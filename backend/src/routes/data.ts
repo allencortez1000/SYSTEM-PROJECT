@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../lib/supabase';
-import { verifyToken } from '../middleware/auth';
+import { requireSuperAdmin, verifyToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -74,7 +74,7 @@ router.get('/leave', async (_, res) => {
   res.json({ leave: rows, error });
 });
 
-router.patch('/leave/:id', async (req, res) => {
+router.patch('/leave/:id', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body as { status?: string };
   if (!id || !status) {
