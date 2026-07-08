@@ -111,7 +111,7 @@ type ProjectWorkerSync = {
   remarks?: string;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "").replace(/\/api$/, "") + "/api";
 const PAYROLL_ROWS_STORAGE_KEY = "payroll_worker_rows_v1";
 
 const currency = new Intl.NumberFormat("en-PH", {

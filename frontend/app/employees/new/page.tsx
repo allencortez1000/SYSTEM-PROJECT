@@ -17,7 +17,7 @@ export default function NewEmployeePage() {
   const [optionsLoading, setOptionsLoading] = useState(true);
 
   useEffect(() => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+    const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "").replace(/\/api$/, "") + "/api";
     const token = localStorage.getItem("hr_token");
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 

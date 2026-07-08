@@ -1,4 +1,4 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:4000").replace(/\/$/, "").replace(/\/api$/, "");
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:4000" : "")).replace(/\/$/, "").replace(/\/api$/, "");
 
 const nextConfig = {
   reactStrictMode: true,
@@ -17,6 +17,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
+    if (!API_URL) return [];
     return [
       {
         source: '/api/:path*',
