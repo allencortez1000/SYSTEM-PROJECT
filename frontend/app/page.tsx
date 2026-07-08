@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filterInputClassName } from "./components/filter-config";
 
-import { useSupabaseTableRefresh } from "../lib/supabaseRealtime";
-import { canonicalDepartmentName } from "../lib/departmentNames";
+import { canonicalDepartmentName, useSupabaseTableRefresh } from "../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 

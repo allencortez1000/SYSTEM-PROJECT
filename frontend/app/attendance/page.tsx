@@ -5,8 +5,7 @@ import * as XLSX from "xlsx";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
-import { canonicalDepartmentName, uniqueCanonicalDepartments } from "../../lib/departmentNames";
-import { triggerAppDataRefresh, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
 type AttendanceStatus = (typeof statusOptions)[number];

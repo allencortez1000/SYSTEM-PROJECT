@@ -3,8 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { useNotification } from "../components/notification";
-import { canonicalDepartmentName, uniqueCanonicalDepartments } from "../../lib/departmentNames";
-import { triggerAppDataRefresh, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
 type SessionUser = {
   role?: string;

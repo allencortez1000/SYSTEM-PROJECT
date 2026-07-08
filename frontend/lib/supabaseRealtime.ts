@@ -32,6 +32,41 @@ export function triggerAppDataRefresh(tables: string[] = []) {
   window.dispatchEvent(new CustomEvent<AppDataChangedDetail>(APP_DATA_CHANGED_EVENT, { detail: { tables } }));
 }
 
+export function canonicalDepartmentName(name: string) {
+  const normalized = String(name || "").trim().toLowerCase();
+
+  const aliases: Record<string, string> = {
+    "human resource": "Human Resources",
+    "human resources": "Human Resources",
+    hr: "Human Resources",
+    administration: "Administration",
+    admin: "Administration",
+    "marketing & sales": "Marketing & Sales",
+    "operations & logistics": "Operations & Logistics",
+    "health, safety & environment (hse)": "Health, Safety & Environment (HSE)",
+    construction: "Construction",
+    engineering: "Engineering",
+    "accounting & finance": "Accounting & Finance",
+    main: "Main",
+  };
+
+  return aliases[normalized] || String(name || "").trim();
+}
+
+export function uniqueCanonicalDepartments(departments: Array<{ id?: string; name: string }>) {
+  return Array.from(
+    new Map(
+      departments
+        .map((department) => ({
+          id: department.id || department.name,
+          name: canonicalDepartmentName(department.name),
+        }))
+        .filter((department) => Boolean(department.name))
+        .map((department) => [department.name.toLowerCase(), department]),
+    ).values(),
+  );
+}
+
 export function useSupabaseTableRefresh(tables: RealtimeTable[], onChange: () => void) {
   useEffect(() => {
     if (!supabase) return;

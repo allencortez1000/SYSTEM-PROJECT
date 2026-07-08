@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName } from "../components/filter-config";
-import { uniqueCanonicalDepartments } from "../../lib/departmentNames";
+import { uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
 
 const API_BASE = "/api";
 

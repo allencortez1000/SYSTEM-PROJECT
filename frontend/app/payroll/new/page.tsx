@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import * as XLSX from "xlsx";
 import { filterInputClassName } from "../../components/filter-config";
 import { useNotification } from "../../components/notification";
-import { uniqueCanonicalDepartments } from "../../../lib/departmentNames";
+import { uniqueCanonicalDepartments } from "../../../lib/supabaseRealtime";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
 
