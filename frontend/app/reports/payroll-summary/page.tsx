@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
+
 import {
   CreditCardIcon,
   BanknotesIcon,
@@ -73,11 +73,7 @@ export default function PayrollSummaryReportPage() {
     load();
   }, []);
 
-  useSupabaseTableRefresh([
-    { table: "employees" },
-    { table: "payroll_runs" },
-    { table: "payroll_items" },
-  ], () => {
+  useEffect(() => {
     const token = localStorage.getItem("hr_token");
     void fetch(`${API_BASE}/data/reports/payroll-summary`, {
       cache: "no-store",
@@ -86,7 +82,7 @@ export default function PayrollSummaryReportPage() {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });
-  });
+  }, []);
 
   const metrics = useMemo(() => {
     const values = data.metrics || {};

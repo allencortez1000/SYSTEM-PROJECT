@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
-import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+
 
 type Employee = {
   id: string;
@@ -158,9 +158,7 @@ export default function EmployeesPage() {
     setCurrentPage(1);
   }, [searchQuery, selectedDepartment, selectedProjectSite, selectedStatus, sortMode]);
 
-  useSupabaseTableRefresh([{ table: "employees" }], () => {
-    void load();
-  });
+
 
   return (
     <div className="page-shell">

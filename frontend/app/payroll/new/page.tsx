@@ -390,20 +390,6 @@ export default function NewPayrollPage() {
     }
 
     void loadEmployees();
-
-    const interval = window.setInterval(() => {
-      void loadEmployees();
-    }, 30000);
-
-    const onFocus = () => {
-      void loadEmployees();
-    };
-
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
   }, [loadEmployees, payrollStorageKey]);
 
   useEffect(() => {

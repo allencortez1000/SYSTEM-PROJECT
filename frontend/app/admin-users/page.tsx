@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { useNotification } from "../components/notification";
-import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
 
 type SessionUser = {
   role?: string;
@@ -244,28 +244,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     void loadData();
-
-    const interval = window.setInterval(() => {
-      void loadData();
-    }, 30000);
-
-    const onFocus = () => {
-      void loadData();
-    };
-
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
   }, [loadData]);
-
-  useSupabaseTableRefresh([
-    { table: "employees" },
-    { table: "employee_project_deployments" },
-  ], () => {
-    void loadData();
-  });
 
   function togglePermission(permission: string) {
     setSelectedPermissions((current) =>

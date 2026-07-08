@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
+
 import {
   UsersIcon,
   UserPlusIcon,
@@ -64,7 +64,7 @@ export default function HeadcountMovementReportPage() {
     load();
   }, []);
 
-  useSupabaseTableRefresh([{ table: "employees" }, { table: "employee_project_deployments" }], () => {
+  useEffect(() => {
     const token = localStorage.getItem("hr_token");
     void fetch(`${API_BASE}/data/reports/headcount-movement`, {
       cache: "no-store",
@@ -73,7 +73,7 @@ export default function HeadcountMovementReportPage() {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });
-  });
+  }, []);
 
   const metrics = useMemo(() => {
     const values = data.metrics || {};

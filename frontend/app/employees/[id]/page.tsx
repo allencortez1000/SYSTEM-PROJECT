@@ -91,14 +91,7 @@ export default function EmployeeDetail() {
     if (id) load();
   }, [id]);
 
-  useSupabaseTableRefresh([{ table: "employees" }], () => {
-    if (!id) return;
-    const token = localStorage.getItem("hr_token");
-    void fetch(`/api/employees/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}).then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) setEmployee(data.employee || null);
-    });
-  });
+
 
   return (
     <div className="page-shell">

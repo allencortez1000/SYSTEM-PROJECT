@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
+
 import {
   ClockIcon,
   CalendarDaysIcon,
@@ -63,7 +63,7 @@ export default function AttendanceInsightsReportPage() {
     load();
   }, []);
 
-  useSupabaseTableRefresh([{ table: "attendance_records" }, { table: "employees" }], () => {
+  useEffect(() => {
     const token = localStorage.getItem("hr_token");
     void fetch(`${API_BASE}/data/reports/attendance-insights`, {
       cache: "no-store",
@@ -72,7 +72,7 @@ export default function AttendanceInsightsReportPage() {
       const payload = await res.json();
       if (res.ok) setData(payload);
     });
-  });
+  }, []);
 
   const metrics = useMemo(() => {
     const values = data.metrics || {};

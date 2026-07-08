@@ -95,25 +95,7 @@ export default function Home() {
 
   useEffect(() => {
     void load();
-
-    const interval = window.setInterval(() => {
-      void load();
-    }, 30000);
-
-    const onFocus = () => {
-      void load();
-    };
-
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
   }, [load]);
-
-  useSupabaseTableRefresh(["employees", "attendance_records"].map((table) => ({ table })), () => {
-    void load();
-  });
 
   const filteredEmployees = useMemo(() => {
     if (employeeStatusFilter === "All") return employees;

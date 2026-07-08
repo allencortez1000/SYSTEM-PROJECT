@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
-import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments, useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
 
 const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
 type AttendanceStatus = (typeof statusOptions)[number];
@@ -280,6 +281,9 @@ export default function AttendancePage() {
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState("All");
   const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "date-desc" | "date-asc" | "status">("date-desc");
   const anchorDateInitializedRef = useRef(false);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const topScrollRef = useRef<HTMLDivElement | null>(null);
+  const syncingScrollRef = useRef(false);
 
   useEffect(() => {
     // Source of truth is Supabase; avoid stale browser-cached assignments/projects.
@@ -417,31 +421,51 @@ export default function AttendancePage() {
 
   useEffect(() => {
     void loadData();
-
-    const interval = window.setInterval(() => {
-      void loadData();
-    }, 30000);
-
-    const onFocus = () => {
-      void loadData();
-    };
-
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
   }, [loadData]);
 
-  useSupabaseTableRefresh([
-    { table: "attendance_records" },
-    { table: "employees" },
-    { table: "employee_project_deployments" },
-  ], () => {
-    void loadData();
-  });
+  useEffect(() => {
+    if (!isWorkspaceOpen && !activeCell && !deleteTarget) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isWorkspaceOpen, activeCell, deleteTarget]);
 
   const periodDates = useMemo(() => getPeriodDates(rangeStartDate, rangeEndDate), [rangeStartDate, rangeEndDate]);
+
+  useEffect(() => {
+    const topEl = topScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!topEl || !tableEl) return;
+
+    const handleTopScroll = () => {
+      if (syncingScrollRef.current) return;
+      syncingScrollRef.current = true;
+      tableEl.scrollLeft = topEl.scrollLeft;
+      requestAnimationFrame(() => {
+        syncingScrollRef.current = false;
+      });
+    };
+
+    const handleTableScroll = () => {
+      if (syncingScrollRef.current) return;
+      syncingScrollRef.current = true;
+      topEl.scrollLeft = tableEl.scrollLeft;
+      requestAnimationFrame(() => {
+        syncingScrollRef.current = false;
+      });
+    };
+
+    topEl.addEventListener("scroll", handleTopScroll, { passive: true });
+    tableEl.addEventListener("scroll", handleTableScroll, { passive: true });
+    return () => {
+      topEl.removeEventListener("scroll", handleTopScroll);
+      tableEl.removeEventListener("scroll", handleTableScroll);
+    };
+  }, [isWorkspaceOpen, periodDates.length]);
 
   const assignedEmployees = useMemo(() => {
     return employees
@@ -929,46 +953,45 @@ export default function AttendancePage() {
 
   return (
     <div className="page-shell">
-        {/* Page header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Attendance management</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Project Attendance & Deployment</h1>
-            <p className="mt-1 text-sm text-slate-500">Manage worker assignments, track daily attendance, and monitor project deployment across all sites.</p>
-            <span className="badge-active-only mt-3">
-                          <span className="badge-dot" />
-                          Active employees only
-                        </span>
+      <div className="page-header">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Attendance management</p>
+          <h1 className="page-title mt-1">Project Attendance & Deployment</h1>
+          <p className="page-subtitle">Manage worker assignments, track daily attendance, and monitor project deployment across all sites.</p>
+          <span className="badge-active-only mt-3">
+            <span className="badge-dot" />
+            Active employees only
+          </span>
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="rounded-2xl border border-blue-200 bg-white p-8 shadow-sm">
+          <div className="flex items-center justify-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
+            <span className="text-slate-600 font-medium">Loading attendance data...</span>
           </div>
         </div>
+      )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="rounded-2xl border border-blue-200 bg-white p-8 shadow-sm">
-            <div className="flex items-center justify-center gap-3">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
-              <span className="text-slate-600 font-medium">Loading attendance data...</span>
+      {/* Error State */}
+      {error && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-900">{error}</p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Error State */}
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-red-900">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Project Stats Cards */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-6">
-          {departmentCounts.map((item) => {
+      {/* Project Stats Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4 mb-6">
+        {departmentCounts.map((item) => {
             const flexible = item.department.toLowerCase() === "construction";
             return (
               <button
@@ -1009,7 +1032,7 @@ export default function AttendancePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid gap-6 xl:grid-cols-[400px_1fr]">
+        <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
           {/* Left Sidebar */}
           <div className="space-y-6">
             {/* Project Management Card */}
@@ -1021,7 +1044,7 @@ export default function AttendancePage() {
                 <h3 className="text-lg font-black text-slate-900">Departments & Project Sites</h3>
               </div>
 
-              <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <label className="block rounded-2xl border border-slate-100 bg-slate-50 p-5 min-w-0">
                   <span className="text-sm font-bold text-slate-700">Department</span>
                   <select
@@ -1067,7 +1090,7 @@ export default function AttendancePage() {
                 </label>
               </div>
 
-              <div className="space-y-2 mt-4">
+              <div className="mt-4 space-y-2">
                 <label className="block">
                   <span className="text-sm font-bold text-slate-700">New Project Site</span>
                   <input
@@ -1264,7 +1287,7 @@ export default function AttendancePage() {
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
                       </svg>
-                      Open Table
+                      Open Full Screen
                     </span>
                   </button>
                   <button
@@ -1555,14 +1578,23 @@ export default function AttendancePage() {
         </div>
 
       {/* Attendance Table Modal */}
-      {isWorkspaceOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 p-2 backdrop-blur-sm">
-          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
-            <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-3 py-3">
+      {isWorkspaceOpen ? createPortal(
+        <div
+          className="fixed inset-0 z-[100] overflow-hidden bg-slate-950/70 p-2 backdrop-blur-sm sm:p-3 lg:p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsWorkspaceOpen(false);
+            }
+          }}
+        >
+          <div className="mx-auto flex h-[calc(100dvh-1rem)] w-full max-w-[1500px] flex-col overflow-hidden rounded-[1.4rem] bg-white shadow-2xl ring-1 ring-slate-200/70 lg:rounded-[1.75rem]">
+            <div className="sticky top-0 z-20 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-3 py-3 sm:px-4 sm:py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance workspace</p>
-                  <h3 className="break-words pr-2 text-base font-black text-slate-950">
+                  <h3 className="break-words pr-2 text-sm font-black text-slate-950 sm:text-base">
                     {selectedDepartment ? `${selectedDepartment} · ` : ""}{selectedProject || "Unassigned"} daily time and overtime table
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -1570,20 +1602,20 @@ export default function AttendancePage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={exportVisibleAttendance} disabled={latestRecords.length === 0} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 shadow-sm transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60">
+                  <button type="button" onClick={exportVisibleAttendance} disabled={latestRecords.length === 0} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-black text-blue-700 shadow-sm transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60">
                     Export Excel
                   </button>
-                  <button type="button" onClick={saveAttendance} disabled={saving || loading} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
+                  <button type="button" onClick={saveAttendance} disabled={saving || loading} className="rounded-xl bg-slate-950 px-3 py-2 text-[11px] font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
                     {saving ? "Saving..." : "Save attendance"}
                   </button>
-                  <button type="button" onClick={() => setIsWorkspaceOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                  <button type="button" onClick={() => setIsWorkspaceOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700">
                     Close
                   </button>
                 </div>
               </div>
 
               <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                <div className="rounded-[1.5rem] border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
+                <div className="rounded-[1.25rem] border border-blue-100 bg-blue-50/70 p-3.5 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance range</p>
                   <label className="mt-3 block">
                     <span className="text-sm font-bold text-slate-600">Start date</span>
@@ -1591,7 +1623,7 @@ export default function AttendancePage() {
                       type="date"
                       value={rangeStartDate}
                       onChange={(event) => setRangeStartDate(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700"
                     />
                   </label>
                   <label className="mt-3 block">
@@ -1600,7 +1632,7 @@ export default function AttendancePage() {
                       type="date"
                       value={rangeEndDate}
                       onChange={(event) => setRangeEndDate(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700"
                     />
                   </label>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1610,7 +1642,7 @@ export default function AttendancePage() {
                         setRangeStartDate(periodStartDate(rangeStartDate, "weekly"));
                         setRangeEndDate(isoDate(addDays(parseIsoDate(periodStartDate(rangeStartDate, "weekly")), 6)));
                       }}
-                      className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
+                      className="rounded-full border border-blue-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
                     >
                       This week
                     </button>
@@ -1623,7 +1655,7 @@ export default function AttendancePage() {
                         setRangeStartDate(start);
                         setRangeEndDate(isoDate(endDate));
                       }}
-                      className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
+                      className="rounded-full border border-blue-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-50"
                     >
                       First half / Second half
                     </button>
@@ -1637,7 +1669,7 @@ export default function AttendancePage() {
                     <select
                       value={periodMode}
                       onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}
-                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
                     >
                       <option value="weekly">Weekly range</option>
                       <option value="semi-monthly">Half-month range</option>
@@ -1675,7 +1707,7 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-auto bg-white p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-white p-4 pb-8 xl:p-5">
               {error && <p className="mb-4 rounded-2xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
 
               <div className="space-y-4 xl:hidden">
@@ -1759,17 +1791,21 @@ export default function AttendancePage() {
                 )}
               </div>
 
-              <div className="hidden overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm xl:block">
-                <table className="min-w-[1400px] border-collapse text-left text-sm">
+              <div className="hidden xl:block">
+                <div ref={topScrollRef} className="mb-2 overflow-x-auto overflow-y-hidden rounded-full border border-slate-200 bg-slate-100/90 shadow-sm">
+                  <div className="h-3 min-w-[1240px]" />
+                </div>
+                <div ref={tableScrollRef} className="overflow-x-auto rounded-[1.75rem] border border-slate-100 bg-white shadow-sm">
+                  <table className="min-w-[1240px] border-collapse text-left text-[13px]">
                 <thead className="bg-slate-950 text-white">
                   <tr>
-                    <th className="sticky left-0 z-20 min-w-[260px] bg-slate-950 px-4 py-3 text-xs font-black">Worker</th>
-                    <th className="sticky left-[260px] z-20 min-w-[180px] bg-slate-950 px-4 py-3 text-xs font-black">Department</th>
-                    <th className="sticky left-[440px] z-20 min-w-[180px] bg-slate-950 px-4 py-3 text-xs font-black">Position</th>
+                    <th className="sticky left-0 z-20 min-w-[220px] bg-slate-950 px-3 py-2.5 text-[11px] font-black">Worker</th>
+                    <th className="sticky left-[220px] z-20 min-w-[150px] bg-slate-950 px-3 py-2.5 text-[11px] font-black">Department</th>
+                    <th className="sticky left-[370px] z-20 min-w-[150px] bg-slate-950 px-3 py-2.5 text-[11px] font-black">Position</th>
                     {periodDates.map((date) => (
-                      <th key={date} className="min-w-[180px] px-4 py-3 text-xs font-black">
-                        <span className="block text-[10px] uppercase tracking-[0.18em] text-white/60">{formatWeekdayLabel(date)}</span>
-                        <span className="block mt-1">{formatDateLabel(date)}</span>
+                      <th key={date} className="min-w-[140px] px-3 py-2.5 text-[11px] font-black">
+                        <span className="block text-[9px] uppercase tracking-[0.16em] text-white/60">{formatWeekdayLabel(date)}</span>
+                        <span className="block mt-1 text-[11px]">{formatDateLabel(date)}</span>
                       </th>
                     ))}
                   </tr>
@@ -1782,9 +1818,9 @@ export default function AttendancePage() {
                   ) : (
                     assignedEmployees.map((employee) => (
                       <tr key={employee.id} className="border-b border-slate-100 hover:bg-slate-50/70">
-                        <td className="sticky left-0 z-10 min-w-[260px] bg-white px-4 py-4 font-black text-slate-950">{employee.fullName}</td>
-                        <td className="sticky left-[260px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.department || "Unassigned"}</td>
-                        <td className="sticky left-[440px] z-10 min-w-[180px] bg-white px-4 py-4 text-slate-600">{employee.position || "Employee"}</td>
+                        <td className="sticky left-0 z-10 min-w-[220px] bg-white px-3 py-3 font-black text-slate-950">{employee.fullName}</td>
+                        <td className="sticky left-[220px] z-10 min-w-[150px] bg-white px-3 py-3 text-slate-600">{employee.department || "Unassigned"}</td>
+                        <td className="sticky left-[370px] z-10 min-w-[150px] bg-white px-3 py-3 text-slate-600">{employee.position || "Employee"}</td>
                         {periodDates.map((date) => {
                           const isSunday = parseIsoDate(date).getDay() === 0;
                           const draft = ensureDraft(employee.id, date);
@@ -1810,7 +1846,7 @@ export default function AttendancePage() {
                               ? `${draft.overtimeHours}h`
                               : "0h";
                           return (
-                            <td key={date} className="px-3 py-3">
+                            <td key={date} className="px-2 py-2.5">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1818,7 +1854,7 @@ export default function AttendancePage() {
                                   setActiveCell({ employeeId: employee.id, date });
                                 }}
                                 disabled={isSunday}
-                                className={`rounded-[1.25rem] border bg-gradient-to-br p-4 text-left shadow-sm transition ${
+                                className={`rounded-[1.1rem] border bg-gradient-to-br p-3 text-left shadow-sm transition ${
                                   isSunday
                                     ? "cursor-not-allowed border-amber-200 from-amber-50 to-white opacity-80"
                                     : "border-slate-200 from-slate-50 to-white hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
@@ -1859,12 +1895,14 @@ export default function AttendancePage() {
                     ))
                   )}
                 </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (() => {

@@ -100,13 +100,6 @@ export default function PayrollIndex() {
 
   useEffect(() => {
     void load();
-
-    const onFocus = () => {
-      void load();
-    };
-
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
   }, [load]);
 
   const filteredRuns = useMemo(() => {

@@ -216,10 +216,10 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               </svg>
             </button>
             <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-xs font-black text-white">SA</div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-xs font-black text-white">{initials}</div>
               <div className="hidden sm:block">
-                <p className="text-xs font-bold text-slate-900">System Administrator</p>
-                <p className="text-[10px] text-slate-400">Super Admin</p>
+                <p className="text-xs font-bold text-slate-900">{sessionUser?.name || "User"}</p>
+                <p className="text-[10px] text-slate-400">{labelFromRole(sessionUser?.role)}</p>
               </div>
             </div>
             <button onClick={handleLogout} className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100">

@@ -47,7 +47,7 @@ export default function AuthGate({ children }: AuthGateProps) {
 
         setIsAuthenticated(true);
       } catch {
-        setError("Cannot connect to the backend. Make sure npm run dev is running.");
+        setError("Cannot connect to the backend. Check that the deployed API is running and NEXT_PUBLIC_API_URL is set correctly.");
         setIsAuthenticated(false);
       } finally {
         setCheckingAuth(false);
@@ -79,7 +79,7 @@ export default function AuthGate({ children }: AuthGateProps) {
       localStorage.setItem("hr_user", JSON.stringify(data.user));
       setIsAuthenticated(true);
     } catch {
-      setError("Cannot connect to the backend. Make sure npm run dev is running.");
+      setError("Cannot connect to the backend. Check that the deployed API is running and NEXT_PUBLIC_API_URL is set correctly.");
     } finally {
       setLoading(false);
     }

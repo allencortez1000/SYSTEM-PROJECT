@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
-import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+
 
 const API_BASE = "/api";
 
@@ -63,10 +63,7 @@ export default function RecruitmentPage() {
     void load();
   }, [load]);
 
-  useSupabaseTableRefresh(
-    [{ table: "candidates" }, { table: "job_openings" }],
-    () => { void load(); },
-  );
+
 
   const metrics = useMemo(
     () => [

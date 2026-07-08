@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
-import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+
 
 const API_BASE = "/api";
 
@@ -76,9 +76,7 @@ export default function LeavePage() {
     return () => window.removeEventListener("record-details-modal-close", handleClose);
   }, []);
 
-  useSupabaseTableRefresh([{ table: "leave_requests" }, { table: "employees" }], () => {
-    void load();
-  });
+
 
   const summary = useMemo(() => {
     const pending = rows.filter((r) => pick(r, ["status"]).toLowerCase() === "pending").length;

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
-import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
+
 
 const API_BASE = "/api";
 
@@ -53,9 +53,7 @@ export default function CompliancePage() {
     return () => window.removeEventListener("record-details-modal-close", handleClose);
   }, []);
 
-  useSupabaseTableRefresh([{ table: "compliance_records" }], () => {
-    void load();
-  });
+
 
   const today = new Date().toISOString().split("T")[0];
   const overdueCount = rows.filter((r) => {
