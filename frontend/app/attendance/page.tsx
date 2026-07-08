@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import FilterBar from "../components/filter-bar";
@@ -254,6 +255,7 @@ function extractSavedOvertime(notes?: string, record?: AttendanceRecord) {
 }
 
 export default function AttendancePage() {
+  const router = useRouter();
   const { notify } = useNotification();
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -309,8 +311,12 @@ export default function AttendancePage() {
     setSyncStatus(null);
 
     try {
-      const token = localStorage.getItem("hr_token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const headers = getAuthHeaders();
+      if (!headers) {
+        setError("Session expired. Please sign in again.");
+        router.replace("/login");
+        return;
+      }
 
       const [attendanceRes, employeesRes, projectsRes, assignmentsRes, departmentsRes] = await Promise.all([
         fetch("/api/attendance", { headers }),
@@ -400,7 +406,7 @@ export default function AttendancePage() {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...getAuthHeaders()!,
               },
               body: JSON.stringify(update),
             }),
@@ -435,6 +441,12 @@ export default function AttendancePage() {
   }, [isWorkspaceOpen, activeCell, deleteTarget]);
 
   const periodDates = useMemo(() => getPeriodDates(rangeStartDate, rangeEndDate), [rangeStartDate, rangeEndDate]);
+
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem("hr_token");
+    if (!token) return null;
+    return { Authorization: `Bearer ${token}` };
+  }, []);
 
   useEffect(() => {
     const topEl = topScrollRef.current;
@@ -639,6 +651,7 @@ export default function AttendancePage() {
     ? assignedEmployees.find((employee) => employee.id === activeCell.employeeId) || employees.find((employee) => employee.id === activeCell.employeeId)
     : null;
   const activeDraft = activeCell ? ensureDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date) : null;
+  const hasDraft = useCallback((employeeId: string, date: string) => Boolean(drafts[getDraftKey(employeeId, date)]), [drafts]);
 
   function getSavedRecord(employeeId: string, date: string) {
     const employee = employees.find((item) => item.id === employeeId);
@@ -708,9 +721,15 @@ export default function AttendancePage() {
     }
 
     try {
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("Session expired. Please sign in again.");
+        router.replace("/login");
+        return;
+      }
       const res = await fetch("/api/attendance/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ name: trimmed }),
       });
       const data = await res.json().catch(() => ({}));
@@ -740,9 +759,15 @@ export default function AttendancePage() {
     setError(null);
 
     try {
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("Session expired. Please sign in again.");
+        router.replace("/login");
+        return;
+      }
       const res = await fetch("/api/attendance/assignments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ employeeId, projectName: forcedProject }),
       });
       const data = await res.json().catch(() => ({}));
@@ -763,11 +788,21 @@ export default function AttendancePage() {
     setError(null);
 
     try {
-      const payloads = assignedEmployees.flatMap((employee) =>
-        periodDates
-          .filter((date) => new Date(date).getDay() !== 0)
-          .map((date) => {
-          const draft = ensureDraft(employee.id, date);
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("Session expired. Please sign in again.");
+        router.replace("/login");
+        return;
+      }
+
+      const payloads = Object.entries(drafts)
+        .map(([key, draft]) => {
+          const [employeeId, date] = key.split("__");
+          const employee = employees.find((item) => item.id === employeeId);
+          if (!employee) return null;
+          if (!periodDates.includes(date)) return null;
+          if (new Date(date).getDay() === 0) return null;
+
           const workedHours = draft.status === "Absent" || draft.status === "Leave"
             ? 0
             : draft.status === "Halfday"
@@ -775,7 +810,7 @@ export default function AttendancePage() {
               : computeWorkedHours(draft.checkIn, draft.checkOut);
           const overtimeHours = Number(draft.overtimeHours || 0);
           return {
-            employeeId: employee.id,
+            employeeId,
             employeeName: employee.fullName,
             date,
             status: draft.status,
@@ -788,38 +823,45 @@ export default function AttendancePage() {
             overtimeHours,
             overtimeMode: draft.overtimeMode,
           };
-        }),
-      );
-
-      const token = localStorage.getItem('hr_token');
-      const promises = payloads.map((payload) =>
-        fetch("/api/attendance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-          body: JSON.stringify(payload),
         })
-          .then(async (res) => {
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) return new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
-            return null;
+        .filter((payload): payload is NonNullable<typeof payload> => Boolean(payload));
+
+      if (payloads.length === 0) {
+        notify("No changes to save");
+        setSaving(false);
+        return;
+      }
+
+      const results = await Promise.all(
+        payloads.map((payload) =>
+          fetch("/api/attendance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify(payload),
           })
-          .catch((err) => err as Error)
+            .then(async (res) => {
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) return new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
+              return null;
+            })
+            .catch((err) => err as Error)
+        )
       );
 
-      const results = await Promise.all(promises);
       const firstError = results.find((r) => r instanceof Error);
       if (firstError) throw firstError;
 
       const refreshed = await fetch("/api/attendance", {
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: authHeaders,
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
         setRecords(refreshedData?.attendance || []);
       }
 
+      setDrafts({});
       window.dispatchEvent(new CustomEvent("attendance-updated", { detail: { projectSite: selectedProject } }));
-      notify("Attendance period saved");
+      notify("Attendance changes saved");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -861,9 +903,15 @@ export default function AttendancePage() {
         overtimeMode: draft.overtimeMode,
       };
 
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("Session expired. Please sign in again.");
+        router.replace("/login");
+        return;
+      }
       const res = await fetch("/api/attendance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify(payload),
       });
 
@@ -873,13 +921,13 @@ export default function AttendancePage() {
       if (sourceDate !== targetDate) {
         await fetch("/api/attendance", {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ employeeId: employee.id, date: sourceDate }),
         });
       }
 
       const refreshed = await fetch("/api/attendance", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem('hr_token')}` },
+        headers: authHeaders,
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) {
@@ -1756,7 +1804,7 @@ export default function AttendancePage() {
                               key={date}
                               type="button"
                               onClick={() => setActiveCell({ employeeId: employee.id, date })}
-                              className="rounded-[1.25rem] border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
+                              className={`rounded-[1.25rem] border p-4 text-left shadow-sm transition ${hasDraft(employee.id, date) ? "border-blue-300 bg-blue-50/80 ring-2 ring-blue-100" : "border-slate-200 bg-gradient-to-br from-slate-50 to-white hover:border-blue-200 hover:bg-blue-50"}`}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
@@ -1764,11 +1812,12 @@ export default function AttendancePage() {
                                     {displayStatus}
                                   </p>
                                   <p className="mt-2 text-sm font-bold text-slate-950">{formatDateLabel(date)}</p>
+                                  {hasDraft(employee.id, date) ? <span className="mt-1 inline-flex rounded-full bg-blue-600 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">Edited</span> : null}
                                   <p className="mt-1 text-xs text-slate-500">Attendance date</p>
                                   <p className="mt-1 text-xs font-semibold text-slate-500">{displayCheckIn} - {displayCheckOut}</p>
                                 </div>
                                 <div className="flex flex-col items-end gap-2 text-right">
-                                  <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>
+                                  <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${hasDraft(employee.id, date) ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"}`}>{hasDraft(employee.id, date) ? "Edited" : "Edit"}</span>
                                   {savedRecord?.projectSite ? <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-600">{savedRecord.projectSite}</span> : null}
                                 </div>
                               </div>
@@ -1855,21 +1904,24 @@ export default function AttendancePage() {
                                 }}
                                 disabled={isSunday}
                                 className={`rounded-[1.1rem] border bg-gradient-to-br p-3 text-left shadow-sm transition ${
-                                  isSunday
-                                    ? "cursor-not-allowed border-amber-200 from-amber-50 to-white opacity-80"
-                                    : "border-slate-200 from-slate-50 to-white hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
-                                }`}
+                                    isSunday
+                                      ? "cursor-not-allowed border-amber-200 from-amber-50 to-white opacity-80"
+                                      : hasDraft(employee.id, date)
+                                        ? "border-blue-300 from-blue-50 to-white ring-2 ring-blue-100"
+                                        : "border-slate-200 from-slate-50 to-white hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"
+                                  }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
                                     <p className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${isSunday ? "bg-amber-100 text-amber-800" : statusClass[displayStatus] || "bg-slate-100 text-slate-700"}`}>
                                       {isSunday ? "Rest day" : displayStatus}
                                     </p>
+                                    {hasDraft(employee.id, date) ? <span className="mt-2 inline-flex rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">Edited</span> : null}
                                     <p className="mt-3 text-xs font-semibold text-slate-500">{formatDateLabel(date)}</p>
                                     {savedRecord?.projectSite ? <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-blue-600">{savedRecord.projectSite}</p> : null}
                                   </div>
                                   <div className="flex flex-col items-end gap-2">
-                                    {isSunday ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Rest day</span> : <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Edit</span>}
+                                    {isSunday ? <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Rest day</span> : <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${hasDraft(employee.id, date) ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700"}`}>{hasDraft(employee.id, date) ? "Edited" : "Edit"}</span>}
                                     {!isSunday ? <button
                                       type="button"
                                       onClick={(event) => {
@@ -1907,8 +1959,8 @@ export default function AttendancePage() {
       {/* Delete Confirmation Modal */}
       {deleteTarget && (() => {
         const employee = employees.find((item) => item.id === deleteTarget.employeeId);
-        return employee ? (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+        return employee ? createPortal(
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-lg">
               <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-rose-50/70 px-5 py-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -1944,13 +1996,14 @@ export default function AttendancePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         ) : null;
       })()}
 
       {/* Edit Attendance Modal */}
-      {activeCell && activeEmployee && activeDraft && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/70 p-3 backdrop-blur-sm">
+      {activeCell && activeEmployee && activeDraft ? createPortal(
+        <div className="fixed inset-0 z-[110] bg-slate-950/70 p-3 backdrop-blur-sm">
           <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
             <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -2104,8 +2157,9 @@ export default function AttendancePage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
     </div>
   );
 }

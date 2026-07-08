@@ -1469,22 +1469,22 @@ export default function NewPayrollPage() {
       <section className="hero-panel print:hidden">
         <div className="grid min-w-0 gap-8 2xl:grid-cols-[1.25fr_0.75fr] 2xl:items-center">
           <div className="min-w-0">
-            <p className="eyebrow">Payroll calculation</p>
-            <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            <p className="eyebrow text-sky-200/90">Payroll calculation</p>
+            <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-white sm:text-4xl">
               Excel-like payroll opens in a focused editing tab.
             </h2>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200/80 sm:text-base">
               SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule, while each payroll row stays fully visible in the editor.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
-              <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
-              <button onClick={savePayrollTable} type="button" className="secondary-button" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
-              <button onClick={triggerExcelImport} type="button" className="secondary-button">Insert Excel</button>
+              <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+              <button onClick={savePayrollTable} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
+              <button onClick={triggerExcelImport} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">Insert Excel</button>
               <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
-              <button onClick={applyPayrollEditsToAttendance} className="secondary-button" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
-              <button onClick={addRow} className="secondary-button" type="button">Add worker row</button>
-              <Link href="/payroll" className="secondary-button">Back to payroll center</Link>
+              <button onClick={applyPayrollEditsToAttendance} className="secondary-button bg-white/10 text-white hover:bg-white/15" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
+              <button onClick={addRow} className="secondary-button bg-white/10 text-white hover:bg-white/15" type="button">Add worker row</button>
+              <Link href="/payroll" className="secondary-button bg-white/10 text-white hover:bg-white/15">Back to payroll center</Link>
             </div>
           </div>
 
