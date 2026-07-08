@@ -69,6 +69,57 @@ async function getDefaultOrganizationId() {
   return newOrg.id as string;
 }
 
+async function findOrCreateDepartment(name: string) {
+  const cleaned = canonicalDepartmentName(String(name || '').trim());
+  if (!cleaned) {
+    throw new Error('Department name is required');
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('departments')
+    .select('id, name')
+    .ilike('name', cleaned)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existing?.id) {
+    return existing;
+  }
+
+  const organizationId = await getDefaultOrganizationId();
+  const { data: created, error: createError } = await supabase
+    .from('departments')
+    .insert({
+      organization_id: organizationId,
+      name: cleaned,
+      is_active: true,
+    })
+    .select('id, name')
+    .single();
+
+  if (createError) {
+    throw createError;
+  }
+
+  return created;
+}
+
+router.post('/departments', requireSuperAdmin, async (req, res) => {
+  try {
+    const department = await findOrCreateDepartment(String(req.body?.name || ''));
+    res.status(201).json({ department });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to save department in Supabase',
+      error: (error as Error).message,
+    });
+  }
+});
+
 router.get('/departments', async (req: any, res) => {
   try {
     // Any authenticated user can read the departments list (needed for dropdowns).

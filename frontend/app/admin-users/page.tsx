@@ -82,6 +82,8 @@ export default function AdminUsersPage() {
   // Admin users state
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [newProjectSiteName, setNewProjectSiteName] = useState("");
 
   // Sub-admin form state
   const [fullName, setFullName] = useState("");
@@ -268,6 +270,84 @@ export default function AdminUsersPage() {
         ? current.filter((value) => value !== departmentId)
         : [...current, departmentId],
     );
+  }
+
+  async function handleCreateDepartment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("hr_token");
+      if (!token) throw new Error("Missing login token. Please sign in again.");
+      if (!newDepartmentName.trim()) {
+        throw new Error("Department name is required.");
+      }
+
+      const response = await fetch(`${API_BASE}/admin-users/departments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: newDepartmentName }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to save department");
+      }
+
+      setNewDepartmentName("");
+      await loadData();
+      triggerAppDataRefresh(["departments", "attendance_records", "employee_project_deployments", "employees"]);
+      notify("Department saved successfully");
+    } catch (err) {
+      const message = (err as Error).message;
+      setError(message);
+      notify(`Department save failed: ${message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateProjectSite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("hr_token");
+      if (!token) throw new Error("Missing login token. Please sign in again.");
+      if (!newProjectSiteName.trim()) {
+        throw new Error("Project site name is required.");
+      }
+
+      const response = await fetch(`${API_BASE}/attendance/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: newProjectSiteName }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to save project site");
+      }
+
+      setNewProjectSiteName("");
+      await loadData();
+      triggerAppDataRefresh(["departments", "attendance_records", "employee_project_deployments", "employees"]);
+      notify("Project site saved successfully");
+    } catch (err) {
+      const message = (err as Error).message;
+      setError(message);
+      notify(`Project site save failed: ${message}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleCreateWorker(event: FormEvent<HTMLFormElement>) {
@@ -576,8 +656,82 @@ export default function AdminUsersPage() {
         <div className="rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
       )}
 
-      {/* Sub-Admin & Worker Creation Section */}
+      {/* Department & Project Site Management */}
       {canCreateAdmins && (
+        <>
+        <section className="card p-8">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">System data</p>
+              <h3 className="mt-1 text-2xl font-black text-slate-950">Add department or project site</h3>
+              <p className="mt-2 text-sm text-slate-600">Create shared dropdown values here and they’ll appear across attendance, payroll, and employee screens after refresh.</p>
+            </div>
+            <span className="rounded-full bg-gradient-to-r from-emerald-100 to-cyan-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              Super Admin
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <form onSubmit={handleCreateDepartment} className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 01-2 2M19 11V9a2 2 0 00-2-2m-12 4a2 2 0 002 2m-2-2V9a2 2 0 012-2m0 0h8m-8 0V7a2 2 0 012-2m8 2v2m0 0v2m0-2h2m-2 0h-2" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Department</p>
+                  <h4 className="text-lg font-black text-slate-950">Create department</h4>
+                </div>
+              </div>
+
+              <label className="mt-4 block">
+                <span className="text-sm font-bold text-slate-700">Department name</span>
+                <input
+                  value={newDepartmentName}
+                  onChange={(event) => setNewDepartmentName(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                  placeholder="Human Resources"
+                  required
+                />
+              </label>
+
+              <button type="submit" disabled={saving || loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                Create department
+              </button>
+            </form>
+
+            <form onSubmit={handleCreateProjectSite} className="rounded-3xl border border-slate-200 bg-gradient-to-br from-cyan-50 to-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-md">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 21h8m-4-4v4m6-12.5A6.5 6.5 0 116 8.5C6 12.287 12 21 12 21s6-8.713 6-12.5Z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-cyan-700">Project site</p>
+                  <h4 className="text-lg font-black text-slate-950">Create project site</h4>
+                </div>
+              </div>
+
+              <label className="mt-4 block">
+                <span className="text-sm font-bold text-slate-700">Project site name</span>
+                <input
+                  value={newProjectSiteName}
+                  onChange={(event) => setNewProjectSiteName(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-cyan-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/10"
+                  placeholder="Project Alpha"
+                  required
+                />
+              </label>
+
+              <button type="submit" disabled={saving || loading} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50">
+                Create project site
+              </button>
+            </form>
+          </div>
+        </section>
+
         <section className="grid gap-6 xl:grid-cols-2">
           {/* Sub-Admin Creation Card */}
           <article className="card p-8">
@@ -924,6 +1078,7 @@ export default function AdminUsersPage() {
             </form>
           </article>
         </section>
+        </>
       )}
 
       {/* Admin Users List */}
