@@ -556,7 +556,8 @@ export default function NewPayrollPage() {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to save payroll run");
+        const backendError = data?.error ? `: ${data.error}` : "";
+        throw new Error((data?.message || "Failed to save payroll run") + backendError);
       }
 
       notify("Saved — opening payroll records...");

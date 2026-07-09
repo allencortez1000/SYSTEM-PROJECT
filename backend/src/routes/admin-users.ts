@@ -75,6 +75,14 @@ async function findOrCreateDepartment(name: string) {
     throw new Error('Department name is required');
   }
 
+  const code = cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join('')
+    .slice(0, 8)
+    .toUpperCase();
+
   const { data: existing, error: existingError } = await supabase
     .from('departments')
     .select('id, name')
@@ -96,7 +104,8 @@ async function findOrCreateDepartment(name: string) {
     .insert({
       organization_id: organizationId,
       name: cleaned,
-      is_active: true,
+      code,
+      description: null,
     })
     .select('id, name')
     .single();

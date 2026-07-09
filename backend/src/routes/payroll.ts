@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { calculatePayroll, computeGovernmentContributions } from '../controllers/payroll';
+import { summarizeAttendanceDays } from '../lib/attendanceSummary';
 import { supabase } from '../lib/supabase';
 import { requireSuperAdmin, verifyToken } from '../middleware/auth';
 
@@ -45,7 +46,6 @@ type AttendanceRecord = {
   worked_hours?: number | string | null;
   overtime_hours?: number | string | null;
   project_site?: string | null;
-  period_mode?: string | null;
 };
 
 type PayrollOverrideRow = {
@@ -71,55 +71,6 @@ type PayrollOverrideRow = {
 
 function roundCurrency(value: number) {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
-}
-
-function isSunday(dateValue?: string | null) {
-  if (!dateValue) return false;
-  const date = new Date(`${dateValue}T00:00:00`);
-  return Number.isFinite(date.getTime()) && date.getDay() === 0;
-}
-
-function workedHoursFromRecord(record: AttendanceRecord) {
-  if (record.worked_hours !== null && record.worked_hours !== undefined) {
-    const worked = Number(record.worked_hours);
-    return Number.isFinite(worked) ? worked : 0;
-  }
-
-  const parseTime = (value?: string | null) => {
-    if (!value) return null;
-    const trimmed = value.trim();
-    const meridiemMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)$/i);
-    if (meridiemMatch) {
-      let hours = Number(meridiemMatch[1]);
-      const minutes = Number(meridiemMatch[2]);
-      const meridiem = meridiemMatch[3].toLowerCase();
-      if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-      if (hours === 12) hours = 0;
-      if (meridiem === 'pm') hours += 12;
-      return hours * 60 + minutes;
-    }
-
-    const twentyFourHourMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-    if (!twentyFourHourMatch) return null;
-    const hours = Number(twentyFourHourMatch[1]);
-    const minutes = Number(twentyFourHourMatch[2]);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-    return hours * 60 + minutes;
-  };
-
-  const checkIn = parseTime(record.check_in);
-  const checkOut = parseTime(record.check_out);
-  if (checkIn === null || checkOut === null || checkOut <= checkIn) return 0;
-  return roundCurrency((checkOut - checkIn) / 60);
-}
-
-function overtimeHoursFromRecord(record: AttendanceRecord) {
-  if (record.overtime_hours !== null && record.overtime_hours !== undefined) {
-    const overtime = Number(record.overtime_hours);
-    return Number.isFinite(overtime) ? overtime : 0;
-  }
-
-  return Math.max(0, roundCurrency(workedHoursFromRecord(record) - 8));
 }
 
 async function findOrCreateProjectSite(projectName: string) {
@@ -524,19 +475,32 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
     // use that attendance date range so Supabase stores the same payroll window
     // the user reviewed in the UI.
     const attendance = attendanceSummary as Partial<AttendanceSummary> | null | undefined;
-    const periodStart = attendance?.startDate || now.toISOString().slice(0, 8) + '01';
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const periodEnd = attendance?.endDate || now.toISOString().slice(0, 8) + String(lastDay).padStart(2, '0');
+    const currentYear = now.getFullYear();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const monthPrefix = `${currentYear}-${currentMonth}-`;
+    const periodStart = attendance?.startDate || `${monthPrefix}01`;
+    const lastDay = new Date(currentYear, now.getMonth() + 1, 0).getDate();
+    const periodEnd = attendance?.endDate || `${monthPrefix}${String(lastDay).padStart(2, '0')}`;
 
     // 4. Compute payout_date from schedule
+    const resolveDay = (value: unknown) => {
+      const raw = String(value || '').trim();
+      if (!raw || raw.toUpperCase() === 'EOM') return lastDay;
+      const direct = Number(raw);
+      if (Number.isFinite(direct)) return Math.min(Math.max(Math.trunc(direct), 1), lastDay);
+      const parsed = new Date(raw);
+      if (Number.isFinite(parsed.getTime())) return Math.min(parsed.getDate(), lastDay);
+      return lastDay;
+    };
+
     let payoutDate: string;
     if (payFrequency === 'monthly') {
-      const day = payoutDay === 'EOM' ? lastDay : Math.min(Number(payoutDay), lastDay);
-      payoutDate = now.toISOString().slice(0, 8) + String(day).padStart(2, '0');
+      const day = resolveDay(payoutDay);
+      payoutDate = `${monthPrefix}${String(day).padStart(2, '0')}`;
     } else {
       // semi-monthly: use second cutoff day
-      const day = secondCutoffDay === 'EOM' ? lastDay : Math.min(Number(secondCutoffDay), lastDay);
-      payoutDate = now.toISOString().slice(0, 8) + String(day).padStart(2, '0');
+      const day = resolveDay(secondCutoffDay);
+      payoutDate = `${monthPrefix}${String(day).padStart(2, '0')}`;
     }
 
     const gross = roundCurrency(Number(grossEarnings) || 0);
@@ -636,58 +600,26 @@ function summarizeAttendance(
   employeeId?: string,
   projectSite?: string,
 ): AttendanceSummary {
-  const summary: AttendanceSummary = {
+  const summary = summarizeAttendanceDays(records);
+
+  return {
     employeeId,
     employeeName,
     startDate,
     endDate,
     projectSite,
-    presentDays: 0,
-    remoteDays: 0,
-    leaveDays: 0,
-    absentDays: 0,
-    lateDays: 0,
-    paidDays: 0,
-    regularHours: 0,
-    overtimeHours: 0,
-    totalRecords: records.length,
+    presentDays: summary.presentDays,
+    remoteDays: summary.remoteDays,
+    leaveDays: summary.leaveDays,
+    absentDays: summary.absentDays,
+    lateDays: summary.lateDays,
+    paidDays: summary.paidDays,
+    basePaidDays: summary.paidDays,
+    regularHours: summary.regularHours,
+    overtimeHours: summary.overtimeHours,
+    baseOvertimeHours: summary.overtimeHours,
+    totalRecords: summary.totalRecords,
   };
-
-  const hasPayrollPeriodRows = records.some((record) => String(record.period_mode || '').toLowerCase() === 'payroll_period');
-
-  for (const record of records) {
-    const status = String(record.status || '').toLowerCase();
-    const workedHours = workedHoursFromRecord(record);
-    const sunday = isSunday(record.attendance_date);
-
-    if (sunday) {
-      summary.overtimeHours += overtimeHoursFromRecord(record);
-      continue;
-    }
-
-    const isPresent = status === 'present' || status === 'remote' || status === 'late';
-
-    if (isPresent) summary.presentDays += 1;
-    if (status === 'remote') summary.remoteDays += 1;
-    if (status === 'leave') summary.leaveDays += 1;
-    if (status === 'absent') summary.absentDays += 1;
-    if (status === 'late') summary.lateDays += 1;
-    summary.overtimeHours += overtimeHoursFromRecord(record);
-
-    if (hasPayrollPeriodRows || isPresent) {
-      summary.regularHours += workedHours;
-    }
-  }
-
-  summary.paidDays = hasPayrollPeriodRows
-    ? roundCurrency(summary.regularHours / 8)
-    : summary.presentDays + summary.remoteDays + summary.lateDays;
-  summary.basePaidDays = summary.paidDays;
-  summary.baseOvertimeHours = roundCurrency(summary.overtimeHours);
-  summary.overtimeHours = roundCurrency(summary.overtimeHours);
-  summary.regularHours = roundCurrency(summary.regularHours);
-
-  return summary;
 }
 
 function applyAttendanceOverride(summary: AttendanceSummary, override: PayrollOverrideRow | null) {
