@@ -96,8 +96,8 @@ export default function EmployeeDetail() {
   return (
     <div className="page-shell">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-xl font-black text-white shadow-sm">
             {employee?.fullName?.split(" ").map((name) => name?.[0] ?? "").filter(Boolean).slice(0, 2).join("") || "?"}
           </div>
@@ -106,7 +106,7 @@ export default function EmployeeDetail() {
             <h1 className="text-xl font-black tracking-tight text-slate-950">{employee?.fullName || "Employee details"}</h1>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -205,9 +205,9 @@ export default function EmployeeDetail() {
       {/* Employee Details */}
       {employee && (
         <div className="rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
-          <div className="grid gap-6 p-6 lg:grid-cols-[0.6fr_1.4fr]">
+            <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[0.6fr_1.4fr]">
             {/* Profile Card */}
-            <div className="rounded-[0.875rem] border border-slate-100 bg-slate-50 p-6">
+            <div className="rounded-[0.875rem] border border-slate-100 bg-slate-50 p-4 sm:p-6">
               <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-blue-600 text-2xl font-black text-white shadow-sm">
                 {employee.fullName.split(" ").map((name) => name?.[0] ?? "").filter(Boolean).slice(0, 2).join("")}
               </div>
@@ -227,7 +227,7 @@ export default function EmployeeDetail() {
             </div>
 
             {/* Info Cards Grid */}
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
               <InfoCard
                 label="Employee ID"
                 value={employee.employeeId || String(employee.id)}

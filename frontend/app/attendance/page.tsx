@@ -1407,10 +1407,10 @@ export default function AttendancePage() {
             </div>
 
             {/* Stats Summary Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-sm sm:h-12 sm:w-12">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1424,7 +1424,7 @@ export default function AttendancePage() {
 
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-green-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 shadow-sm sm:h-12 sm:w-12">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1438,7 +1438,7 @@ export default function AttendancePage() {
 
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-purple-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600 shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 shadow-sm sm:h-12 sm:w-12">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1452,7 +1452,7 @@ export default function AttendancePage() {
 
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-600 shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-600 shadow-sm sm:h-12 sm:w-12">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -1466,7 +1466,7 @@ export default function AttendancePage() {
             </div>
 
             {/* Info Cards */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1578,10 +1578,10 @@ export default function AttendancePage() {
                 <div className="space-y-3">
                   {latestRecords.map((record) => (
                     <div key={record.id} className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm transition-all hover:shadow-md">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-base font-bold text-slate-900">{record.employeeName}</p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="break-words text-base font-bold text-slate-900">{record.employeeName}</p>
                             <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass[record.status] || "bg-slate-100 text-slate-700"}`}>
                               {record.status}
                             </span>
@@ -1590,7 +1590,7 @@ export default function AttendancePage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-lg bg-white p-3 shadow-sm">
                           <p className="text-xs font-bold text-slate-500">Check-in</p>
                           <p className="mt-1 text-sm font-black text-slate-900">{record.checkIn || "—"}</p>
@@ -1637,7 +1637,7 @@ export default function AttendancePage() {
             }
           }}
         >
-          <div className="mx-auto flex h-[calc(100dvh-1rem)] w-full max-w-[1500px] flex-col overflow-hidden rounded-[1.4rem] bg-white shadow-2xl ring-1 ring-slate-200/70 lg:rounded-[1.75rem]">
+          <div className="mx-auto flex h-[calc(100dvh-1rem)] w-full max-w-[1500px] flex-col overflow-hidden rounded-[1.4rem] bg-white shadow-2xl ring-1 ring-slate-200/70 lg:h-[calc(100dvh-1.5rem)] lg:rounded-[1.75rem]">
             <div className="sticky top-0 z-20 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-3 py-3 sm:px-4 sm:py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
@@ -1649,20 +1649,20 @@ export default function AttendancePage() {
                     {filteredAssignmentCount} assigned active workers · {periodDates.length} day columns · Sunday is rest day
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={exportVisibleAttendance} disabled={latestRecords.length === 0} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-black text-blue-700 shadow-sm transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60">
+                <div className="grid grid-cols-1 gap-1.5 sm:flex sm:flex-wrap">
+                  <button type="button" onClick={exportVisibleAttendance} disabled={latestRecords.length === 0} className="w-full rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-black text-blue-700 shadow-sm transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
                     Export Excel
                   </button>
-                  <button type="button" onClick={saveAttendance} disabled={saving || loading} className="rounded-xl bg-slate-950 px-3 py-2 text-[11px] font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
+                  <button type="button" onClick={saveAttendance} disabled={saving || loading} className="w-full rounded-xl bg-slate-950 px-3 py-2 text-[11px] font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
                     {saving ? "Saving..." : "Save attendance"}
                   </button>
-                  <button type="button" onClick={() => setIsWorkspaceOpen(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700">
+                  <button type="button" onClick={() => setIsWorkspaceOpen(false)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-slate-700 sm:w-auto">
                     Close
                   </button>
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+              <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
                 <div className="rounded-[1.25rem] border border-blue-100 bg-blue-50/70 p-3.5 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance range</p>
                   <label className="mt-3 block">
@@ -1730,7 +1730,7 @@ export default function AttendancePage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-3">
                 <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Department / Project</p>
                   <select
@@ -1960,8 +1960,8 @@ export default function AttendancePage() {
       {deleteTarget && (() => {
         const employee = employees.find((item) => item.id === deleteTarget.employeeId);
         return employee ? createPortal(
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-lg">
+          <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+            <div className="w-full max-w-md rounded-t-2xl border border-slate-200 bg-white shadow-lg sm:rounded-2xl">
               <div className="border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-rose-50/70 px-5 py-4">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1978,18 +1978,18 @@ export default function AttendancePage() {
                 <p className="text-sm text-slate-600">
                   This will permanently remove the saved attendance entry for this worker and date. This action cannot be undone.
                 </p>
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <div className="mt-5 grid grid-cols-1 gap-3 sm:flex sm:justify-end">
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(null)}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition-all hover:bg-slate-50"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition-all hover:bg-slate-50 sm:w-auto"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => void confirmDeleteAttendance()}
-                    className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95"
+                    className="w-full rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-all hover:bg-rose-700 active:scale-95 sm:w-auto"
                   >
                     Delete Attendance
                   </button>
@@ -2003,9 +2003,9 @@ export default function AttendancePage() {
 
       {/* Edit Attendance Modal */}
       {activeCell && activeEmployee && activeDraft ? createPortal(
-        <div className="fixed inset-0 z-[110] bg-slate-950/70 p-3 backdrop-blur-sm">
-          <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
-            <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="fixed inset-0 z-[110] bg-slate-950/70 p-2 backdrop-blur-sm sm:p-3">
+          <div className="mx-auto flex h-[calc(100dvh-1rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg sm:h-full">
+            <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/80 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

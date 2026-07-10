@@ -732,9 +732,9 @@ export default function AdminUsersPage() {
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
+        <section className="grid gap-6 2xl:grid-cols-2">
           {/* Sub-Admin Creation Card */}
-          <article className="card p-8">
+          <article className="card p-5 sm:p-8">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">
@@ -881,7 +881,7 @@ export default function AdminUsersPage() {
           </article>
 
           {/* Worker Creation Card */}
-          <article className="card p-8">
+          <article className="card p-5 sm:p-8">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-600 text-white shadow-lg">
@@ -1227,19 +1227,19 @@ export default function AdminUsersPage() {
       {/* Worker Management Section */}
       {canViewAdmins && (
         <section className="card p-8">
-          <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-6">
-            <div className="flex items-start gap-4">
+          <div className="flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">
                 <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wider text-orange-600">Workforce</p>
                 <h3 className="mt-1 text-2xl font-black text-slate-950">Employee Management</h3>
               </div>
             </div>
-            <span className="rounded-full bg-gradient-to-r from-orange-100 to-red-100 px-4 py-2 text-sm font-bold text-orange-700">
+            <span className="self-start rounded-full bg-gradient-to-r from-orange-100 to-red-100 px-4 py-2 text-sm font-bold text-orange-700 sm:self-auto">
               {employees.length} employee{employees.length === 1 ? "" : "s"}
             </span>
           </div>
@@ -1266,8 +1266,8 @@ export default function AdminUsersPage() {
             }}
             clearLabel="Clear search"
           />
-          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div>
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="min-w-0">
               <label htmlFor="employee-status-filter" className="text-sm font-semibold text-slate-700">
                 Status
               </label>
@@ -1303,12 +1303,12 @@ export default function AdminUsersPage() {
             {paginatedEmployees.map((employee) => (
               <div
                 key={employee.id}
-                className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 p-6 shadow-lg transition hover:shadow-xl"
+                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/50 p-5 shadow-lg transition hover:shadow-xl sm:flex-row sm:items-start sm:justify-between sm:p-6"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-black text-slate-900">{employee.fullName}</p>
-                  <p className="mt-1 truncate text-sm text-slate-500">{employee.email}</p>
-                  <p className="mt-3 flex items-center gap-2 text-sm text-slate-600">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-lg font-black text-slate-900">{employee.fullName}</p>
+                  <p className="mt-1 break-words text-sm text-slate-500">{employee.email}</p>
+                  <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1327,10 +1327,10 @@ export default function AdminUsersPage() {
                   </p>
                 </div>
 
-                <div className="flex shrink-0 gap-2">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2.5 font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:flex-none sm:px-5"
                     onClick={() => startEditWorker(employee)}
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1341,7 +1341,7 @@ export default function AdminUsersPage() {
                   {sessionUser?.role === "super-admin" && (
                     <button
                       type="button"
-                      className="inline-flex items-center gap-2 rounded-2xl border-2 border-red-200 bg-red-50 px-5 py-2.5 font-bold text-red-700 transition hover:border-red-300 hover:bg-red-100"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-red-200 bg-red-50 px-4 py-2.5 font-bold text-red-700 transition hover:border-red-300 hover:bg-red-100 sm:flex-none sm:px-5"
                       onClick={() => deleteWorker(employee.id)}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1357,7 +1357,7 @@ export default function AdminUsersPage() {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="mt-6 flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-6 flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-slate-600">
                 Showing {paginatedEmployees.length > 0 ? (employeePage - 1) * employeesPerPage + 1 : 0} to{" "}
                 {Math.min(employeePage * employeesPerPage, employeeCount || filteredEmployees.length)} of {employeeCount || filteredEmployees.length}

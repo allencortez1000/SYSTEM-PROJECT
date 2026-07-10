@@ -39,6 +39,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
   color: var(--color-text);
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 28rem),
@@ -94,10 +95,10 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
   width: 100%;
   max-width: 90rem;
   margin-inline: auto;
-  padding: 2rem 1.15rem 3rem;
+  padding: clamp(1rem, 2.5vw, 2rem) clamp(0.85rem, 2vw, 1.15rem) clamp(2rem, 4vw, 3rem);
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: clamp(1rem, 2vw, 1.35rem);
 }
 .page-shell > * {
   animation: fadeUp 0.22s ease both;
@@ -126,11 +127,14 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
   line-height: 1.15;
 }
 @media (max-width: 640px) {
-  .page-title { font-size: 1.45rem; line-height: 1.2; }
-  .page-subtitle { font-size: 0.95rem; line-height: 1.55; }
-  .card-title { font-size: 1rem; }
-  .stat-card .text-2xl { font-size: 1.85rem; }
+  .page-title { font-size: 1.35rem; line-height: 1.2; }
+  .page-subtitle { font-size: 0.92rem; line-height: 1.55; }
+  .card-title { font-size: 0.975rem; }
+  .stat-card .text-2xl { font-size: 1.7rem; }
   .empty-state-title { font-size: 0.95rem; }
+  .card-header, .card-body { padding-left: 1rem; padding-right: 1rem; }
+  .stat-card { padding: 1rem; }
+  .hero-panel { padding: 1.1rem; }
 }
 .page-subtitle {
   margin-top: 0.3rem;

@@ -60,6 +60,18 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     try { setSessionUser(JSON.parse(raw)); } catch { setSessionUser(null); }
   }, []);
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
   const navigation: NavItem[] =
     sessionUser?.role === "super-admin"
       ? [...baseNavigation, { href: "/admin-users", label: "Admin Access", icon: <NavIcon path={NAV_ICONS["/admin-users"]} /> }]
@@ -80,7 +92,73 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     .split(" ").map((n: string) => n?.[0] ?? "").filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-950">
+    <div className="min-h-screen overflow-x-hidden bg-transparent text-slate-950">
+      <div
+        className={
+          "fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px] transition-opacity duration-150 xl:hidden " +
+          (mobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")
+        }
+        onClick={() => setMobileMenuOpen(false)}
+      >
+        <aside
+          className={
+            "absolute left-0 top-0 flex h-full w-[86vw] max-w-[320px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl transition-transform duration-200 ease-out " +
+            (mobileMenuOpen ? "translate-x-0" : "-translate-x-full")
+          }
+          onClick={(event) => event.stopPropagation()}
+        >
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-white p-1.5 shadow-sm ring-1 ring-white/10">
+                  <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase leading-tight tracking-[0.18em] text-sky-300/90">Rabino Home Builders Corporation</p>
+                  <p className="mt-0.5 text-sm font-semibold leading-tight text-slate-300/85">HR Command Center</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-300 transition hover:bg-white/10 hover:text-white"
+                aria-label="Close menu"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto px-3 py-4">
+              <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">Navigation</p>
+              <ul className="space-y-1.5">
+                {navigation.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={
+                          "group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 " +
+                          (active
+                            ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"
+                            : "text-slate-300 hover:bg-white/8 hover:text-white")
+                        }
+                      >
+                        <span className={active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}>
+                          {item.icon}
+                        </span>
+                        {item.label}
+                        {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/70" />}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          </aside>
+        </div>
+
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:flex">
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center gap-4">
@@ -165,8 +243,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         </div>
       </aside>
 
-      <div className="min-h-screen xl:pl-[292px]">
-        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
+      <div className="min-h-screen w-full xl:pl-[292px]">
+        <header className="sticky top-0 z-30 flex h-[68px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -209,26 +287,22 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             ) : null;
           })()}
 
-          <div className="ml-auto flex items-center gap-2">
-            <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a10.05 10.05 0 0 1-3.357.918m3.357-.918a3 3 0 0 0 1.928-2.805c0-1.702-.75-3.245-1.95-4.283M14.857 17.082l-2.486-.62a10.05 10.05 0 0 0-3.357.918m0 0a3 3 0 0 1-1.928-2.805c0-1.702.75-3.245 1.95-4.283m0 0a3 3 0 0 1 1.928 2.805m-1.928-2.805c0-1.702.75-3.245 1.95-4.283m0 0a6 6 0 1 1 7.715 0m-7.715 0a6 6 0 0 0-1.95 4.283m9.665-4.283a6 6 0 0 1-7.715 0" />
-              </svg>
-            </button>
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-xs font-black text-white">{initials}</div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-bold text-slate-900">{sessionUser?.name || "User"}</p>
-                <p className="text-[10px] text-slate-400">{labelFromRole(sessionUser?.role)}</p>
+          <div className="ml-auto flex items-center gap-2.5">
+
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-[11px] font-black text-white">{initials}</div>
+                <div className="hidden min-w-0 sm:block pr-1">
+                <p className="text-[11px] font-bold leading-tight text-slate-900">{sessionUser?.name || "User"}</p>
+                <p className="text-[10px] leading-tight text-slate-400">{labelFromRole(sessionUser?.role)}</p>
               </div>
             </div>
-            <button onClick={handleLogout} className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100">
+            <button onClick={handleLogout} className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100">
               Logout
             </button>
           </div>
         </header>
 
-        <main className="page-shell">{children}</main>
+        <main className="page-shell w-full max-w-none xl:max-w-[90rem]">{children}</main>
       </div>
     </div>
   );

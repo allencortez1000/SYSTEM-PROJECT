@@ -164,14 +164,14 @@ export default function EmployeesPage() {
     <div className="page-shell">
         {/* Header Section */}
         <div className="page-header">
-          <div>
+          <div className="min-w-0">
             <p className="eyebrow">People management</p>
             <h1 className="page-title mt-1">Employee Directory</h1>
             <p className="page-subtitle">Manage and view all employee records</p>
           </div>
           <Link
             href="/employees/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -181,7 +181,7 @@ export default function EmployeesPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="stat-card accent-emerald">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -243,8 +243,8 @@ export default function EmployeesPage() {
             setSortMode("name-asc");
           }}
         >
-          <div>
-            <label htmlFor="department-filter" className="text-sm font-semibold text-slate-700">
+          <div className="min-w-0">
+              <label htmlFor="department-filter" className="text-sm font-semibold text-slate-700">
               Department
             </label>
             <select
@@ -261,8 +261,8 @@ export default function EmployeesPage() {
             </select>
           </div>
 
-          <div>
-            <label htmlFor="projectsite-filter" className="text-sm font-semibold text-slate-700">
+          <div className="min-w-0">
+              <label htmlFor="projectsite-filter" className="text-sm font-semibold text-slate-700">
               Project Site
             </label>
             <select
@@ -279,8 +279,8 @@ export default function EmployeesPage() {
             </select>
           </div>
 
-          <div>
-            <label htmlFor="status-filter" className="text-sm font-semibold text-slate-700">
+          <div className="min-w-0">
+              <label htmlFor="status-filter" className="text-sm font-semibold text-slate-700">
               Status
             </label>
             <select
@@ -295,8 +295,8 @@ export default function EmployeesPage() {
             </select>
           </div>
 
-          <div>
-            <label htmlFor="sort-mode" className="text-sm font-semibold text-slate-700">
+          <div className="min-w-0">
+              <label htmlFor="sort-mode" className="text-sm font-semibold text-slate-700">
               Sort by
             </label>
             <select

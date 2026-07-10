@@ -1468,7 +1468,7 @@ export default function NewPayrollPage() {
   return (
     <div className="page-shell print:bg-white">
       <section className="hero-panel print:hidden">
-        <div className="grid min-w-0 gap-8 2xl:grid-cols-[1.25fr_0.75fr] 2xl:items-center">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-1 2xl:grid-cols-[1.25fr_0.75fr] 2xl:items-center">
           <div className="min-w-0">
             <p className="eyebrow text-sky-200/90">Payroll calculation</p>
             <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-white sm:text-4xl">
@@ -1477,7 +1477,7 @@ export default function NewPayrollPage() {
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200/80 sm:text-base">
               SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule, while each payroll row stays fully visible in the editor.
             </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
               <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
               <button onClick={savePayrollTable} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
@@ -1498,7 +1498,7 @@ export default function NewPayrollPage() {
             <p className="mt-3 text-sm leading-6 text-slate-300">
               Project: {selectedProject}. Deduction schedule: {frequencyConfig[payFrequency].label}. Employee records loaded: {loadingEmployees ? "..." : employees.length}.
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl bg-white/10 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Attendance sync</p>
                 <p className="mt-1 text-lg font-black text-white">{syncedRows} linked rows</p>
@@ -1580,16 +1580,21 @@ export default function NewPayrollPage() {
                   return (
                     <div key={row.id} className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-base font-black text-slate-950">{row.name}</p>
+                            <p className="break-words text-base font-black text-slate-950">{row.name}</p>
                             {row.syncedFromAttendance && <span className="inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
                           </div>
-                          <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"} · {row.days} day(s) · {row.otHours} OT hour(s)</p>
+                          <p className="mt-1 break-words text-sm font-semibold text-slate-500">{row.position || "Labor"} · {row.days} day(s) · {row.otHours} OT hour(s)</p>
                         </div>
-                        <div className="text-left sm:text-right">
-                          <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Net salary</p>
-                          <p className="mt-1 text-lg font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
+                        <div className="flex items-start justify-between gap-3 sm:block sm:text-right">
+                          <div className="sm:hidden">
+                            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Net salary</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Net salary</p>
+                            <p className="mt-1 text-lg font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1684,18 +1689,18 @@ export default function NewPayrollPage() {
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Payroll worksheet</p>
                 <h3 className="break-words pr-2 text-base font-black text-slate-950">Full-detail payroll editor</h3>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                <button onClick={jumpToTable} type="button" className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700">Go to rows</button>
-                <button onClick={syncPayrollFromAttendance} type="button" className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm">{syncingAttendance ? "Syncing..." : "Sync attendance"}</button>
-                <button onClick={savePayrollTable} type="button" className={toolButtonClass}>{savingPayrollTable ? "Saving..." : "Save table"}</button>
-                <button onClick={triggerExcelImport} type="button" className={toolButtonClass}>Insert Excel</button>
+              <div className="grid grid-cols-1 gap-1.5 sm:flex sm:flex-wrap">
+                <button onClick={jumpToTable} type="button" className="w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm hover:bg-blue-700 sm:w-auto">Go to rows</button>
+                <button onClick={syncPayrollFromAttendance} type="button" className="w-full rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm sm:w-auto">{syncingAttendance ? "Syncing..." : "Sync attendance"}</button>
+                <button onClick={savePayrollTable} type="button" className={`${toolButtonClass} w-full sm:w-auto`}>{savingPayrollTable ? "Saving..." : "Save table"}</button>
+                <button onClick={triggerExcelImport} type="button" className={`${toolButtonClass} w-full sm:w-auto`}>Insert Excel</button>
                 <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
-                <button onClick={applyPayrollEditsToAttendance} type="button" className={toolButtonClass}>{savingOverrides ? "Applying..." : "Apply to attendance"}</button>
-                <button onClick={addRow} type="button" className={toolButtonClass}>Add row</button>
-                <button onClick={exportExcel} type="button" className={toolButtonClass}>Export Excel</button>
-                <button onClick={handlePrint} type="button" className={toolButtonClass}>Print</button>
-                <button onClick={clearPayroll} type="button" className="rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-black text-red-700">Reset</button>
-                <button onClick={() => setIsWorksheetOpen(false)} type="button" className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700">Close</button>
+                <button onClick={applyPayrollEditsToAttendance} type="button" className={`${toolButtonClass} w-full sm:w-auto`}>{savingOverrides ? "Applying..." : "Apply to attendance"}</button>
+                <button onClick={addRow} type="button" className={`${toolButtonClass} w-full sm:w-auto`}>Add row</button>
+                <button onClick={exportExcel} type="button" className={`${toolButtonClass} w-full sm:w-auto`}>Export Excel</button>
+                <button onClick={handlePrint} type="button" className={`${toolButtonClass} w-full sm:w-auto`}>Print</button>
+                <button onClick={clearPayroll} type="button" className="w-full rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-black text-red-700 sm:w-auto">Reset</button>
+                <button onClick={() => setIsWorksheetOpen(false)} type="button" className="w-full rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 sm:w-auto">Close</button>
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-white print:block print:overflow-visible">
@@ -1706,23 +1711,23 @@ export default function NewPayrollPage() {
       )}
 
       {activeRow && (
-          <div className="fixed inset-0 z-[80] bg-slate-950/70 p-3 backdrop-blur-sm">
-            <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-              <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="fixed inset-0 z-[80] bg-slate-950/70 p-2 backdrop-blur-sm sm:p-3 lg:p-4">
+            <div className="mx-auto flex h-[calc(100dvh-1rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:h-full sm:rounded-3xl">
+              <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Payroll row editor</p>
                   <h3 className="mt-1 break-words text-xl font-black text-slate-950">{activeRow.name || `Worker row ${rows.findIndex((row) => row.id === activeRow.id) + 1}`}</h3>
                   <p className="mt-1 text-sm text-slate-500">Open every field clearly here, then close when done editing.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
                   <button type="button" onClick={() => void saveActiveRow()} disabled={savingRowId === activeRow.id} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">{savingRowId === activeRow.id ? "Saving..." : "Save row"}</button>
-                  <button type="button" onClick={() => duplicateRow(activeRow)} className={toolButtonClass}>Copy row</button>
-                  <button type="button" onClick={() => setActiveRowId(null)} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Done</button>
+                  <button type="button" onClick={() => duplicateRow(activeRow)} className={`${toolButtonClass} w-full sm:w-auto`}>Copy row</button>
+                  <button type="button" onClick={() => setActiveRowId(null)} className="w-full rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 sm:w-auto">Done</button>
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto bg-slate-50 p-4 sm:p-5">
-                <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="min-h-0 flex-1 overflow-auto bg-slate-50 p-3 sm:p-5">
+                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
                   <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Worker details</p>
                     <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -1753,7 +1758,7 @@ export default function NewPayrollPage() {
                     </div>
 
                     <div className="mt-5 flex justify-end">
-                      <button type="button" onClick={() => void saveActiveRow()} disabled={savingRowId === activeRow.id} className="rounded-lg bg-slate-950 px-4 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60">
+                      <button type="button" onClick={() => void saveActiveRow()} disabled={savingRowId === activeRow.id} className="w-full rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
                         {savingRowId === activeRow.id ? "Saving..." : "Save worker info"}
                       </button>
                     </div>
