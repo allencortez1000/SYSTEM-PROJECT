@@ -78,7 +78,7 @@ async function findOrCreateDepartment(name: string) {
   const code = cleaned
     .split(/\s+/)
     .filter(Boolean)
-    .map((word) => word[0])
+    .map((word: string) => word[0])
     .join('')
     .slice(0, 8)
     .toUpperCase();
