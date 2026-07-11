@@ -83,6 +83,8 @@ const defaultDraftEntry: DraftEntry = {
   overtimeMode: "manual",
 };
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "").replace(/\/api$/, "") + "/api";
+
 const statusClass: Record<string, string> = {
   Present: "bg-emerald-50 text-emerald-700",
   Halfday: "bg-cyan-50 text-cyan-700",
@@ -333,11 +335,11 @@ export default function AttendancePage() {
       }
 
       const [attendanceRes, employeesRes, projectsRes, assignmentsRes, departmentsRes] = await Promise.all([
-        fetch("/api/attendance", { headers }),
-        fetch("/api/employees?limit=0", { headers }),
-        fetch("/api/attendance/projects", { headers }),
-        fetch("/api/attendance/assignments", { headers }),
-        fetch("/api/admin-users/departments", { headers }),
+        fetch(`${API_BASE}/attendance`, { headers }),
+        fetch(`${API_BASE}/employees?limit=0`, { headers }),
+        fetch(`${API_BASE}/attendance/projects`, { headers }),
+        fetch(`${API_BASE}/attendance/assignments`, { headers }),
+        fetch(`${API_BASE}/admin-users/departments`, { headers }),
       ]);
 
       const attendanceData = await attendanceRes.json().catch(() => ({}));
@@ -418,7 +420,7 @@ export default function AttendancePage() {
       if (normalizationUpdates.length > 0) {
         void Promise.all(
           normalizationUpdates.map((update) =>
-            fetch("/api/attendance/assignments", {
+            fetch(`${API_BASE}/attendance/assignments`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -745,7 +747,7 @@ export default function AttendancePage() {
         router.replace("/login");
         return;
       }
-      const res = await fetch("/api/attendance/projects", {
+      const res = await fetch(`${API_BASE}/attendance/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ name: trimmed }),
@@ -783,7 +785,7 @@ export default function AttendancePage() {
         router.replace("/login");
         return;
       }
-      const res = await fetch("/api/attendance/assignments", {
+      const res = await fetch(`${API_BASE}/attendance/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ employeeId, projectName: forcedProject }),
@@ -852,7 +854,7 @@ export default function AttendancePage() {
 
       const results = await Promise.all(
         payloads.map((payload) =>
-          fetch("/api/attendance", {
+          fetch(`${API_BASE}/attendance`, {
             method: "POST",
             headers: { "Content-Type": "application/json", ...authHeaders },
             body: JSON.stringify(payload),
@@ -869,7 +871,7 @@ export default function AttendancePage() {
       const firstError = results.find((r) => r instanceof Error);
       if (firstError) throw firstError;
 
-      const refreshed = await fetch("/api/attendance", {
+      const refreshed = await fetch(`${API_BASE}/attendance`, {
         headers: authHeaders,
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
@@ -927,7 +929,7 @@ export default function AttendancePage() {
         router.replace("/login");
         return;
       }
-      const res = await fetch("/api/attendance", {
+      const res = await fetch(`${API_BASE}/attendance`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify(payload),
@@ -937,14 +939,14 @@ export default function AttendancePage() {
       if (!res.ok) throw new Error(data?.message || `Failed to save attendance for ${payload.employeeName}`);
 
       if (sourceDate !== targetDate) {
-        await fetch("/api/attendance", {
+        await fetch(`${API_BASE}/attendance`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({ employeeId: employee.id, date: sourceDate }),
         });
       }
 
-      const refreshed = await fetch("/api/attendance", {
+      const refreshed = await fetch(`${API_BASE}/attendance`, {
         headers: authHeaders,
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
@@ -986,7 +988,7 @@ export default function AttendancePage() {
         return;
       }
 
-      const res = await fetch("/api/attendance", {
+      const res = await fetch(`${API_BASE}/attendance`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ employeeId, date }),
@@ -1004,7 +1006,7 @@ export default function AttendancePage() {
         return next;
       });
 
-      const refreshed = await fetch("/api/attendance", {
+      const refreshed = await fetch(`${API_BASE}/attendance`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem('hr_token')}` },
       });
       const refreshedData = await refreshed.json().catch(() => ({}));
