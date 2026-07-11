@@ -511,6 +511,45 @@ export default function NewPayrollPage() {
     if (!res.ok) throw new Error(data?.message || "Failed to save worker information");
   }
 
+  async function syncEmployeeMasterFromRow(row: WorkerRow) {
+    if (!row.employeeId) return;
+
+    const [lastName, ...restName] = String(row.name || "").split(",").map((part) => part.trim());
+    const firstName = restName.shift() || "";
+    const middleName = restName.join(", ");
+
+    const res = await fetch(`${API_BASE}/employees/${row.employeeId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(getAuthHeaders() || {}),
+      },
+      body: JSON.stringify({
+        fullName: row.name,
+        firstName,
+        lastName,
+        middleName,
+        position: row.position,
+        salary: row.dailyRate,
+        hasSss: row.hasSss,
+        hasPagIbig: row.hasPagIbig,
+        hasPhilHealth: row.hasPhilHealth,
+        hasSssLoan: row.hasSssLoan,
+        hasTax: row.hasTax,
+        hasAdditionalDeduction: row.hasAdditionalDeduction,
+        sssAmount: row.sssManual,
+        pagIbigAmount: row.pagIbigManual,
+        philHealthAmount: row.philHealthManual,
+        sssLoanAmount: row.sssLoan,
+        taxAmount: row.tax,
+        additionalDeductionAmount: row.additionalDeduction,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || "Failed to sync employee master data");
+  }
+
   async function saveActiveRow() {
     if (!activeRow) return;
 
@@ -525,7 +564,10 @@ export default function NewPayrollPage() {
       if (!next.some((row: WorkerRow) => row.id === activeRow.id)) next.push(activeRow);
       localStorage.setItem(payrollStorageKey, JSON.stringify(next));
       setRows(next);
-      await saveRowToSupabase(activeRow);
+      await Promise.all([
+        saveRowToSupabase(activeRow),
+        syncEmployeeMasterFromRow(activeRow),
+      ]);
       notify("Worker information saved");
     } catch (err) {
       setError((err as Error).message);
@@ -549,7 +591,10 @@ export default function NewPayrollPage() {
     setSavingPayrollTable(true);
     try {
       localStorage.setItem(payrollStorageKey, JSON.stringify(rows));
-      await Promise.all(rowsToSave.map((row) => saveRowToSupabase(row)));
+      await Promise.all(rowsToSave.map((row) => Promise.all([
+        saveRowToSupabase(row),
+        syncEmployeeMasterFromRow(row),
+      ])));
 
       const payrollSummaryPayload = {
         employeeName: selectedDepartment || projectName || selectedProject,
@@ -684,14 +729,32 @@ export default function NewPayrollPage() {
         return;
       }
 
-      setRows(
-        workers.map((worker): WorkerRow => {
+      const rowsWithFallbacks = await Promise.all(
+        workers.map(async (worker): Promise<WorkerRow> => {
           const employee = employees.find((item) => item.id === worker.employeeId)
             || employees.find((item) => item.fullName.toLowerCase() === worker.employeeName.toLowerCase());
-          // Prefer the already-correctly-formatted fullName from the employees list
-          // (backend formats it as "De Leon, Arnold" using first_name/last_name fields).
-          // Fall back to formatSurnameFirst only if the employee isn't in the local list.
           const displayName = employee?.fullName || formatSurnameFirst(worker.employeeName);
+
+          let paidDays = Number(worker.attendance?.paidDays || 0);
+          let overtimeHours = Number(worker.attendance?.overtimeHours || 0);
+
+          if ((paidDays === 0 && overtimeHours === 0) && worker.employeeName) {
+            const summaryQuery = new URLSearchParams({
+              employeeName: worker.employeeName,
+              startDate: periodStart,
+              endDate: periodEnd,
+              projectSite: selectedProject,
+            });
+            const summaryResponse = await fetch(`${API_BASE}/payroll/attendance-summary?${summaryQuery.toString()}`, {
+              headers: getAuthHeaders() || undefined,
+            });
+            const summaryData = await summaryResponse.json().catch(() => null);
+            if (summaryResponse.ok && summaryData?.summary) {
+              paidDays = Number(summaryData.summary.paidDays || 0);
+              overtimeHours = Number(summaryData.summary.overtimeHours || 0);
+            }
+          }
+
           return {
             id: crypto.randomUUID(),
             employeeId: worker.employeeId,
@@ -699,8 +762,8 @@ export default function NewPayrollPage() {
             name: displayName,
             position: worker.position || "Labor",
             dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
-            days: worker.attendance.paidDays || 0,
-            otHours: worker.attendance.overtimeHours || 0,
+            days: paidDays,
+            otHours: overtimeHours,
             holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
             sssManual: employee?.sssAmount ?? 0,
             pagIbigManual: employee?.pagIbigAmount ?? 0,
@@ -719,8 +782,10 @@ export default function NewPayrollPage() {
             payrollSnapshot: worker.payrollSnapshot || null,
             syncedFromAttendance: true,
           };
-        }).sort((a, b) => a.name.localeCompare(b.name)),
+        }),
       );
+
+      setRows(rowsWithFallbacks.sort((a, b) => a.name.localeCompare(b.name)));
       setProjectName(`${selectedProject} Payroll`);
       notify("Payroll rows synced from attendance");
     } catch (err) {
