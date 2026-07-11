@@ -729,6 +729,12 @@ export default function NewPayrollPage() {
         return;
       }
 
+      const attendanceResponse = await fetch(`${API_BASE}/attendance`, {
+        headers: getAuthHeaders() || undefined,
+      });
+      const attendanceData = await attendanceResponse.json().catch(() => null);
+      const attendanceRecords = Array.isArray(attendanceData?.attendance) ? attendanceData.attendance : [];
+
       const rowsWithFallbacks = await Promise.all(
         workers.map(async (worker): Promise<WorkerRow> => {
           const employee = employees.find((item) => item.id === worker.employeeId)
@@ -738,21 +744,57 @@ export default function NewPayrollPage() {
           let paidDays = Number(worker.attendance?.paidDays || 0);
           let overtimeHours = Number(worker.attendance?.overtimeHours || 0);
 
-          if ((paidDays === 0 && overtimeHours === 0) && worker.employeeName) {
-            const summaryQuery = new URLSearchParams({
-              employeeName: worker.employeeName,
-              startDate: periodStart,
-              endDate: periodEnd,
-              projectSite: selectedProject,
+          const summaryQuery = new URLSearchParams({
+            employeeId: worker.employeeId,
+            employeeName: worker.employeeName,
+            startDate: periodStart,
+            endDate: periodEnd,
+            projectSite: selectedProject,
+          });
+          const summaryResponse = await fetch(`${API_BASE}/payroll/attendance-summary?${summaryQuery.toString()}`, {
+            headers: getAuthHeaders() || undefined,
+          });
+          const summaryData = await summaryResponse.json().catch(() => null);
+          if (summaryResponse.ok && summaryData?.summary) {
+            paidDays = Number(summaryData.summary.paidDays || 0);
+            overtimeHours = Number(summaryData.summary.overtimeHours || 0);
+          }
+
+          if ((paidDays === 0 && overtimeHours === 0) && attendanceRecords.length > 0) {
+            const targetNames = new Set([
+              String(worker.employeeName || '').trim().toLowerCase(),
+              String(displayName || '').trim().toLowerCase(),
+              String(employee?.fullName || '').trim().toLowerCase(),
+            ].filter(Boolean));
+
+            const recordsForWorker = attendanceRecords.filter((record: any) => {
+              const recordName = String(record.employeeName || '').trim().toLowerCase();
+              const recordEmployeeId = String(record.employeeId || '').trim();
+              const recordProject = String(record.projectSite || '').trim().toLowerCase();
+              const matchesName = targetNames.has(recordName);
+              const matchesEmployee = worker.employeeId ? recordEmployeeId === worker.employeeId : false;
+              const matchesProject = !selectedProject || recordProject === selectedProject.toLowerCase();
+              return (matchesEmployee || matchesName) && matchesProject;
             });
-            const summaryResponse = await fetch(`${API_BASE}/payroll/attendance-summary?${summaryQuery.toString()}`, {
-              headers: getAuthHeaders() || undefined,
-            });
-            const summaryData = await summaryResponse.json().catch(() => null);
-            if (summaryResponse.ok && summaryData?.summary) {
-              paidDays = Number(summaryData.summary.paidDays || 0);
-              overtimeHours = Number(summaryData.summary.overtimeHours || 0);
-            }
+
+            const manualPaidDays = recordsForWorker.reduce((total: number, record: any) => {
+              const status = String(record.status || '').trim().toLowerCase();
+              const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
+              const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
+              if (status === 'leave') return total + 1;
+              if (status === 'present' || status === 'remote' || status === 'late' || workedHours > 0 || overtime > 0) return total + 1;
+              return total;
+            }, 0);
+            const manualOvertimeHours = recordsForWorker.reduce((total: number, record: any) => {
+              const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
+              const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
+              if (overtime > 0) return total + overtime;
+              if (workedHours > 8) return total + (workedHours - 8);
+              return total;
+            }, 0);
+
+            paidDays = manualPaidDays;
+            overtimeHours = manualOvertimeHours;
           }
 
           return {

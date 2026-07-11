@@ -147,29 +147,45 @@ router.get('/departments', async (req, res) => {
 
 router.get('/attendance-summary', async (req, res) => {
   try {
+    const employeeId = String(req.query.employeeId || '').trim();
     const employeeName = String(req.query.employeeName || '').trim();
     const startDate = String(req.query.startDate || '').trim();
     const endDate = String(req.query.endDate || '').trim();
     const projectSite = String(req.query.projectSite || '').trim();
 
-    if (!employeeName || !startDate || !endDate) {
+    if (!startDate || !endDate || (!employeeId && !employeeName)) {
       return res.status(400).json({
-        message: 'employeeName, startDate, and endDate are required',
+        message: 'employeeId or employeeName, startDate, and endDate are required',
       });
     }
 
-    const { data: employees, error: empError } = await supabase
-      .from('employees')
-      .select('id, full_name')
-      .ilike('full_name', employeeName)
-      .limit(1);
+    let employee: { id: string; full_name?: string | null } | null = null;
 
-    if (empError) throw empError;
-    if (!employees || employees.length === 0) {
-      return res.status(404).json({ message: `No employee found for "${employeeName}"` });
+    if (employeeId) {
+      const { data: employeeById, error: employeeByIdError } = await supabase
+        .from('employees')
+        .select('id, full_name')
+        .eq('id', employeeId)
+        .maybeSingle();
+
+      if (employeeByIdError) throw employeeByIdError;
+      employee = employeeById || null;
     }
 
-    const employee = employees[0] as { id: string; full_name?: string | null };
+    if (!employee && employeeName) {
+      const { data: employees, error: empError } = await supabase
+        .from('employees')
+        .select('id, full_name')
+        .ilike('full_name', employeeName)
+        .limit(1);
+
+      if (empError) throw empError;
+      employee = (employees && employees.length > 0 ? employees[0] : null) as { id: string; full_name?: string | null } | null;
+    }
+
+    if (!employee) {
+      return res.status(404).json({ message: `No employee found for "${employeeName || employeeId}"` });
+    }
     let attendanceQuery = supabase
       .from('attendance_records')
       .select('id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
@@ -186,14 +202,49 @@ router.get('/attendance-summary', async (req, res) => {
 
     if (attendanceError) throw attendanceError;
 
+    const attendanceRows = (records || []) as AttendanceRecord[];
     const summary = summarizeAttendance(
-      (records || []) as AttendanceRecord[],
+      attendanceRows,
       employee.full_name || employeeName,
       startDate,
       endDate,
       employee.id,
       projectSite || undefined,
     );
+
+    const hasAnyAttendance = attendanceRows.length > 0;
+    const paidDaysFromRows = attendanceRows.reduce((total, record) => {
+      const status = String(record.status || '').trim().toLowerCase();
+      const workedHours = Number(record.worked_hours ?? 0) || 0;
+      const computedWorkedHours = workedHours > 0
+        ? workedHours
+        : (() => {
+            if (!record.check_in || !record.check_out) return 0;
+            const [inHour, inMinute] = String(record.check_in).split(':').map(Number);
+            const [outHour, outMinute] = String(record.check_out).split(':').map(Number);
+            if (!Number.isFinite(inHour) || !Number.isFinite(inMinute) || !Number.isFinite(outHour) || !Number.isFinite(outMinute)) return 0;
+            const startMinutes = inHour * 60 + inMinute;
+            const endMinutes = outHour * 60 + outMinute;
+            return endMinutes > startMinutes ? Math.max(0, Math.round(((endMinutes - startMinutes) / 60 - 1) * 100) / 100) : 0;
+          })();
+      if (status === 'leave') return total + 1;
+      if (status === 'present' || status === 'remote' || status === 'late' || computedWorkedHours > 0) return total + 1;
+      return total;
+    }, 0);
+    const overtimeHoursFromRows = attendanceRows.reduce((total, record) => {
+      const overtime = Number(record.overtime_hours ?? 0);
+      if (Number.isFinite(overtime) && overtime > 0) return total + overtime;
+      const workedHours = Number(record.worked_hours ?? 0) || 0;
+      if (workedHours > 8) return total + (workedHours - 8);
+      return total;
+    }, 0);
+
+    const normalizedSummary = {
+      ...summary,
+      paidDays: hasAnyAttendance ? paidDaysFromRows : summary.paidDays,
+      regularHours: hasAnyAttendance ? paidDaysFromRows * 8 : summary.regularHours,
+      overtimeHours: hasAnyAttendance ? Math.round(overtimeHoursFromRows * 100) / 100 : summary.overtimeHours,
+    };
 
     const { data: overrideRows, error: overrideError } = await supabase
       .from('payroll_attendance_overrides')
@@ -207,7 +258,7 @@ router.get('/attendance-summary', async (req, res) => {
     if (overrideError) throw overrideError;
 
     const override = (overrideRows?.[0] || null) as PayrollOverrideRow | null;
-    const finalSummary = applyAttendanceOverride(summary, override);
+    const finalSummary = applyAttendanceOverride(normalizedSummary, override);
 
     res.json({ summary: finalSummary, override });
   } catch (error) {
