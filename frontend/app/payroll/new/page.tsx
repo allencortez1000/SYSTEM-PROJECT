@@ -346,7 +346,7 @@ export default function NewPayrollPage() {
       ]);
       const data = employeesResponse ? await employeesResponse.json().catch(() => null) : null;
       const projectsData = await projectsResponse.json().catch(() => null);
-      const departmentsData = await departmentsResponse.json().catch(() => null);
+      const departmentsData = departmentsResponse ? await departmentsResponse.json().catch(() => null) : null;
 
       if (employeesResponse?.ok) {
         setEmployees((data?.employees || []).map((employee: Employee) => ({
