@@ -70,12 +70,37 @@ type LookupMaps = {
 };
 
 function splitFullName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/);
+  const trimmed = String(fullName || '').trim();
+  if (!trimmed) {
+    return {
+      firstName: 'Employee',
+      middleName: '',
+      lastName: 'Record',
+    };
+  }
+
+  if (trimmed.includes(',')) {
+    const [lastPart, restPart] = trimmed.split(',', 2);
+    const lastName = String(lastPart || '').trim() || 'Record';
+    const givenParts = String(restPart || '').trim().split(/\s+/).filter(Boolean);
+    const firstName = givenParts.shift() || 'Employee';
+    const middleName = givenParts.join(' ');
+
+    return {
+      firstName,
+      middleName,
+      lastName,
+    };
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
   const firstName = parts.shift() || 'Employee';
-  const lastName = parts.length ? parts.join(' ') : 'Record';
+  const lastName = parts.length ? parts.pop() || 'Record' : 'Record';
+  const middleName = parts.join(' ');
 
   return {
     firstName,
+    middleName,
     lastName,
   };
 }
@@ -92,19 +117,17 @@ function formatDisplayName(row: EmployeeRow) {
   const lastName = String(row.last_name || '').trim();
 
   const normalizedFullName = String(row.full_name || '').trim();
-  const hasCommaInStoredFullName = normalizedFullName.includes(',');
+  const canonical = [lastName, firstName, middleName].filter(Boolean).join(', ').replace(/,\s*,/g, ', ').trim();
 
-  const spaceJoinedName = [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
-
-  if (spaceJoinedName) {
-    return spaceJoinedName;
+  if (canonical && canonical !== ',') {
+    return canonical;
   }
 
-  if (normalizedFullName && !hasCommaInStoredFullName) {
-    return normalizedFullName;
+  if (normalizedFullName) {
+    return normalizedFullName.includes(',') ? normalizedFullName : normalizedFullName;
   }
 
-  return normalizedFullName || 'Unnamed employee';
+  return 'Unnamed employee';
 }
 
 function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Unassigned') {
@@ -496,7 +519,9 @@ router.post('/', async (req, res) => {
 
     const cleanedFirstName = String(firstName || '').trim();
     const cleanedLastName = String(lastName || '').trim();
+    const cleanedMiddleName = '';
     const cleanedFullName = String(fullName || '').trim();
+    const canonicalFullName = [cleanedLastName, cleanedFirstName, cleanedMiddleName].filter(Boolean).join(', ');
 
     if (!cleanedFirstName || !cleanedLastName) {
       return res.status(400).json({ message: 'firstName and lastName are required' });
@@ -517,7 +542,7 @@ router.post('/', async (req, res) => {
 
     const positionId = await getOrCreatePosition(organizationId, departmentId, position || 'Employee');
     const employeeNo = `EMP-${Date.now()}`;
-    const fullNameValue = cleanedFullName || `${cleanedLastName}, ${cleanedFirstName}`;
+    const fullNameValue = canonicalFullName || cleanedFullName || `${cleanedLastName}, ${cleanedFirstName}`;
 
     const { data, error } = await supabase
       .from('employees')
@@ -620,8 +645,8 @@ router.patch('/:id', async (req, res) => {
       position || currentPositionName,
     );
 
-    const mergedFullName = String(fullName || existing.full_name || [existing.first_name, existing.last_name].filter(Boolean).join(' ')).trim();
-    const { firstName, lastName } = splitFullName(mergedFullName);
+    const mergedFullName = String(fullName || existing.full_name || [existing.last_name, existing.first_name, existing.middle_name].filter(Boolean).join(', ')).trim();
+    const { firstName, middleName, lastName } = splitFullName(mergedFullName);
 
     if (projectSite !== undefined) {
       const desiredProjectSite = String(projectSite || '').trim() || 'Main Office';
@@ -646,7 +671,9 @@ router.patch('/:id', async (req, res) => {
       .from('employees')
       .update({
         first_name: firstName,
+        middle_name: middleName || existing.middle_name || null,
         last_name: lastName,
+        full_name: [lastName, firstName, middleName || existing.middle_name || ''].filter(Boolean).join(', '),
         email: email === undefined ? existing.email : (String(email || '').trim() || null),
         department_id: nextDepartmentId,
         position_id: nextPositionId,

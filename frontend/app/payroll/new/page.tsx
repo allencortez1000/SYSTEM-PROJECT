@@ -66,6 +66,7 @@ type Employee = {
   id: string;
   fullName: string;
   position?: string;
+  department?: string;
   salary?: number;
   salaryBasis?: string;
   hasSss?: boolean;
@@ -215,12 +216,27 @@ function computeRow(row: WorkerRow, frequency: PayFrequency) {
   return { amount, otPay, holidayPay, totalSalary, sss, pagIbig, philHealth, sssLoan, tax, additionalDeduction, totalDeduction, netSalary };
 }
 
-function todayLabel() {
-  return new Date().toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "long",
+function formatDateDisplay(value: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", {
     day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
+}
+
+function parseDisplayDate(value: string) {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (!day || !month || !year) return null;
+  return new Date(year, month - 1, day).toISOString().slice(0, 10);
+}
+
+function todayLabel() {
+  return formatDateDisplay(new Date().toISOString().slice(0, 10));
 }
 
 function currentWeekDates() {
@@ -238,16 +254,11 @@ function currentWeekDates() {
 
 function currentWeekRange() {
   const { startDate, endDate } = currentWeekDates();
-  const format = (value: string) =>
-    new Date(`${value}T00:00:00`).toLocaleDateString("en-PH", { month: "long", day: "2-digit", year: "numeric" });
-
-  return `${format(startDate)} - ${format(endDate)}`;
+  return `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`;
 }
 
 function formatCoveredPeriod(startDate: string, endDate: string) {
-  const format = (value: string) =>
-    new Date(`${value}T00:00:00`).toLocaleDateString("en-PH", { month: "long", day: "2-digit", year: "numeric" });
-  return `${format(startDate)} - ${format(endDate)}`;
+  return `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`;
 }
 
 function sanitizeFileName(value: string) {
@@ -271,7 +282,9 @@ export default function NewPayrollPage() {
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [payFrequency, setPayFrequency] = useState<PayFrequency>("weekly");
   const [periodStart, setPeriodStart] = useState(defaultWeek.startDate);
+  const [periodStartText, setPeriodStartText] = useState(formatDateDisplay(defaultWeek.startDate));
   const [periodEnd, setPeriodEnd] = useState(defaultWeek.endDate);
+  const [periodEndText, setPeriodEndText] = useState(formatDateDisplay(defaultWeek.endDate));
   const [coveredPeriod, setCoveredPeriod] = useState(currentWeekRange());
   const [payrollDate, setPayrollDate] = useState(todayLabel());
   const [projectName, setProjectName] = useState("");
@@ -298,6 +311,8 @@ export default function NewPayrollPage() {
 
   useEffect(() => {
     setCoveredPeriod(formatCoveredPeriod(periodStart, periodEnd));
+    setPeriodStartText(formatDateDisplay(periodStart));
+    setPeriodEndText(formatDateDisplay(periodEnd));
   }, [periodStart, periodEnd]);
 
   useEffect(() => {
@@ -326,15 +341,18 @@ export default function NewPayrollPage() {
               headers: authHeaders,
             })
           : Promise.resolve(null),
-        fetch(`${API_BASE}/attendance/projects`),
-        fetch(`${API_BASE}/admin-users/departments`, authHeaders ? { headers: authHeaders } : undefined),
+        fetch(`${API_BASE}/attendance/projects`, authHeaders ? { headers: authHeaders } : undefined),
+        fetch(`${API_BASE}/payroll/departments`, authHeaders ? { headers: authHeaders } : undefined).catch(() => null),
       ]);
       const data = employeesResponse ? await employeesResponse.json().catch(() => null) : null;
       const projectsData = await projectsResponse.json().catch(() => null);
       const departmentsData = await departmentsResponse.json().catch(() => null);
 
       if (employeesResponse?.ok) {
-        setEmployees(data?.employees || []);
+        setEmployees((data?.employees || []).map((employee: Employee) => ({
+          ...employee,
+          department: String(employee.department || "").trim(),
+        })));
       } else {
         setEmployees([]);
       }
@@ -351,17 +369,31 @@ export default function NewPayrollPage() {
         }
       }
 
-      if (departmentsResponse.ok && Array.isArray(departmentsData?.departments)) {
-        const loadedDepartments = uniqueCanonicalDepartments(departmentsData.departments)
-          .map((department: { id: string; name: string }) => ({ id: department.id, name: department.name }))
-          .filter((department: { id: string; name: string }) => Boolean(department.name));
-        setDepartments(loadedDepartments);
-        setSelectedDepartment((current) => {
-          const trimmed = current.trim();
-          const match = loadedDepartments.find((department: { name: string }) => department.name.toLowerCase() === trimmed.toLowerCase());
-          return match?.name || trimmed || "";
-        });
-      }
+      const departmentsFromApi = departmentsResponse?.ok && Array.isArray(departmentsData?.departments)
+        ? uniqueCanonicalDepartments(departmentsData.departments)
+            .map((department: { id: string; name: string }) => ({ id: department.id, name: department.name }))
+            .filter((department: { id: string; name: string }) => Boolean(department.name))
+        : [];
+
+      const departmentsFromEmployees = uniqueCanonicalDepartments(
+        (data?.employees || [])
+          .map((employee: Employee) => String(employee.department || "").trim())
+          .filter(Boolean)
+          .map((name: string) => ({ id: name, name })),
+      );
+
+      const loadedDepartments = Array.from(
+        new Map(
+          [...departmentsFromApi, ...departmentsFromEmployees].map((department) => [department.name.toLowerCase(), department]),
+        ).values(),
+      );
+
+      setDepartments(loadedDepartments);
+      setSelectedDepartment((current) => {
+        const trimmed = current.trim();
+        const match = loadedDepartments.find((department: { name: string }) => department.name.toLowerCase() === trimmed.toLowerCase());
+        return match?.name || (loadedDepartments.length > 0 ? loadedDepartments[0].name : "");
+      });
 
     } catch (err) {
       setError((err as Error).message);
@@ -1075,6 +1107,7 @@ export default function NewPayrollPage() {
                 onChange={(event) => setPayrollDate(event.target.value)}
                 className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
               />
+              <p className="mt-1 text-[10px] font-semibold text-slate-500">{payrollDate}</p>
             </label>
             <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Deduction schedule</span>
@@ -1090,21 +1123,41 @@ export default function NewPayrollPage() {
             </label>
             <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Period start</span>
-              <input
-                type="date"
-                value={periodStart}
-                onChange={(event) => setPeriodStart(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
-              />
+              <div className="mt-1 flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 shadow-sm transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+                <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+                <input
+                  type="date"
+                  value={periodStart}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setPeriodStart(next);
+                    setPeriodStartText(formatDateDisplay(next));
+                  }}
+                  className="w-full border-0 bg-transparent p-0 text-xs font-black text-slate-700 outline-none"
+                />
+              </div>
+              <p className="mt-1 text-[10px] font-semibold text-slate-500">{formatDateDisplay(periodStart)}</p>
             </label>
             <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Period end</span>
-              <input
-                type="date"
-                value={periodEnd}
-                onChange={(event) => setPeriodEnd(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-black text-slate-700"
-              />
+              <div className="mt-1 flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 shadow-sm transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+                <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+                <input
+                  type="date"
+                  value={periodEnd}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setPeriodEnd(next);
+                    setPeriodEndText(formatDateDisplay(next));
+                  }}
+                  className="w-full border-0 bg-transparent p-0 text-xs font-black text-slate-700 outline-none"
+                />
+              </div>
+              <p className="mt-1 text-[10px] font-semibold text-slate-500">{formatDateDisplay(periodEnd)}</p>
             </label>
             <div className="flex items-end 2xl:col-span-2">
               <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canSyncAttendance}>
@@ -1584,8 +1637,10 @@ export default function NewPayrollPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="break-words text-base font-black text-slate-950">{row.name}</p>
                             {row.syncedFromAttendance && <span className="inline-flex rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                            {row.syncedFromAttendance ? <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Leave counts as paid day</span> : null}
                           </div>
                           <p className="mt-1 break-words text-sm font-semibold text-slate-500">{row.position || "Labor"} · {row.days} day(s) · {row.otHours} OT hour(s)</p>
+                          {row.syncedFromAttendance ? <p className="mt-1 text-xs font-semibold text-amber-700">Leave entries are included in paid days for payroll.</p> : null}
                         </div>
                         <div className="flex items-start justify-between gap-3 sm:block sm:text-right">
                           <div className="sm:hidden">

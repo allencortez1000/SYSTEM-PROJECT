@@ -104,24 +104,35 @@ function parseIsoDate(value: string) {
   return new Date(year, month - 1, day);
 }
 
+function parseDisplayDate(value: string) {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (!day || !month || !year) return null;
+  return isoDate(new Date(year, month - 1, day));
+}
+
 function formatDateLabel(value: string) {
-  return parseIsoDate(value).toLocaleDateString("en-PH", {
-    month: "short",
+  return parseIsoDate(value).toLocaleDateString("en-GB", {
     day: "2-digit",
-    weekday: "short",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
 function formatWeekdayLabel(value: string) {
-  return parseIsoDate(value).toLocaleDateString("en-PH", {
+  return parseIsoDate(value).toLocaleDateString("en-GB", {
     weekday: "short",
   });
 }
 
 function formatDateFull(value: string) {
-  return parseIsoDate(value).toLocaleDateString("en-PH", {
-    month: "long",
+  return parseIsoDate(value).toLocaleDateString("en-GB", {
     day: "2-digit",
+    month: "2-digit",
     year: "numeric",
     weekday: "long",
   });
@@ -268,11 +279,14 @@ export default function AttendancePage() {
   const [selectedProject, setSelectedProject] = useState(defaultProjects[0]);
   const [periodMode, setPeriodMode] = useState<PeriodMode>("weekly");
   const [rangeStartDate, setRangeStartDate] = useState(isoDate(new Date()));
+  const [rangeStartText, setRangeStartText] = useState(formatDateLabel(isoDate(new Date())));
   const [rangeEndDate, setRangeEndDate] = useState(isoDate(new Date()));
+  const [rangeEndText, setRangeEndText] = useState(formatDateLabel(isoDate(new Date())));
   const [newProjectName, setNewProjectName] = useState("");
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [activeCell, setActiveCell] = useState<ActiveCell>(null);
   const [activeAttendanceDate, setActiveAttendanceDate] = useState("");
+  const [activeAttendanceDateText, setActiveAttendanceDateText] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -352,7 +366,9 @@ export default function AttendancePage() {
         .sort((a: string, b: string) => b.localeCompare(a))[0];
       if (latestRecordDate && !anchorDateInitializedRef.current) {
         setRangeStartDate(latestRecordDate);
+        setRangeStartText(formatDateLabel(latestRecordDate));
         setRangeEndDate(latestRecordDate);
+        setRangeEndText(formatDateLabel(latestRecordDate));
         anchorDateInitializedRef.current = true;
       }
 
@@ -642,8 +658,10 @@ export default function AttendancePage() {
   useEffect(() => {
     if (activeCell) {
       setActiveAttendanceDate(activeCell.date);
+      setActiveAttendanceDateText(formatDateLabel(activeCell.date));
     } else {
       setActiveAttendanceDate("");
+      setActiveAttendanceDateText("");
     }
   }, [activeCell]);
 
@@ -961,11 +979,18 @@ export default function AttendancePage() {
     setDeleteTarget(null);
     setError(null);
     try {
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders) {
+        setError("Session expired. Please sign in again.");
+        router.replace("/login");
+        return;
+      }
+
       const res = await fetch("/api/attendance", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ employeeId, date }),
-      });
+      });                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -1361,21 +1386,39 @@ export default function AttendancePage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block">
                       <span className="text-xs font-bold text-slate-700">Start Date</span>
-                      <input
-                        type="date"
-                        value={rangeStartDate}
-                        onChange={(event) => setRangeStartDate(event.target.value)}
-                        className="mt-1.5 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                      />
+                      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                        <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                        <input
+                          type="date"
+                          value={rangeStartDate}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            setRangeStartDate(next);
+                            setRangeStartText(formatDateLabel(next));
+                          }}
+                          className="w-full border-0 bg-transparent p-0 text-sm font-medium text-slate-700 outline-none"
+                        />
+                      </div>
                     </label>
                     <label className="block">
                       <span className="text-xs font-bold text-slate-700">End Date</span>
-                      <input
-                        type="date"
-                        value={rangeEndDate}
-                        onChange={(event) => setRangeEndDate(event.target.value)}
-                        className="mt-1.5 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                      />
+                      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                        <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                        <input
+                          type="date"
+                          value={rangeEndDate}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            setRangeEndDate(next);
+                            setRangeEndText(formatDateLabel(next));
+                          }}
+                          className="w-full border-0 bg-transparent p-0 text-sm font-medium text-slate-700 outline-none"
+                        />
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -1667,21 +1710,39 @@ export default function AttendancePage() {
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Attendance range</p>
                   <label className="mt-3 block">
                     <span className="text-sm font-bold text-slate-600">Start date</span>
-                    <input
-                      type="date"
-                      value={rangeStartDate}
-                      onChange={(event) => setRangeStartDate(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700"
-                    />
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-3.5 py-2.5 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                      <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                      </svg>
+                      <input
+                        type="date"
+                        value={rangeStartDate}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setRangeStartDate(next);
+                          setRangeStartText(formatDateLabel(next));
+                        }}
+                        className="w-full border-0 bg-transparent p-0 text-sm font-bold text-slate-700 outline-none"
+                      />
+                    </div>
                   </label>
                   <label className="mt-3 block">
                     <span className="text-sm font-bold text-slate-600">End date</span>
-                    <input
-                      type="date"
-                      value={rangeEndDate}
-                      onChange={(event) => setRangeEndDate(event.target.value)}
-                      className="mt-2 w-full rounded-2xl border border-blue-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700"
-                    />
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-3.5 py-2.5 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                      <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                      </svg>
+                      <input
+                        type="date"
+                        value={rangeEndDate}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setRangeEndDate(next);
+                          setRangeEndText(formatDateLabel(next));
+                        }}
+                        className="w-full border-0 bg-transparent p-0 text-sm font-bold text-slate-700 outline-none"
+                      />
+                    </div>
                   </label>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -2036,12 +2097,21 @@ export default function AttendancePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block md:col-span-2">
                   <span className="text-sm font-bold text-slate-700">Attendance Date</span>
-                  <input
-                    type="date"
-                    value={activeAttendanceDate}
-                    onChange={(event) => setActiveAttendanceDate(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  />
+                  <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                    <svg className="h-4 w-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                    <input
+                      type="date"
+                      value={activeAttendanceDate}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setActiveAttendanceDate(next);
+                        setActiveAttendanceDateText(formatDateLabel(next));
+                      }}
+                      className="w-full border-0 bg-transparent p-0 text-sm font-medium text-slate-700 outline-none"
+                    />
+                  </div>
                   <p className="mt-2 text-xs font-medium text-slate-500">Choose the exact date for this attendance entry before saving.</p>
                 </label>
 

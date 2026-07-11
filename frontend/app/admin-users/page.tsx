@@ -644,6 +644,27 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Access Level Banner */}
+      {!loading && sessionUser && (
+        <div className={`rounded-[1rem] border px-4 py-3 text-sm shadow-sm ${canCreateAdmins ? "border-emerald-200 bg-emerald-50 text-emerald-800" : canViewAdmins ? "border-blue-200 bg-blue-50 text-blue-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-black uppercase tracking-wider">{roleLabel(sessionUser.role || "user")}</p>
+              <p className="mt-1 font-medium">
+                {canCreateAdmins
+                  ? "You are seeing full admin data, departments, and sub-admin controls."
+                  : canViewAdmins
+                    ? "You can view admin users, but some creation/edit actions may still be limited by your permissions."
+                    : "Your account is restricted and cannot view the admin access list."}
+              </p>
+            </div>
+            <div className="shrink-0 font-black uppercase tracking-wider">
+              {canCreateAdmins ? "Full Access" : canViewAdmins ? "Limited Access" : "Restricted"}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-16">
@@ -655,6 +676,30 @@ export default function AdminUsersPage() {
       {error && (
         <div className="rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
       )}
+
+      {/* Data Summary */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin users</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{users.length}</p>
+          <p className="mt-1 text-sm text-slate-500">Loaded from /api/admin-users</p>
+        </div>
+        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Departments</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{departments.length}</p>
+          <p className="mt-1 text-sm text-slate-500">Available for assignments</p>
+        </div>
+        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Project sites</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{projectSites.length}</p>
+          <p className="mt-1 text-sm text-slate-500">Attendance / payroll locations</p>
+        </div>
+        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Workers</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{employeeCount || employees.length}</p>
+          <p className="mt-1 text-sm text-slate-500">Loaded for workforce views</p>
+        </div>
+      </section>
 
       {/* Department & Project Site Management */}
       {canCreateAdmins && (

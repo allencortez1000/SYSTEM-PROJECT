@@ -120,6 +120,31 @@ async function findOrCreateProjectSite(projectName: string) {
   return created as { id: string; name: string };
 }
 
+router.get('/departments', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    const departments = (data || [])
+      .map((department: any) => ({
+        id: String(department.id),
+        name: String(department.name || '').trim(),
+      }))
+      .filter((department) => Boolean(department.name));
+
+    res.json({ departments });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to load payroll departments',
+      error: (error as Error).message,
+    });
+  }
+});
+
 router.get('/attendance-summary', async (req, res) => {
   try {
     const employeeName = String(req.query.employeeName || '').trim();
@@ -206,52 +231,38 @@ router.get('/project-sync', async (req, res) => {
 
     const departmentIsConstruction = department.toLowerCase() === 'construction';
     const effectiveProjectSite = departmentIsConstruction ? projectSite : 'Main Office';
-
-    const { data: departmentRows, error: departmentError } = await supabase
-      .from('departments')
-      .select('id, name')
-      .ilike('name', department);
-
-    if (departmentError) throw departmentError;
-
-    const departmentIds = Array.from(new Set((departmentRows || []).map((row: any) => String(row.id)).filter(Boolean)));
-    if (departmentIds.length === 0) {
-      return res.status(404).json({ message: `Department not found: ${department}` });
-    }
-
-    const { data: employees, error: employeesError } = await supabase
-      .from('employees')
-      .select('id, department_id')
-      .in('department_id', departmentIds);
-
-    if (employeesError) throw employeesError;
-
-    const departmentEmployeeIds = Array.from(new Set((employees || []).map((row: any) => String(row.id)).filter(Boolean)));
-
-    const { data: assignments, error: assignmentsError } = await supabase
-      .from('employee_project_deployments')
-      .select('employee_id, project_sites!inner(name)')
-      .eq('is_active', true)
-      .in('employee_id', departmentEmployeeIds.length > 0 ? departmentEmployeeIds : ['00000000-0000-0000-0000-000000000000']);
-
-    if (assignmentsError) throw assignmentsError;
-
     const normalizedProjectSite = effectiveProjectSite.toLowerCase();
-    const matchesProjectSite = (value: unknown) => String(value || '').trim().toLowerCase() === normalizedProjectSite;
-    const matchingAssignments = (assignments || []).filter((row: any) => matchesProjectSite(row?.project_sites?.name));
 
-    const assignmentEmployeeIds = Array.from(new Set(matchingAssignments.map((row: any) => String(row.employee_id)).filter(Boolean)));
-    const employeeIds = departmentIsConstruction
-      ? assignmentEmployeeIds
-      : departmentEmployeeIds;
+    const { data: attendanceMatches, error: attendanceMatchesError } = await supabase
+      .from('attendance_records')
+      .select('employee_id, project_site')
+      .gte('attendance_date', startDate)
+      .lte('attendance_date', endDate);
+
+    if (attendanceMatchesError) throw attendanceMatchesError;
+
+    const matchesProjectSite = (value: unknown) => String(value || '').trim().toLowerCase() === normalizedProjectSite;
+    const employeeIds = Array.from(new Set(
+      (attendanceMatches || [])
+        .filter((row: any) => matchesProjectSite(row?.project_site))
+        .map((row: any) => String(row.employee_id))
+        .filter(Boolean),
+    ));
 
     if (employeeIds.length === 0) {
       return res.json({ workers: [] });
     }
 
-    const [employeesResult, positionsResult, attendanceResult, overridesResult] = await Promise.all([
+    const [employeesResult, positionsResult, attendanceResult, allAttendanceResult, overridesResult] = await Promise.all([
       supabase.from('employees').select('id, full_name, salary, salary_basis, position_id').in('id', employeeIds).eq('status', 'Active'),
       supabase.from('job_positions').select('id, title'),
+      supabase
+        .from('attendance_records')
+        .select('id, employee_id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
+        .in('employee_id', employeeIds)
+        .gte('attendance_date', startDate)
+        .lte('attendance_date', endDate)
+        .order('attendance_date', { ascending: true }),
       supabase
         .from('attendance_records')
         .select('id, employee_id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
@@ -271,15 +282,27 @@ router.get('/project-sync', async (req, res) => {
     if (employeesResult.error) throw employeesResult.error;
     if (positionsResult.error) throw positionsResult.error;
     if (attendanceResult.error) throw attendanceResult.error;
+    if (allAttendanceResult.error) throw allAttendanceResult.error;
     if (overridesResult.error) throw overridesResult.error;
 
     const positionMap = new Map((positionsResult.data || []).map((row) => [String(row.id), String(row.title || 'Employee')]));
     const attendanceByEmployee = new Map<string, AttendanceRecord[]>();
-    for (const record of (attendanceResult.data || []) as any[]) {
+    for (const record of (allAttendanceResult.data || []) as any[]) {
       const employeeId = String(record.employee_id);
       const current = attendanceByEmployee.get(employeeId) || [];
       current.push(record as AttendanceRecord);
       attendanceByEmployee.set(employeeId, current);
+    }
+
+    const projectAttendanceByEmployee = new Map<string, AttendanceRecord[]>();
+    for (const record of (attendanceResult.data || []) as any[]) {
+      const projectSiteValue = String(record?.project_site || '').trim();
+      const recordMatchesProject = matchesProjectSite(projectSiteValue) || !projectSiteValue;
+      if (!recordMatchesProject) continue;
+      const employeeId = String(record.employee_id);
+      const current = projectAttendanceByEmployee.get(employeeId) || [];
+      current.push(record as AttendanceRecord);
+      projectAttendanceByEmployee.set(employeeId, current);
     }
 
     const overrideMap = new Map<string, PayrollOverrideRow>();
@@ -289,8 +312,10 @@ router.get('/project-sync', async (req, res) => {
 
     const workers = ((employeesResult.data || []) as any[])
       .map((employee) => {
+        const projectRecords = projectAttendanceByEmployee.get(String(employee.id)) || [];
+        const allRecords = attendanceByEmployee.get(String(employee.id)) || [];
         const baseSummary = summarizeAttendance(
-          attendanceByEmployee.get(String(employee.id)) || [],
+          projectRecords,
           String(employee.full_name || 'Unknown employee'),
           startDate,
           endDate,
