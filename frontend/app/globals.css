@@ -52,7 +52,16 @@ body {
 }
 body, input, textarea, button, select { font: inherit; }
 img, svg, video, canvas { max-width: 100%; display: block; }
-button, a, input, textarea, select { min-width: 0; }
+button, a, input, textarea, select { min-width: 0; max-width: 100%; }
+input, select, textarea { min-height: 2.75rem; }
+textarea { resize: vertical; }
+
+/* Keep intrinsic-size children from widening page grids or flex rows. */
+main, section, article, aside, header, footer, form, [role="dialog"] { min-width: 0; }
+.grid > *, .flex > * { min-width: 0; }
+
+/* Long employee names, IDs, emails, and imported values must remain contained. */
+.break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
 a { transition: color 0.12s ease; }
 ::selection { color: #0f172a; background: rgba(59,130,246,0.18); }
 
@@ -93,9 +102,10 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 /* ─── Page shell ──────────────────────────────────────────────── */
 .page-shell {
   width: 100%;
-  max-width: 90rem;
+  min-width: 0;
+  max-width: 100%;
   margin-inline: auto;
-  padding: clamp(1rem, 2.5vw, 2rem) clamp(0.85rem, 2vw, 1.15rem) clamp(2rem, 4vw, 3rem);
+  padding: clamp(1rem, 2.5vw, 2rem) clamp(0.75rem, 1.5vw, 1.5rem) clamp(2rem, 4vw, 3rem);
   display: flex;
   flex-direction: column;
   gap: clamp(1rem, 2vw, 1.35rem);
@@ -120,9 +130,9 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 }
 .page-title {
   font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.7rem;
+  font-size: clamp(1.35rem, 1.8vw, 1.7rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
   color: var(--color-text);
   line-height: 1.15;
 }
@@ -175,31 +185,33 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 }
 .card-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1.15rem 1.4rem;
+  gap: 0.875rem 1rem;
+  padding: 1rem 1.15rem;
   border-bottom: 1px solid #f1f5f9;
 }
 .card-title { font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif; font-size: 0.9375rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-text); }
-.card-body  { padding: 1.35rem 1.4rem; }
+.card-body  { padding: 1rem 1.15rem; }
 
 /* ─── Stat card — colored top-accent variant ──────────────────── */
 .stat-card {
   position: relative;
+  min-width: 0;
   background: var(--color-surface-solid);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-radius: var(--radius-card);
   border: 1px solid var(--color-border);
-  padding: 1.35rem;
+  padding: 1rem;
   overflow: hidden;
   box-shadow: var(--shadow-card);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .stat-card p:first-of-type {
   font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 .stat-card::before {
   content: "";
@@ -357,9 +369,9 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 .stat-card .text-3xl,
 .stat-card .text-4xl {
   font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
 }
-.stat-card .text-2xl { font-size: 1.8rem; }
+.stat-card .text-2xl { font-size: 1.6rem; }
 .badge-green  { background: #dcfce7; color: #15803d; }
 .badge-blue   { background: #dbeafe; color: #1d4ed8; }
 .badge-cyan   { background: #cffafe; color: #0e7490; }
@@ -393,7 +405,16 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 }
 
 /* ─── Table ───────────────────────────────────────────────────── */
-.soft-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll > table { min-width: max-content; }
+.soft-table { width: 100%; max-width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.soft-table td { overflow-wrap: anywhere; }
 
 .soft-table thead tr {
   background: #f8fafc;
@@ -494,6 +515,14 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 
 /* ─── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 639px) {
+  .page-shell > * { min-width: 0; }
+  .page-header > * { width: 100%; }
+  .page-header > :last-child:not(:only-child) { width: auto; }
+  .btn { min-height: 2.75rem; padding-inline: 1rem; }
+  .badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .empty-state { padding: 2.5rem 1rem; }
+  [role="dialog"] { max-height: calc(100dvh - 1rem); }
+  .table-scroll { margin-inline: -1rem; width: calc(100% + 2rem); padding-inline: 1rem; }
   .page-shell { padding: 1rem 1rem 2.5rem; gap: 1rem; }
   .hero-panel { padding: 1.25rem; }
   .card-header { padding: 0.875rem 1rem; }
@@ -504,4 +533,7 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
 }
 @media (min-width: 1024px) {
   .page-shell { padding: 2rem 2.5rem 4rem; }
+}
+@media (min-width: 1536px) {
+  .page-shell { max-width: 112rem; padding-inline: clamp(2rem, 3vw, 4rem); }
 }

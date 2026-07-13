@@ -169,7 +169,7 @@ export default function Home() {
         )}
 
         {/* Metric Cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="stat-card accent-blue">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -224,7 +224,7 @@ export default function Home() {
         </div>
 
         {/* Department Analytics & Latest Employees */}
-        <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <div className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
           {/* Department Chart */}
           <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between">

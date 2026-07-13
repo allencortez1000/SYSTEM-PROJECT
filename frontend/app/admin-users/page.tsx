@@ -678,7 +678,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* Data Summary */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
         <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin users</p>
           <p className="mt-2 text-2xl font-black text-slate-950">{users.length}</p>

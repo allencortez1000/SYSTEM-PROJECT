@@ -1065,7 +1065,7 @@ export default function AttendancePage() {
       )}
 
       {/* Project Stats Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4 mb-6">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {departmentCounts.map((item) => {
             const flexible = item.department.toLowerCase() === "construction";
             return (
@@ -1095,7 +1095,7 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2 min-w-0">
                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${flexible ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                     {flexible ? "Flexible Projects" : "Main Office Only"}
                   </span>
@@ -1452,7 +1452,7 @@ export default function AttendancePage() {
             </div>
 
             {/* Stats Summary Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm transition-all hover:shadow-lg">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-sm sm:h-12 sm:w-12">
@@ -1635,7 +1635,7 @@ export default function AttendancePage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="rounded-lg bg-white p-3 shadow-sm">
                           <p className="text-xs font-bold text-slate-500">Check-in</p>
                           <p className="mt-1 text-sm font-black text-slate-900">{record.checkIn || "—"}</p>

@@ -95,14 +95,14 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     <div className="min-h-screen overflow-x-hidden bg-transparent text-slate-950">
       <div
         className={
-          "fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px] transition-opacity duration-150 xl:hidden " +
+          "fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px] transition-opacity duration-150 lg:hidden " +
           (mobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")
         }
         onClick={() => setMobileMenuOpen(false)}
       >
         <aside
           className={
-            "absolute left-0 top-0 flex h-full w-[86vw] max-w-[320px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl transition-transform duration-200 ease-out " +
+            "absolute left-0 top-0 flex h-full w-[82vw] max-w-[340px] min-w-[280px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl transition-transform duration-200 ease-out " +
             (mobileMenuOpen ? "translate-x-0" : "-translate-x-full")
           }
           onClick={(event) => event.stopPropagation()}
@@ -159,7 +159,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           </aside>
         </div>
 
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:w-[292px] lg:flex">
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-white p-1.5 shadow-sm ring-1 ring-white/10">
@@ -243,12 +243,12 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         </div>
       </aside>
 
-      <div className="min-h-screen w-full xl:pl-[292px]">
+      <div className="min-h-screen w-full min-w-0 lg:pl-[280px] xl:pl-[292px]">
         <header className="sticky top-0 z-30 flex h-[68px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 xl:hidden"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 lg:hidden"
             aria-label="Open menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -256,7 +256,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             </svg>
           </button>
 
-          <div className="flex items-center gap-3 xl:hidden">
+          <div className="flex items-center gap-3 lg:hidden">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 shadow-sm border border-slate-200">
               <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
             </div>
@@ -302,7 +302,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           </div>
         </header>
 
-        <main className="page-shell w-full max-w-none xl:max-w-[90rem]">{children}</main>
+        <main className="page-shell w-full max-w-[1600px]">{children}</main>
       </div>
     </div>
   );

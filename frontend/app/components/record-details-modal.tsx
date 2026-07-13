@@ -48,10 +48,10 @@ export default function RecordDetailsModal({ title, subtitle, row, isOpen }: Rec
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-2 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={(e) => { if (e.target === overlayRef.current) window.dispatchEvent(new Event(CLOSE_EVENT)); }}
     >
-      <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div className="min-w-0">
             <h2 className="truncate text-xl font-black text-slate-950">{title}</h2>
@@ -66,7 +66,7 @@ export default function RecordDetailsModal({ title, subtitle, row, isOpen }: Rec
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <div className="space-y-3">
             {entries.map(([key, value]) => (
               <div key={key} className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
@@ -91,7 +91,7 @@ export default function RecordDetailsModal({ title, subtitle, row, isOpen }: Rec
           </div>
         </div>
 
-        <div className="border-t border-slate-100 px-6 py-4">
+        <div className="border-t border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
           <button type="button" onClick={() => window.dispatchEvent(new Event(CLOSE_EVENT))} className="primary-button w-full">Close</button>
         </div>
       </div>

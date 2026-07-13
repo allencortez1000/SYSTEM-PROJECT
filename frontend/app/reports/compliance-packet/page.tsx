@@ -180,7 +180,7 @@ export default function CompliancePacketReportPage() {
         </div>
       )}
 
-      <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => {
           const IconComponent = metric.icon;
           return (

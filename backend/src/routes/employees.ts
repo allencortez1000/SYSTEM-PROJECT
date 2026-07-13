@@ -673,7 +673,6 @@ router.patch('/:id', async (req, res) => {
         first_name: firstName,
         middle_name: middleName || existing.middle_name || null,
         last_name: lastName,
-        full_name: [lastName, firstName, middleName || existing.middle_name || ''].filter(Boolean).join(', '),
         email: email === undefined ? existing.email : (String(email || '').trim() || null),
         department_id: nextDepartmentId,
         position_id: nextPositionId,

@@ -307,6 +307,8 @@ export default function NewPayrollPage() {
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const autosaveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const pendingRowIdsRef = useRef(new Set<string>());
   const { notify } = useNotification();
 
   useEffect(() => {
@@ -432,6 +434,14 @@ export default function NewPayrollPage() {
     }
   }, [rows, payrollStorageKey]);
 
+  useEffect(() => {
+    return () => {
+      Object.values(autosaveTimersRef.current).forEach((timer) => clearTimeout(timer));
+      autosaveTimersRef.current = {};
+      pendingRowIdsRef.current.clear();
+    };
+  }, []);
+
 
 
   const totals = useMemo(() => {
@@ -471,8 +481,52 @@ export default function NewPayrollPage() {
     { label: "Net release", value: moneyWhole(totals.netSalary), detail: "Total payable after deductions", tone: "bg-slate-100 text-slate-700" },
   ];
 
+  function queueRowAutosave(row: WorkerRow) {
+    if (!row.name.trim() && !row.employeeId) {
+      return;
+    }
+
+    const existingTimer = autosaveTimersRef.current[row.id];
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    pendingRowIdsRef.current.add(row.id);
+    autosaveTimersRef.current[row.id] = setTimeout(() => {
+      void (async () => {
+        try {
+          setSavingRowId(row.id);
+          setError(null);
+          const current = JSON.parse(localStorage.getItem(payrollStorageKey) || "[]");
+          const next = Array.isArray(current)
+            ? current.map((item: WorkerRow) => (item.id === row.id ? row : item))
+            : [row];
+          if (!next.some((item: WorkerRow) => item.id === row.id)) next.push(row);
+          localStorage.setItem(payrollStorageKey, JSON.stringify(next));
+          await Promise.all([
+            saveRowToSupabase(row),
+            syncEmployeeMasterFromRow(row),
+          ]);
+        } catch (err) {
+          setError((err as Error).message);
+        } finally {
+          pendingRowIdsRef.current.delete(row.id);
+          setSavingRowId((current) => (current === row.id ? null : current));
+          delete autosaveTimersRef.current[row.id];
+        }
+      })();
+    }, 800);
+  }
+
   function updateRow(id: string, patch: Partial<WorkerRow>) {
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setRows((current) => {
+      const next = current.map((row) => (row.id === id ? { ...row, ...patch } : row));
+      const updated = next.find((row) => row.id === id);
+      if (updated) {
+        queueRowAutosave(updated);
+      }
+      return next;
+    });
   }
 
   async function saveRowToSupabase(row: WorkerRow) {
@@ -552,6 +606,12 @@ export default function NewPayrollPage() {
 
   async function saveActiveRow() {
     if (!activeRow) return;
+
+    const existingTimer = autosaveTimersRef.current[activeRow.id];
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      delete autosaveTimersRef.current[activeRow.id];
+    }
 
     setSavingRowId(activeRow.id);
     setError(null);
@@ -760,7 +820,7 @@ export default function NewPayrollPage() {
             overtimeHours = Number(summaryData.summary.overtimeHours || 0);
           }
 
-          if ((paidDays === 0 && overtimeHours === 0) && attendanceRecords.length > 0) {
+          if (attendanceRecords.length > 0 && (paidDays === 0 || overtimeHours === 0)) {
             const targetNames = new Set([
               String(worker.employeeName || '').trim().toLowerCase(),
               String(displayName || '').trim().toLowerCase(),
@@ -777,24 +837,28 @@ export default function NewPayrollPage() {
               return (matchesEmployee || matchesName) && matchesProject;
             });
 
-            const manualPaidDays = recordsForWorker.reduce((total: number, record: any) => {
-              const status = String(record.status || '').trim().toLowerCase();
-              const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
-              const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
-              if (status === 'leave') return total + 1;
-              if (status === 'present' || status === 'remote' || status === 'late' || workedHours > 0 || overtime > 0) return total + 1;
-              return total;
-            }, 0);
-            const manualOvertimeHours = recordsForWorker.reduce((total: number, record: any) => {
-              const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
-              const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
-              if (overtime > 0) return total + overtime;
-              if (workedHours > 8) return total + (workedHours - 8);
-              return total;
-            }, 0);
+            if (paidDays === 0) {
+              const manualPaidDays = recordsForWorker.reduce((total: number, record: any) => {
+                const status = String(record.status || '').trim().toLowerCase();
+                const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
+                const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
+                if (status === 'leave') return total + 1;
+                if (status === 'present' || status === 'remote' || status === 'late' || workedHours > 0 || overtime > 0) return total + 1;
+                return total;
+              }, 0);
+              paidDays = manualPaidDays;
+            }
 
-            paidDays = manualPaidDays;
-            overtimeHours = manualOvertimeHours;
+            if (overtimeHours === 0) {
+              const manualOvertimeHours = recordsForWorker.reduce((total: number, record: any) => {
+                const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
+                const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
+                if (overtime > 0) return total + overtime;
+                if (workedHours > 8) return total + (workedHours - 8);
+                return total;
+              }, 0);
+              overtimeHours = manualOvertimeHours;
+            }
           }
 
           return {
@@ -1658,7 +1722,7 @@ export default function NewPayrollPage() {
             <p className="mt-3 text-sm leading-6 text-slate-300">
               Project: {selectedProject}. Deduction schedule: {frequencyConfig[payFrequency].label}. Employee records loaded: {loadingEmployees ? "..." : employees.length}.
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
               <div className="rounded-2xl bg-white/10 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Attendance sync</p>
                 <p className="mt-1 text-lg font-black text-white">{syncedRows} linked rows</p>
@@ -1674,14 +1738,14 @@ export default function NewPayrollPage() {
 
       {error && <p className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-700 print:hidden">{error}</p>}
 
-      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4 print:hidden">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))] print:hidden">
         {stats.map((stat) => (
-          <article key={stat.label} className="metric-card">
+          <article key={stat.label} className="metric-card min-w-0">
             <div className="flex min-w-0 items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-500">{stat.label}</p>
-                <p className="mt-3 break-words text-2xl font-black text-slate-950">{stat.value}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-500">{stat.detail}</p>
+                <p className="break-words text-sm font-bold leading-snug text-slate-500">{stat.label}</p>
+                <p className="mt-2 break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">{stat.value}</p>
+                <p className="mt-2 break-words text-sm font-semibold leading-snug text-slate-500">{stat.detail}</p>
               </div>
               <span className={`shrink-0 rounded-2xl px-3 py-2 text-xs font-black ${stat.tone}`}>PHP</span>
             </div>
@@ -1705,7 +1769,7 @@ export default function NewPayrollPage() {
             <button onClick={triggerExcelImport} type="button" className="secondary-button">Insert Excel</button>
             <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
             <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
-            <label className="flex min-w-[240px] flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm">
+            <label className="flex w-full flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm sm:min-w-[240px] sm:w-auto">
               <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Export file name</span>
               <input
                 type="text"

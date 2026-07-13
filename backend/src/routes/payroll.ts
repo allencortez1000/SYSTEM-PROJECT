@@ -375,8 +375,7 @@ router.get('/project-sync', async (req, res) => {
         );
         const finalSummary = applyAttendanceOverride(baseSummary, overrideMap.get(String(employee.id)) || null);
         const salary = employee.salary ? Number(employee.salary) : 0;
-        const salaryBasis = String((employee as any).salary_basis || 'monthly').toLowerCase();
-        const dailyRate = salaryBasis === 'daily' ? roundCurrency(salary || 0) : salary ? roundCurrency(salary / 26) : 600;
+        const dailyRate = salary ? roundCurrency(salary) : 600;
         return {
           employeeId: String(employee.id),
           employeeName: String(employee.full_name || ''),
