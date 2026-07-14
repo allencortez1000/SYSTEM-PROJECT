@@ -77,7 +77,7 @@ export default function CompliancePage() {
         </div>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-3">
         <div className="rounded-[0.875rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -87,7 +87,7 @@ export default function CompliancePage() {
             </div>
             <p className="text-sm font-semibold text-slate-500">Total requirements</p>
           </div>
-          <p className="mt-3 text-3xl font-black text-slate-950">{rows.length}</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{rows.length}</p>
           <p className="mt-1 text-xs text-slate-400">Active compliance items</p>
         </div>
 
@@ -100,7 +100,7 @@ export default function CompliancePage() {
             </div>
             <p className="text-sm font-semibold text-slate-500">Overdue / At-risk</p>
           </div>
-          <p className="mt-3 text-3xl font-black text-slate-950">{overdueCount}</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{overdueCount}</p>
           <p className="mt-1 text-xs text-slate-400">Items overdue or past due date</p>
         </div>
 
@@ -113,7 +113,7 @@ export default function CompliancePage() {
             </div>
             <p className="text-sm font-semibold text-slate-500">Pending / Upcoming</p>
           </div>
-          <p className="mt-3 text-3xl font-black text-slate-950">{pendingCount}</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{pendingCount}</p>
           <p className="mt-1 text-xs text-slate-400">Items pending or upcoming</p>
         </div>
       </section>
@@ -127,7 +127,7 @@ export default function CompliancePage() {
           </div>
           <div>
             <p className="text-sm font-bold uppercase tracking-wider text-green-600">Risk Overview</p>
-            <h3 className="text-2xl font-black text-slate-950">Compliance checklist</h3>
+            <h3 className="text-lg font-black text-slate-950 xl:text-xl">Compliance checklist</h3>
           </div>
         </div>
 
@@ -156,7 +156,7 @@ export default function CompliancePage() {
         )}
 
         {!loading && rows.length === 0 && (
-          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
             <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
             </svg>
@@ -166,7 +166,7 @@ export default function CompliancePage() {
 
         {rows.length > 0 && (
           <>
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-4">
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-3">
               <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
               </svg>
@@ -175,7 +175,7 @@ export default function CompliancePage() {
               </p>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-4 space-y-2">
               {rows.map((row, index) => {
                 const isActive = activeRow === row;
                 return (

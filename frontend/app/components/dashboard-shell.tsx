@@ -244,7 +244,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
       </aside>
 
       <div className="min-h-screen w-full min-w-0 lg:pl-[280px] xl:pl-[292px]">
-        <header className="sticky top-0 z-30 flex h-[68px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:h-[68px] sm:px-6"> 
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}

@@ -181,14 +181,14 @@ export default function EmployeesPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
           <div className="stat-card accent-emerald">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-500">Active Employees</p>
                 <p className="mt-2 text-2xl font-black text-slate-950">{stats.activeStaff}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
@@ -202,7 +202,7 @@ export default function EmployeesPage() {
                 <p className="text-sm font-semibold text-slate-500">Departments</p>
                 <p className="mt-2 text-2xl font-black text-slate-950">{stats.departments}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
@@ -216,7 +216,7 @@ export default function EmployeesPage() {
                 <p className="text-sm font-semibold text-slate-500">Total Records</p>
                 <p className="mt-2 text-2xl font-black text-slate-950">{stats.totalRecords}</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -392,8 +392,8 @@ export default function EmployeesPage() {
 
         {/* Employee Grid */}
         {!loading && !error && filteredEmployees.length > 0 && (
-          <div className="mt-6 space-y-4">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 space-y-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {paginatedEmployees.map((employee) => {
               const displayName = employee.fullName || "Unnamed employee";
               const initials = displayName
@@ -412,7 +412,7 @@ export default function EmployeesPage() {
                 <Link
                   key={employee.id}
                   href={`/employees/${employee.id}`}
-                  className="group relative overflow-hidden rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-blue-300 hover:shadow-lg hover:shadow-blue-600/10"
+                  className="group relative overflow-hidden rounded-[0.875rem] border border-slate-200 bg-white p-4 xl:p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-lg hover:shadow-blue-600/10"
                 >
                   {/* Status Badge */}
                   <div className="absolute right-4 top-4">
@@ -432,11 +432,11 @@ export default function EmployeesPage() {
 
                   {/* Avatar & Name */}
                   <div className="flex items-start gap-4">
-                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-xl font-bold text-white shadow-lg shadow-blue-600/30">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-xl font-bold text-white shadow-lg shadow-blue-600/30">
                       {initials || "?"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-lg font-bold text-slate-900 group-hover:text-blue-600">
+                      <h3 className="truncate text-base font-bold text-slate-900 group-hover:text-blue-600">
                         {displayName}
                       </h3>
                       <p className="mt-1 text-sm font-medium text-slate-600">
@@ -467,7 +467,7 @@ export default function EmployeesPage() {
                   </div>
 
                   {/* Employee Details */}
-                  <div className="mt-6 space-y-3 border-t border-slate-100 pt-4">
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium text-slate-500">Employee ID</span>
                       <span className="font-semibold text-slate-900">{employee.employeeId || "N/A"}</span>
@@ -524,7 +524,7 @@ export default function EmployeesPage() {
 
         {/* Empty State */}
         {!loading && !error && filteredEmployees.length === 0 && (
-          <div className="rounded-[0.875rem] border-2 border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+          <div className="rounded-[0.875rem] border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
             <svg className="mx-auto h-16 w-16 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>

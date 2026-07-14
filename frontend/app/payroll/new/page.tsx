@@ -841,9 +841,15 @@ export default function NewPayrollPage() {
               const manualPaidDays = recordsForWorker.reduce((total: number, record: any) => {
                 const status = String(record.status || '').trim().toLowerCase();
                 const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
-                const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
+                // Leave = 1 full day
                 if (status === 'leave') return total + 1;
-                if (status === 'present' || status === 'remote' || status === 'late' || workedHours > 0 || overtime > 0) return total + 1;
+                // Hours recorded → fractional days (hours / 8, capped at 1)
+                if (workedHours > 0) {
+                  const dayFraction = Math.round((Math.min(workedHours, 8) / 8) * 100) / 100;
+                  return total + dayFraction;
+                }
+                // Present/remote/late with no hours → assume full day
+                if (status === 'present' || status === 'remote' || status === 'late') return total + 1;
                 return total;
               }, 0);
               paidDays = manualPaidDays;
@@ -1186,28 +1192,28 @@ export default function NewPayrollPage() {
       <div className="shrink-0 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-3 backdrop-blur print:border-0 print:bg-white print:p-0">
         <div className="grid gap-3 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] 2xl:items-start">
           <div className="space-y-3">
-            <div className="rounded-[1.5rem] border border-white/80 bg-white/90 p-4 shadow-sm">
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/90 p-3 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <p className="eyebrow">Payroll sheet</p>
-                  <h3 className="mt-2 break-words text-2xl font-black text-slate-950">{selectedProject} payroll workspace</h3>
-                  <p className="mt-2 max-w-3xl text-sm text-slate-500">
+                  <h3 className="mt-1 break-words text-lg font-black text-slate-950 xl:text-xl">{selectedProject} payroll workspace</h3>
+                  <p className="mt-1 text-sm text-slate-500">
                     Review project workers, payroll dates, and attendance-linked values before editing the table below.
                   </p>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     {selectedDepartment ? `Department: ${selectedDepartment}` : "Department not selected"}
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Covered period</p>
                     <p className="mt-1 text-sm font-black text-slate-950">{coveredPeriod}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Rows ready</p>
                     <p className="mt-1 text-sm font-black text-slate-950">{filledRows || rows.length}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Attendance sync</p>
                     <p className="mt-1 text-sm font-black text-slate-950">{syncedRows} linked</p>
                   </div>
@@ -1338,24 +1344,24 @@ export default function NewPayrollPage() {
           </div>
         </div>
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 print:hidden">
-          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 print:hidden">
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Project</p>
             <p className="mt-1 text-sm font-black text-slate-950">{selectedProject}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">Current payroll location</p>
             <p className="mt-2 text-[11px] font-semibold leading-snug text-slate-500">Department stays primary; Construction can switch project sites, while other departments remain on Main Office.</p>
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Workers</p>
             <p className="mt-1 text-sm font-black text-slate-950">{filledRows || rows.length}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">Editable payroll rows</p>
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Gov deductions</p>
             <p className="mt-1 text-sm font-black text-slate-950">{money(totals.sss + totals.pagIbig + totals.philHealth)}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">{frequencyConfig[payFrequency].description}</p>
           </div>
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3 shadow-sm">
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net release</p>
             <p className="mt-1 text-sm font-black text-emerald-700">{moneyWhole(totals.netSalary)}</p>
             <p className="mt-1 text-xs font-semibold text-emerald-600">Ready for payroll release</p>
@@ -1481,15 +1487,15 @@ export default function NewPayrollPage() {
             {rows.map((row, index) => {
               const computed = computeRow(row, payFrequency);
               return (
-                <article key={row.id} className={`rounded-[1.5rem] border p-5 shadow-sm ${row.syncedFromAttendance ? "border-cyan-100 bg-cyan-50/40" : "border-slate-100 bg-white"}`}>
+                <article key={row.id} className={`rounded-[1.5rem] border p-4 shadow-sm xl:p-4 ${row.syncedFromAttendance ? "border-cyan-100 bg-cyan-50/40" : "border-slate-100 bg-white"}`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
                         {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
                       </div>
-                      <p className="mt-2 text-xl font-black text-slate-950">{row.name || "New worker row"}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
+                      <p className="mt-1 text-base font-black text-slate-950 xl:text-lg">{row.name || "New worker row"}</p>
+                      <p className="mt-0.5 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => setActiveRowId(row.id)} className={`${toolButtonClass} bg-slate-900 text-white hover:bg-blue-700 hover:text-white`}>Edit full details</button>
@@ -1498,10 +1504,10 @@ export default function NewPayrollPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-5 2xl:grid-cols-[1.15fr_0.85fr]">
-                    <section className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="mt-3 grid gap-4 2xl:grid-cols-[1.15fr_0.85fr]">
+                    <section className="rounded-2xl border border-slate-100 bg-slate-50 p-3 xl:p-3.5">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Worker information</p>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <label className="block">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Supervisor / lead</span>
                           <input value={row.supervisor} onChange={(event) => updateRow(row.id, { supervisor: event.target.value })} className={`${tableInputClass} mt-1`} placeholder="Lead person" />
@@ -1566,18 +1572,18 @@ export default function NewPayrollPage() {
                       </div>
                     </section>
 
-                    <section className="rounded-2xl border border-slate-100 bg-white p-4">
+                    <section className="rounded-2xl border border-slate-100 bg-white p-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Computed values</p>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.amount)}</p></div>
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.otPay)}</p></div>
-                        <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p><p className="mt-2 text-lg font-black text-amber-700">{money(computed.holidayPay)}</p></div>
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p><p className="mt-2 text-lg font-black text-slate-950">{money(computed.totalSalary)}</p></div>
-                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">PhilHealth</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.philHealth)}</p></div>
-                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Pag-IBIG</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.pagIbig)}</p></div>
-                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">SSS</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.sss)}</p></div>
-                        <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p><p className="mt-2 text-lg font-black text-rose-700">{money(computed.totalDeduction)}</p></div>
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p><p className="mt-2 text-lg font-black text-emerald-700">{money(computed.netSalary)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p><p className="mt-1 text-base font-black text-slate-950">{money(computed.amount)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p><p className="mt-1 text-base font-black text-slate-950">{money(computed.otPay)}</p></div>
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p><p className="mt-1 text-base font-black text-amber-700">{money(computed.holidayPay)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p><p className="mt-1 text-base font-black text-slate-950">{money(computed.totalSalary)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">PhilHealth</p><p className="mt-1 text-base font-black text-rose-700">{money(computed.philHealth)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Pag-IBIG</p><p className="mt-1 text-base font-black text-rose-700">{money(computed.pagIbig)}</p></div>
+                        <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">SSS</p><p className="mt-1 text-base font-black text-rose-700">{money(computed.sss)}</p></div>
+                        <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p><p className="mt-1 text-base font-black text-rose-700">{money(computed.totalDeduction)}</p></div>
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p><p className="mt-1 text-base font-black text-emerald-700">{money(computed.netSalary)}</p></div>
                       </div>
                     </section>
                   </div>
@@ -1692,16 +1698,16 @@ export default function NewPayrollPage() {
   return (
     <div className="page-shell print:bg-white">
       <section className="hero-panel print:hidden">
-        <div className="grid min-w-0 gap-6 xl:grid-cols-1 2xl:grid-cols-[1.25fr_0.75fr] 2xl:items-center">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-1 2xl:grid-cols-[1.25fr_0.75fr] 2xl:items-center">
           <div className="min-w-0">
             <p className="eyebrow text-sky-200/90">Payroll calculation</p>
-            <h2 className="mt-3 break-words text-3xl font-black tracking-tight text-white sm:text-4xl">
+            <h2 className="mt-2.5 break-words text-2xl font-black tracking-tight text-white sm:text-3xl xl:text-[1.8rem]">
               Excel-like payroll opens in a focused editing tab.
             </h2>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200/80 sm:text-base">
+            <p className="mt-2 max-w-3xl text-sm leading-5 text-slate-200/80">
               SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule, while each payroll row stays fully visible in the editor.
             </p>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
               <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
               <button onClick={savePayrollTable} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
@@ -1713,16 +1719,16 @@ export default function NewPayrollPage() {
             </div>
           </div>
 
-          <div className="min-w-0 rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white shadow-2xl shadow-slate-900/20">
+          <div className="min-w-0 rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-4 text-white shadow-2xl shadow-slate-900/20 xl:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-bold text-slate-300">Net salary for release</p>
               <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-300">Live</span>
             </div>
-            <p className="mt-5 break-words text-4xl font-black sm:text-5xl">{moneyWhole(totals.netSalary)}</p>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
+            <p className="mt-3 break-words text-2xl font-black sm:text-4xl xl:text-[2.25rem]">{moneyWhole(totals.netSalary)}</p>
+            <p className="mt-2 text-sm leading-5 text-slate-300">
               Project: {selectedProject}. Deduction schedule: {frequencyConfig[payFrequency].label}. Employee records loaded: {loadingEmployees ? "..." : employees.length}.
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-2">
               <div className="rounded-2xl bg-white/10 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Attendance sync</p>
                 <p className="mt-1 text-lg font-black text-white">{syncedRows} linked rows</p>
@@ -1753,12 +1759,12 @@ export default function NewPayrollPage() {
         ))}
       </section>
 
-      <section className="section-card print:hidden">
-        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+      <section className="section-card print:hidden xl:p-4">
+        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <div>
             <p className="eyebrow">Worksheet ready</p>
-            <h3 className="mt-2 break-words text-2xl font-black text-slate-950">Review the payroll first, then open the full-detail editor</h3>
-            <p className="mt-2 text-sm text-slate-500">
+            <h3 className="mt-1.5 break-words text-lg font-black text-slate-950 xl:text-xl">Review the payroll first, then open the full-detail editor</h3>
+            <p className="mt-1 text-sm leading-5 text-slate-500">
               Open the payroll workspace to edit each worker in a readable full-detail layout instead of compressed spreadsheet cells.
             </p>
           </div>
@@ -1783,8 +1789,8 @@ export default function NewPayrollPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-          <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50/80 p-4">
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+          <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50/80 p-3.5 xl:p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black text-slate-950">Payroll row preview</p>
@@ -1830,7 +1836,7 @@ export default function NewPayrollPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="rounded-[1.5rem] border border-slate-100 bg-white p-3.5 shadow-sm xl:p-4">
             <p className="text-sm font-black text-slate-950">Editor actions</p>
             <p className="mt-1 text-sm text-slate-500">Open the payroll workspace when you need full row-by-row editing with every detail visible.</p>
             <div className="mt-4 grid gap-3">
@@ -1952,11 +1958,11 @@ export default function NewPayrollPage() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto bg-slate-50 p-3 sm:p-5">
-                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-                  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="min-h-0 flex-1 overflow-auto bg-slate-50 p-3 sm:p-4 xl:p-5">
+                <div className="grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+                  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4 xl:p-5">
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Worker details</p>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       <label className="block">
                         <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Supervisor / lead</span>
                         <input value={activeRow.supervisor} onChange={(event) => updateRow(activeRow.id, { supervisor: event.target.value })} className={`${inputClass} mt-1 text-sm`} placeholder="Lead person" />
@@ -1983,16 +1989,16 @@ export default function NewPayrollPage() {
                       </label>
                     </div>
 
-                    <div className="mt-5 flex justify-end">
+                    <div className="mt-4 flex justify-end">
                       <button type="button" onClick={() => void saveActiveRow()} disabled={savingRowId === activeRow.id} className="w-full rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
                         {savingRowId === activeRow.id ? "Saving..." : "Save worker info"}
                       </button>
                     </div>
                   </section>
 
-                  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                  <section className="rounded-[1.75rem] border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4 xl:p-5">
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Deductions and notes</p>
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <label className="block">
                         <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cash advance</span>
                         <input type="number" value={activeRow.cashAdvance} onChange={(event) => updateRow(activeRow.id, { cashAdvance: numberValue(event.target.value) })} className={`${numberInputClass} mt-1 text-sm`} />
@@ -2013,48 +2019,48 @@ export default function NewPayrollPage() {
                   </section>
                 </div>
 
-                <section className="mt-5 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                <section className="mt-3 rounded-[1.75rem] border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4 xl:p-5">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Computed payroll summary</p>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     {(() => {
                       const computed = computeRow(activeRow, payFrequency);
                       return (
                         <>
-                          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p>
-                            <p className="mt-2 text-lg font-black text-slate-950">{money(computed.amount)}</p>
+                            <p className="mt-1.5 text-base font-black text-slate-950 xl:text-lg">{money(computed.amount)}</p>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
-                            <p className="mt-2 text-lg font-black text-slate-950">{money(computed.otPay)}</p>
+                            <p className="mt-1.5 text-base font-black text-slate-950 xl:text-lg">{money(computed.otPay)}</p>
                           </div>
-                          <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4">
+                          <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Additional deduction</p>
-                            <p className="mt-2 text-lg font-black text-rose-700">{money(computed.additionalDeduction)}</p>
+                            <p className="mt-1.5 text-base font-black text-rose-700 xl:text-lg">{money(computed.additionalDeduction)}</p>
                           </div>
-                          <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-4">
+                          <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">Total deduction</p>
-                            <p className="mt-2 text-lg font-black text-rose-700">{money(computed.totalDeduction)}</p>
+                            <p className="mt-1.5 text-base font-black text-rose-700 xl:text-lg">{money(computed.totalDeduction)}</p>
                           </div>
-                          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-4">
+                          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
-                            <p className="mt-2 text-lg font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
+                            <p className="mt-1.5 text-base font-black text-emerald-700 xl:text-lg">{moneyWhole(computed.netSalary)}</p>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">PhilHealth</p>
-                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.philHealth)}</p>
+                            <p className="mt-1.5 text-sm font-black text-slate-950 xl:text-base">{money(computed.philHealth)}</p>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pag-IBIG</p>
-                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.pagIbig)}</p>
+                            <p className="mt-1.5 text-sm font-black text-slate-950 xl:text-base">{money(computed.pagIbig)}</p>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">SSS</p>
-                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.sss)}</p>
+                            <p className="mt-1.5 text-sm font-black text-slate-950 xl:text-base">{money(computed.sss)}</p>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4">
+                          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-3 xl:px-4 xl:py-4">
                             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
-                            <p className="mt-2 text-base font-black text-slate-950">{money(computed.totalSalary)}</p>
+                            <p className="mt-1.5 text-sm font-black text-slate-950 xl:text-base">{money(computed.totalSalary)}</p>
                           </div>
                         </>
                       );

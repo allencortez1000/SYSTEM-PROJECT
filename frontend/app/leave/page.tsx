@@ -162,7 +162,7 @@ export default function LeavePage() {
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
                 {icon}
               </div>
-              <p className="mt-3 text-2xl font-black text-slate-950">{value}</p>
+              <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
               <p className="mt-1 text-sm font-semibold text-slate-700">{label}</p>
               <p className="mt-0.5 text-xs text-slate-400">{detail}</p>
             </div>
@@ -179,12 +179,12 @@ export default function LeavePage() {
           </div>
           <div>
             <p className="text-sm font-bold uppercase tracking-wider text-blue-600">Requests</p>
-            <h3 className="text-2xl font-black text-slate-950">Leave requests</h3>
+            <h3 className="text-lg font-black text-slate-950 xl:text-xl">Leave requests</h3>
           </div>
         </div>
 
         {loading && (
-          <div className="mt-6 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
+          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
             <svg className="h-5 w-5 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -208,7 +208,7 @@ export default function LeavePage() {
         )}
 
         {!loading && rows.length === 0 && (
-          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
             <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
             </svg>
@@ -217,7 +217,7 @@ export default function LeavePage() {
         )}
 
         {rows.length > 0 && (
-          <div className="mt-6 overflow-hidden rounded-[0.875rem] border border-slate-200 bg-white shadow-sm">
+          <div className="mt-4 overflow-hidden rounded-[0.875rem] border border-slate-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="soft-table">
                 <thead>

@@ -223,7 +223,7 @@ export default function PayrollIndex() {
         )}
 
         {/* Stats Grid */}
-        <div className="mb-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+        <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
           {stats.map((stat) => (
             <div key={stat.label} className="stat-card accent-blue group min-w-0">
               <div className="flex min-w-0 items-start justify-between gap-4">
@@ -247,8 +247,8 @@ export default function PayrollIndex() {
         </div>
 
         {/* Main CTA Card */}
-        <div className="mb-6 overflow-hidden rounded-[0.875rem] border border-blue-600/20 shadow-md">
-          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-6 py-8 text-white sm:px-8">
+        <div className="mb-4 overflow-hidden rounded-[0.875rem] border border-blue-600/20 shadow-md">
+          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 px-5 py-6 text-white sm:px-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex-1">
               <div className="mb-3 flex items-center gap-2">
@@ -259,16 +259,16 @@ export default function PayrollIndex() {
                   Estimated Monthly
                 </span>
               </div>
-              <h2 className="text-2xl font-black sm:text-3xl">
+              <h2 className="text-xl font-black sm:text-2xl">
                 Total Payroll Cost
               </h2>
-              <p className="mt-3 text-3xl font-black sm:text-5xl">
+              <p className="mt-2 text-2xl font-black sm:text-4xl">
                 {pesos(payrollCost)}
               </p>
-              <p className="mt-3 text-sm font-semibold text-blue-100">
+              <p className="mt-2 text-sm font-semibold text-blue-100">
                 Computed from {employeeCount} employee salary records
               </p>
-              <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm">
+              <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur-sm">
                 <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white">Department first</span>
                 <span>{selectedDepartment || "All departments"}</span>
                 <span className="text-white/60">·</span>

@@ -169,7 +169,7 @@ export default function Home() {
         )}
 
         {/* Metric Cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
           <div className="stat-card accent-blue">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -177,7 +177,7 @@ export default function Home() {
                 <p className="mt-2 text-2xl font-black text-slate-950">{stats.totalEmployees}</p>
                 <p className="mt-1 text-sm font-semibold text-emerald-600">{stats.activeEmployees} active</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function Home() {
                 <p className="mt-2 text-2xl font-black text-slate-950">{pesos(stats.payrollCost)}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-600">Total cost</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function Home() {
                 <p className="mt-2 text-2xl font-black text-slate-950">{stats.presentToday}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-600">Attendance records</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
             </div>
@@ -216,7 +216,7 @@ export default function Home() {
                 <p className="mt-2 text-2xl font-black text-slate-950">{stats.onLeave}</p>
                 <p className="mt-1 text-sm font-semibold text-slate-600">Leave entries</p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </div>
             </div>
@@ -226,10 +226,10 @@ export default function Home() {
         {/* Department Analytics & Latest Employees */}
         <div className="grid gap-4 xl:grid-cols-[1.45fr_1fr]">
           {/* Department Chart */}
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Department Distribution</h3>
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-4 xl:p-5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold text-slate-900">Department Distribution</h3>
                 <p className="mt-1 text-sm text-slate-600">Headcount by department</p>
               </div>
               <Link
@@ -243,8 +243,8 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="mt-6 space-y-4">
-              {stats.departments.length === 0 && !loading && (
+            <div className="mt-4 space-y-3">
+                          {stats.departments.length === 0 && !loading && (
                 <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center">
                   <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -279,10 +279,10 @@ export default function Home() {
           </div>
 
           {/* Latest Employees */}
-          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Recent Employees</h3>
+          <div className="rounded-[0.875rem] border border-slate-200 bg-white p-4 xl:p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">Recent Employees</h3>
               <p className="mt-1 text-sm text-slate-600">Latest additions</p>
             </div>
             <Link
@@ -311,8 +311,8 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-6 space-y-3">
-            {[...filteredEmployees]
+          <div className="mt-4 space-y-2">
+                      {[...filteredEmployees]
                 .sort((a, b) => new Date((b as any).createdAt || (b as any).created_at || 0).getTime() - new Date((a as any).createdAt || (a as any).created_at || 0).getTime())
                 .slice(0, 5)
                 .map((employee) => {
@@ -329,7 +329,7 @@ export default function Home() {
                     href={`/employees/${employee.id}`}
                     className="group flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-all hover:border-blue-200 hover:bg-white hover:shadow-md"
                   >
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-bold text-white shadow-lg shadow-blue-600/30">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-bold text-white shadow-lg shadow-blue-600/30">
                       {initials}
                     </div>
                     <div className="min-w-0 flex-1">

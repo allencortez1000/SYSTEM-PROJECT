@@ -107,7 +107,7 @@ export default function RecruitmentPage() {
         </div>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-3 md:grid-cols-2">
         {metrics.map(({ label, value, icon }) => (
           <div
             key={label}
@@ -116,7 +116,7 @@ export default function RecruitmentPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               {icon}
             </div>
-            <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
             <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
           </div>
         ))}
@@ -131,7 +131,7 @@ export default function RecruitmentPage() {
           </div>
           <div>
             <p className="text-sm font-bold uppercase tracking-wider text-blue-600">Candidates</p>
-            <h3 className="text-2xl font-black text-slate-950">Talent shortlist</h3>
+            <h3 className="text-lg font-black text-slate-950 xl:text-xl">Talent shortlist</h3>
           </div>
         </div>
 
@@ -160,7 +160,7 @@ export default function RecruitmentPage() {
         )}
 
         {!loading && candidates.length === 0 && (
-          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
             <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
             </svg>
@@ -170,7 +170,7 @@ export default function RecruitmentPage() {
 
         {candidates.length > 0 && (
           <>
-            <div className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 p-4">
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 p-3">
               <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
               </svg>
@@ -179,7 +179,7 @@ export default function RecruitmentPage() {
               </p>
             </div>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {candidates.map((candidate, index) => {
                 const isActive = activeRow === candidate;
                 return (
@@ -187,7 +187,7 @@ export default function RecruitmentPage() {
                     key={String(candidate.id ?? index)}
                     type="button"
                     onClick={() => setActiveRow(candidate)}
-                    className={`w-full rounded-[0.875rem] border bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md hover:border-blue-200 text-left ${
+                    className={`w-full rounded-[0.875rem] border bg-white p-4 shadow-sm transition hover:-translate-y-px hover:shadow-md hover:border-blue-200 text-left ${
                       isActive ? "border-blue-300" : "border-slate-200"
                     }`}
                   >
@@ -206,7 +206,7 @@ export default function RecruitmentPage() {
                       )}
                     </div>
 
-                    <p className="mt-4 text-lg font-black text-slate-950">
+                    <p className="mt-3 text-base font-black text-slate-950">
                       {pick(candidate, ["full_name", "name", "first_name"])}
                     </p>
                     <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
@@ -216,7 +216,7 @@ export default function RecruitmentPage() {
                       {pick(candidate, ["email", "phone"])}
                     </p>
 
-                    <div className="mt-6 flex items-center justify-between gap-3">
+                    <div className="mt-4 flex items-center justify-between gap-3">
                       <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
                         {pick(candidate, ["source"])}
                       </span>
@@ -245,12 +245,12 @@ export default function RecruitmentPage() {
           </div>
           <div>
             <p className="text-sm font-bold uppercase tracking-wider text-blue-600">Vacancies</p>
-            <h3 className="text-2xl font-black text-slate-950">Open positions</h3>
+            <h3 className="text-lg font-black text-slate-950 xl:text-xl">Open positions</h3>
           </div>
         </div>
 
         {!loading && openings.length === 0 && (
-          <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
             <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0M12 12.75h.008v.008H12v-.008Z" />
             </svg>
@@ -259,7 +259,7 @@ export default function RecruitmentPage() {
         )}
 
         {openings.length > 0 && (
-          <div className="mt-6 rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <div className="mt-4 rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>

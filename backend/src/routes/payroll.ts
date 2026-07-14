@@ -212,39 +212,14 @@ router.get('/attendance-summary', async (req, res) => {
       projectSite || undefined,
     );
 
-    const hasAnyAttendance = attendanceRows.length > 0;
-    const paidDaysFromRows = attendanceRows.reduce((total, record) => {
-      const status = String(record.status || '').trim().toLowerCase();
-      const workedHours = Number(record.worked_hours ?? 0) || 0;
-      const computedWorkedHours = workedHours > 0
-        ? workedHours
-        : (() => {
-            if (!record.check_in || !record.check_out) return 0;
-            const [inHour, inMinute] = String(record.check_in).split(':').map(Number);
-            const [outHour, outMinute] = String(record.check_out).split(':').map(Number);
-            if (!Number.isFinite(inHour) || !Number.isFinite(inMinute) || !Number.isFinite(outHour) || !Number.isFinite(outMinute)) return 0;
-            const startMinutes = inHour * 60 + inMinute;
-            const endMinutes = outHour * 60 + outMinute;
-            return endMinutes > startMinutes ? Math.max(0, Math.round(((endMinutes - startMinutes) / 60 - 1) * 100) / 100) : 0;
-          })();
-      if (status === 'leave') return total + 1;
-      if (status === 'present' || status === 'remote' || status === 'late' || computedWorkedHours > 0) return total + 1;
-      return total;
-    }, 0);
-    const overtimeHoursFromRows = attendanceRows.reduce((total, record) => {
-      const overtime = Number(record.overtime_hours ?? 0);
-      if (Number.isFinite(overtime) && overtime > 0) return total + overtime;
-      const workedHours = Number(record.worked_hours ?? 0) || 0;
-      if (workedHours > 8) return total + (workedHours - 8);
-      return total;
-    }, 0);
-
-    const normalizedSummary = {
-      ...summary,
-      paidDays: hasAnyAttendance ? paidDaysFromRows : summary.paidDays,
-      regularHours: hasAnyAttendance ? paidDaysFromRows * 8 : summary.regularHours,
-      overtimeHours: hasAnyAttendance ? Math.round(overtimeHoursFromRows * 100) / 100 : summary.overtimeHours,
-    };
+    // summarizeAttendance (via summarizeAttendanceDays) already handles:
+    //   • Sunday exclusion (Sundays never count as paid days)
+    //   • Fractional days: worked hours / 8  (e.g. 6 h = 0.75 days)
+    //   • Leave = 1.0 full day
+    //   • Present/remote/late with no time entry = 1.0 full day
+    //   • Absent = 0
+    // Use it as the single source of truth — no second-pass reduce needed.
+    const normalizedSummary = summary;
 
     const { data: overrideRows, error: overrideError } = await supabase
       .from('payroll_attendance_overrides')
