@@ -302,7 +302,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           </div>
         </header>
 
-        <main className="page-shell w-full max-w-[1600px]">{children}</main>
+        <main className="page-shell w-full max-w-[min(100%,1600px)]">{children}</main>
       </div>
     </div>
   );

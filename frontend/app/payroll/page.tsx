@@ -223,21 +223,18 @@ export default function PayrollIndex() {
         )}
 
         {/* Stats Grid */}
-        <div className="mb-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mb-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
           {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="stat-card accent-blue group"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className="text-xs font-black uppercase tracking-wider text-slate-600">
+            <div key={stat.label} className="stat-card accent-blue group min-w-0">
+              <div className="flex min-w-0 items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-xs font-black uppercase tracking-[0.12em] leading-snug text-slate-600">
                     {stat.label}
                   </p>
-                  <p className="mt-3 text-2xl font-black text-slate-900">
+                  <p className="mt-2 break-words text-xl font-black leading-tight text-slate-900 sm:text-2xl">
                     {stat.value}
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                  <p className="mt-2 break-words text-sm font-semibold leading-snug text-slate-600">
                     {stat.detail}
                   </p>
                 </div>

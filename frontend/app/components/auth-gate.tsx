@@ -108,7 +108,7 @@ export default function AuthGate({ children }: AuthGateProps) {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_32rem),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.14),_transparent_30rem)]" />
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/70 to-transparent" />
 
-        <section className="relative z-10 grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/80 bg-white/82 shadow-[0_28px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="relative z-10 grid w-full max-w-[min(96vw,72rem)] overflow-hidden rounded-[2rem] border border-white/80 bg-white/82 shadow-[0_28px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl lg:grid-cols-[0.95fr_1.05fr]">
           <div className="hidden min-h-[660px] flex-col justify-between bg-slate-950 p-9 text-white lg:flex">
             <div>
               <div className="flex items-center gap-3.5">
@@ -154,7 +154,7 @@ export default function AuthGate({ children }: AuthGateProps) {
           </div>
 
           <div className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10 xl:px-12">
-            <div className="mx-auto flex min-h-[600px] max-w-[28rem] flex-col justify-center gap-0">
+            <div className="mx-auto flex min-h-[600px] w-full max-w-[32rem] flex-col justify-center gap-0">
               <div className="mb-4 lg:hidden">
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-sm backdrop-blur-sm">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 shadow-sm">
