@@ -73,6 +73,10 @@ function roundCurrency(value: number) {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 }
 
+function roundDays(value: number) {
+  return Math.round((Number.isFinite(value) ? value : 0) * 1000) / 1000;
+}
+
 async function findOrCreateProjectSite(projectName: string) {
   const name = projectName.trim();
   if (!name) {
@@ -152,6 +156,7 @@ router.get('/attendance-summary', async (req, res) => {
     const startDate = String(req.query.startDate || '').trim();
     const endDate = String(req.query.endDate || '').trim();
     const projectSite = String(req.query.projectSite || '').trim();
+    const forceFresh = String(req.query.forceFresh || '').trim().toLowerCase() === 'true';
 
     if (!startDate || !endDate || (!employeeId && !employeeName)) {
       return res.status(400).json({
@@ -220,6 +225,10 @@ router.get('/attendance-summary', async (req, res) => {
     //   • Absent = 0
     // Use it as the single source of truth — no second-pass reduce needed.
     const normalizedSummary = summary;
+
+    if (forceFresh) {
+      return res.json({ summary: normalizedSummary, override: null, forceFresh: true });
+    }
 
     const { data: overrideRows, error: overrideError } = await supabase
       .from('payroll_attendance_overrides')
@@ -686,9 +695,9 @@ function applyAttendanceOverride(summary: AttendanceSummary, override: PayrollOv
 
   return {
     ...summary,
-    paidDays: Number.isFinite(paidDays) ? paidDays : summary.paidDays,
+    paidDays: Number.isFinite(paidDays) ? roundDays(paidDays) : summary.paidDays,
     overtimeHours: Number.isFinite(overtimeHours) ? roundCurrency(overtimeHours) : summary.overtimeHours,
-    regularHours: roundCurrency((Number.isFinite(paidDays) ? paidDays : summary.paidDays) * 8),
+    regularHours: roundCurrency((Number.isFinite(paidDays) ? roundDays(paidDays) : summary.paidDays) * 8),
     overrideApplied: true,
   };
 }

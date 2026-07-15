@@ -23,6 +23,10 @@ function roundCurrency(value: number) {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 }
 
+function roundDays(value: number) {
+  return Math.round((Number.isFinite(value) ? value : 0) * 1000) / 1000;
+}
+
 function isSunday(dateValue?: string | null) {
   if (!dateValue) return false;
   const date = new Date(`${dateValue}T00:00:00`);
@@ -156,7 +160,7 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
   }
 
   // paidDays = total regular hours / 8  (fractional, e.g. 6h = 0.75 days)
-  summary.paidDays = roundCurrency(summary.regularHours / 8);
+  summary.paidDays = roundDays(summary.regularHours / 8);
   summary.regularHours = roundCurrency(summary.regularHours);
   summary.overtimeHours = roundCurrency(summary.overtimeHours);
   return summary;

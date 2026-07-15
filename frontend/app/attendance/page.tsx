@@ -223,13 +223,22 @@ function computeGrossHours(checkIn: string, checkOut: string): number {
   return (end - start) / 60;
 }
 
+function normalizeDepartment(value?: string | null) {
+  return String(value || "").trim().toLowerCase();
+}
+
 /**
- * Worked hours — whole hours only.
- * Partial minutes within the current hour are disregarded.
- * e.g. 07:00 → 08:05 = 1h (the extra 5 min are ignored).
+ * Worked hours.
+ * - Construction: subtract 1 hour lunch once the shift reaches 8 hours or more
+ * - Other departments: whole hours only, no lunch deduction
  */
-function computeWorkedHours(checkIn: string, checkOut: string) {
-  return Math.floor(computeGrossHours(checkIn, checkOut));
+function computeWorkedHours(checkIn: string, checkOut: string, department?: string | null) {
+  const grossHours = computeGrossHours(checkIn, checkOut);
+  if (grossHours <= 0) return 0;
+
+  const isConstruction = normalizeDepartment(department) === "construction";
+  const adjustedHours = isConstruction && grossHours >= 8 ? grossHours - 1 : grossHours;
+  return Math.floor(Math.max(0, adjustedHours));
 }
 
 /**
@@ -840,7 +849,7 @@ export default function AttendancePage() {
             ? 0
             : draft.status === "Halfday"
               ? 4
-              : computeWorkedHours(draft.checkIn, draft.checkOut);
+              : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department);
           const overtimeHours = Number(draft.overtimeHours || 0);
           return {
             employeeId,
@@ -919,7 +928,7 @@ export default function AttendancePage() {
         ? 0
         : draft.status === "Halfday"
           ? 4
-          : computeWorkedHours(draft.checkIn, draft.checkOut);
+          : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department);
       const overtimeHours = Number(draft.overtimeHours || 0);
       const payload = {
         employeeId: employee.id,
@@ -1870,7 +1879,7 @@ export default function AttendancePage() {
                           const displayWorkedHours = savedRecord?.workedHours !== undefined && savedRecord?.workedHours !== null
                             ? `${distributedWorkedHours.toFixed(2)}`
                             : hasSavedRecord
-                              ? computeWorkedHours(draft.checkIn, draft.checkOut).toFixed(2)
+                              ? computeWorkedHours(draft.checkIn, draft.checkOut, employee.department).toFixed(2)
                               : "0.00";
                           const displayOvertime = savedRecord?.overtimeHours !== undefined && savedRecord?.overtimeHours !== null
                             ? `${distributedOvertimeHours.toFixed(2)}h`
@@ -1965,7 +1974,7 @@ export default function AttendancePage() {
                           const displayWorkedHours = savedRecord?.workedHours !== undefined && savedRecord?.workedHours !== null
                             ? `${distributedWorkedHours.toFixed(2)}`
                             : hasSavedRecord
-                              ? computeWorkedHours(draft.checkIn, draft.checkOut).toFixed(2)
+                              ? computeWorkedHours(draft.checkIn, draft.checkOut, employee.department).toFixed(2)
                               : "0.00";
                           const displayOvertime = savedRecord?.overtimeHours !== undefined && savedRecord?.overtimeHours !== null
                             ? `${distributedOvertimeHours.toFixed(2)}h`
@@ -2177,7 +2186,7 @@ export default function AttendancePage() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div>
                       <p className="text-sm font-bold text-slate-600">Worked Hours</p>
-                      <p className="mt-2 text-2xl font-black text-slate-900">{computeWorkedHours(activeDraft.checkIn, activeDraft.checkOut).toFixed(2)}h</p>
+                      <p className="mt-2 text-2xl font-black text-slate-900">{computeWorkedHours(activeDraft.checkIn, activeDraft.checkOut, employees.find((item) => item.id === activeCell.employeeId)?.department).toFixed(2)}h</p>
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-600">Overtime</p>

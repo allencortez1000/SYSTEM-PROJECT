@@ -810,6 +810,7 @@ export default function NewPayrollPage() {
             startDate: periodStart,
             endDate: periodEnd,
             projectSite: selectedProject,
+            forceFresh: "true",
           });
           const summaryResponse = await fetch(`${API_BASE}/payroll/attendance-summary?${summaryQuery.toString()}`, {
             headers: getAuthHeaders() || undefined,
@@ -845,7 +846,7 @@ export default function NewPayrollPage() {
                 if (status === 'leave') return total + 1;
                 // Hours recorded → fractional days (hours / 8, capped at 1)
                 if (workedHours > 0) {
-                  const dayFraction = Math.round((Math.min(workedHours, 8) / 8) * 100) / 100;
+                  const dayFraction = Math.round((Math.min(workedHours, 8) / 8) * 1000) / 1000;
                   return total + dayFraction;
                 }
                 // Present/remote/late with no hours → assume full day
@@ -1190,8 +1191,8 @@ export default function NewPayrollPage() {
   const worksheet = (
     <section className="payroll-print-sheet flex h-full min-h-0 flex-col bg-white print:block">
       <div className="shrink-0 border-b border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-3 backdrop-blur print:border-0 print:bg-white print:p-0">
-        <div className="grid gap-3 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] 2xl:items-start">
-          <div className="space-y-3">
+        <div className="grid gap-3 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:items-start">
+          <div className="space-y-2.5">
             <div className="rounded-[1.5rem] border border-white/80 bg-white/90 p-3 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -1241,7 +1242,7 @@ export default function NewPayrollPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
             <label className="block rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-sm 2xl:col-span-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Department</span>
@@ -1336,7 +1337,7 @@ export default function NewPayrollPage() {
               </div>
               <p className="mt-1 text-[10px] font-semibold text-slate-500">{formatDateDisplay(periodEnd)}</p>
             </label>
-            <div className="flex items-end 2xl:col-span-2">
+            <div className="flex items-end sm:col-span-2 2xl:col-span-4">
               <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canSyncAttendance}>
                 {syncingAttendance ? "Syncing..." : "Sync from attendance"}
               </button>
