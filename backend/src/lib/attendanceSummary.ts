@@ -128,6 +128,7 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
 
   for (const record of records) {
     const status = String(record.status || '').trim().toLowerCase();
+    const isCanceledWork = status === 'canceled work';
     const workedHours = workedHoursFromRecord(record);
     const hasTimeEntry = workedHours > 0;
 
@@ -136,13 +137,13 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
       continue;
     }
 
-    const countsAsPaidWorkDay = status !== 'absent' || hasTimeEntry;
+    const countsAsPaidWorkDay = (status !== 'absent' && !isCanceledWork) || hasTimeEntry;
 
     // Status counters (whole-day buckets for reporting)
     if (countsAsPaidWorkDay) summary.presentDays += 1;
     if (status === 'remote') summary.remoteDays += 1;
     if (status === 'leave') summary.leaveDays += 1;
-    if (status === 'absent') summary.absentDays += 1;
+    if (status === 'absent' || isCanceledWork) summary.absentDays += 1;
     if (status === 'late') summary.lateDays += 1;
     summary.overtimeHours += overtimeHoursFromRecord(record);
 

@@ -443,6 +443,13 @@ router.post('/', async (req, res) => {
       overtimeMode,
     } = req.body;
 
+    const normalizedStatus = String(status || '').trim();
+    const statusForSave = normalizedStatus === 'Canceled Work' ? 'Absent' : normalizedStatus;
+    const noteText = String(notes || '').trim();
+    const noteForSave = normalizedStatus === 'Canceled Work'
+      ? `${noteText ? `${noteText}\n` : ''}[canceled-work]`
+      : noteText;
+
     if (!employeeName || !date || !status) {
       return res.status(400).json({ message: 'employeeName, date and status are required' });
     }
@@ -475,10 +482,10 @@ router.post('/', async (req, res) => {
         {
           employee_id: employeeId,
           attendance_date: date,
-          status,
+          status: statusForSave,
           check_in: checkIn || null,
           check_out: checkOut || null,
-          notes: notes || null,
+          notes: noteForSave || null,
           project_site: projectSite || null,
           period_mode: periodMode || null,
           worked_hours: workedHours ?? null,

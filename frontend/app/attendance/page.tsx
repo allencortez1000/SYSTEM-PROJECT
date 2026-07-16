@@ -9,7 +9,7 @@ import { filterInputClassName, filterSelectCompactClassName } from "../component
 import { useNotification } from "../components/notification";
 import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
 
-const statusOptions = ["Present", "Halfday", "Absent", "Leave", "Remote"] as const;
+const statusOptions = ["Present", "Halfday", "Absent", "Canceled Work", "Leave", "Remote"] as const;
 type AttendanceStatus = (typeof statusOptions)[number];
 type PeriodMode = "weekly" | "semi-monthly";
 type OvertimeMode = "auto" | "manual";
@@ -89,6 +89,7 @@ const statusClass: Record<string, string> = {
   Present: "bg-emerald-50 text-emerald-700",
   Halfday: "bg-cyan-50 text-cyan-700",
   Absent: "bg-red-50 text-red-700",
+  "Canceled Work": "bg-orange-100 text-orange-700",
   Leave: "bg-amber-50 text-amber-700",
   Remote: "bg-blue-50 text-blue-700",
 };
@@ -735,7 +736,7 @@ export default function AttendancePage() {
       next.overtimeMode = "manual";
     }
 
-    if (patch.status === "Absent" || patch.status === "Leave") {
+    if (patch.status === "Absent" || patch.status === "Canceled Work" || patch.status === "Leave") {
       next.checkIn = "";
       next.checkOut = "";
       next.overtimeHours = "0";
@@ -845,7 +846,7 @@ export default function AttendancePage() {
           if (!periodDates.includes(date)) return null;
           if (new Date(date).getDay() === 0) return null;
 
-          const workedHours = draft.status === "Absent" || draft.status === "Leave"
+          const workedHours = draft.status === "Absent" || draft.status === "Canceled Work" || draft.status === "Leave"
             ? 0
             : draft.status === "Halfday"
               ? 4
@@ -856,8 +857,8 @@ export default function AttendancePage() {
             employeeName: employee.fullName,
             date,
             status: draft.status,
-            checkIn: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkIn,
-            checkOut: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkOut,
+            checkIn: draft.status === "Absent" || draft.status === "Canceled Work" || draft.status === "Leave" ? "" : draft.checkIn,
+            checkOut: draft.status === "Absent" || draft.status === "Canceled Work" || draft.status === "Leave" ? "" : draft.checkOut,
             notes: draft.notes.trim(),
             projectSite: selectedProject,
             periodMode,
@@ -924,7 +925,7 @@ export default function AttendancePage() {
       const targetDate = activeAttendanceDate || activeCell.date;
       const sourceDate = activeCell.date;
       const draft = ensureDraft(activeCell.employeeId, targetDate);
-      const workedHours = draft.status === "Absent" || draft.status === "Leave"
+      const workedHours = draft.status === "Absent" || draft.status === "Canceled Work" || draft.status === "Leave"
         ? 0
         : draft.status === "Halfday"
           ? 4
@@ -935,8 +936,8 @@ export default function AttendancePage() {
         employeeName: employee.fullName,
         date: targetDate,
         status: draft.status,
-        checkIn: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkIn,
-        checkOut: draft.status === "Absent" || draft.status === "Leave" ? "" : draft.checkOut,
+        checkIn: draft.status === "Absent" || draft.status === "Canceled Work" || draft.status === "Leave" ? "" : draft.checkIn,
+        checkOut: draft.status === "Absent" || draft.status === "Canceled Work" || draft.status === "Leave" ? "" : draft.checkOut,
         notes: draft.notes.trim(),
         projectSite: selectedProject,
         periodMode,
@@ -1873,7 +1874,8 @@ export default function AttendancePage() {
                           const totalOvertimeHours = Number(savedRecord?.overtimeHours ?? 0);
                           const distributedWorkedHours = isPeriodRow && totalWorkedHours > 0 ? Math.min(8, Math.round((totalWorkedHours / periodWorkdays) * 100) / 100) : totalWorkedHours;
                           const distributedOvertimeHours = isPeriodRow && totalOvertimeHours > 0 ? Math.round((totalOvertimeHours / periodWorkdays) * 100) / 100 : totalOvertimeHours;
-                          const displayStatus = savedRecord?.status || (isPeriodRow ? "Present" : "No record");
+                          const isCanceledWorkRecord = Boolean(savedRecord && String(savedRecord.status || "").toLowerCase() === "absent" && String(savedRecord.notes || "").toLowerCase().includes("[canceled-work]"));
+                          const displayStatus = isCanceledWorkRecord ? "Canceled Work" : (savedRecord?.status || (isPeriodRow ? "Present" : "No record"));
                           const displayCheckIn = savedRecord?.checkIn || (isPeriodRow ? "07:00" : "—");
                           const displayCheckOut = savedRecord?.checkOut || (isPeriodRow ? "16:00" : "—");
                           const displayWorkedHours = savedRecord?.workedHours !== undefined && savedRecord?.workedHours !== null
@@ -1968,7 +1970,8 @@ export default function AttendancePage() {
                           const totalOvertimeHours = Number(savedRecord?.overtimeHours ?? 0);
                           const distributedWorkedHours = isPeriodRow && totalWorkedHours > 0 ? Math.min(8, Math.round((totalWorkedHours / periodWorkdays) * 100) / 100) : totalWorkedHours;
                           const distributedOvertimeHours = isPeriodRow && totalOvertimeHours > 0 ? Math.round((totalOvertimeHours / periodWorkdays) * 100) / 100 : totalOvertimeHours;
-                          const displayStatus = savedRecord?.status || (isPeriodRow ? "Present" : "No record");
+                          const isCanceledWorkRecord = Boolean(savedRecord && String(savedRecord.status || "").toLowerCase() === "absent" && String(savedRecord.notes || "").toLowerCase().includes("[canceled-work]"));
+                          const displayStatus = isCanceledWorkRecord ? "Canceled Work" : (savedRecord?.status || (isPeriodRow ? "Present" : "No record"));
                           const displayCheckIn = savedRecord?.checkIn || (isPeriodRow ? "07:00" : "—");
                           const displayCheckOut = savedRecord?.checkOut || (isPeriodRow ? "16:00" : "—");
                           const displayWorkedHours = savedRecord?.workedHours !== undefined && savedRecord?.workedHours !== null
@@ -2166,7 +2169,7 @@ export default function AttendancePage() {
                     type="time"
                     value={activeDraft.checkIn}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { checkIn: event.target.value })}
-                    disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
+                    disabled={activeDraft.status === "Absent" || activeDraft.status === "Canceled Work" || activeDraft.status === "Leave"}
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                 </label>
@@ -2177,7 +2180,7 @@ export default function AttendancePage() {
                     type="time"
                     value={activeDraft.checkOut}
                     onChange={(event) => updateDraft(activeCell.employeeId, activeAttendanceDate || activeCell.date, { checkOut: event.target.value })}
-                    disabled={activeDraft.status === "Absent" || activeDraft.status === "Leave"}
+                    disabled={activeDraft.status === "Absent" || activeDraft.status === "Canceled Work" || activeDraft.status === "Leave"}
                     className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                 </label>
