@@ -17,6 +17,89 @@ router.post('/calculate', (req, res) => {
   }
 });
 
+router.post('/office/save', requireSuperAdmin, async (req, res) => {
+  try {
+    const payPeriod = String(req.body?.payPeriod || 'Monthly').trim();
+    const payoutDate = String(req.body?.payoutDate || '').trim();
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+
+    if (rows.length === 0) {
+      return res.status(400).json({ message: 'rows are required' });
+    }
+
+    const { data: orgs, error: orgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    if (orgError) throw orgError;
+    if (!orgs || orgs.length === 0) {
+      return res.status(400).json({ message: 'No organization found' });
+    }
+
+    const organizationId = orgs[0].id as string;
+    const now = new Date();
+    const runCode = `OFFICE-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
+    const totalGross = rows.reduce((sum: number, row: any) => sum + (Number(row.gross) || 0), 0);
+    const totalDeductions = rows.reduce((sum: number, row: any) => sum + (Number(row.totalDeduction) || 0), 0);
+    const totalNetPay = rows.reduce((sum: number, row: any) => sum + (Number(row.netSalary) || 0), 0);
+
+    const { data: run, error: runError } = await supabase
+      .from('payroll_runs')
+      .insert({
+        organization_id: organizationId,
+        run_code: runCode,
+        pay_period_start: now.toISOString().slice(0, 10),
+        pay_period_end: now.toISOString().slice(0, 10),
+        payout_date: payoutDate || null,
+        status: 'Draft',
+        total_gross_pay: totalGross,
+        total_deductions: totalDeductions,
+        total_net_pay: totalNetPay,
+        pay_period_label: payPeriod,
+        notes: JSON.stringify({ type: 'office-payroll', rows }),
+      })
+      .select('id')
+      .single();
+
+    if (runError) throw runError;
+
+    const payrollRunId = run.id as string;
+    const payrollItems = rows
+      .filter((row: any) => row?.id)
+      .map((row: any) => ({
+        payroll_run_id: payrollRunId,
+        employee_id: row.id,
+        hourly_rate: Number(row.monthlySalary) || 0,
+        regular_hours: Number(row.days) || 0,
+        regular_pay: Number(row.proratedAmount) || 0,
+        overtime_hours: Number(row.otHours) || 0,
+        overtime_rate: 0,
+        overtime_pay: Number(row.otPay) || 0,
+        allowances: Number(row.allowances) || 0,
+        bonus: Number(row.bonus) || 0,
+        gross_pay: Number(row.gross) || 0,
+        sss_deduction: Number(row.sssAmount) || 0,
+        pagibig_deduction: Number(row.pagIbigAmount) || 0,
+        philhealth_deduction: Number(row.philHealthAmount) || 0,
+        other_deductions: Number(row.cashAdvance || 0) + Number(row.tax || 0) + Number(row.sssLoan || 0) + Number(row.additionalDeduction || 0),
+        total_deductions: Number(row.totalDeduction) || 0,
+        net_pay: Number(row.netSalary) || 0,
+        remarks: String(row.remarks || ''),
+      }));
+
+    if (payrollItems.length > 0) {
+      const { error: itemsError } = await supabase.from('payroll_items').insert(payrollItems);
+      if (itemsError) throw itemsError;
+    }
+
+    res.status(201).json({ message: 'Office payroll saved to Supabase', runId: payrollRunId, runCode });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to save office payroll', error: (error as Error).message });
+  }
+});
+
 type AttendanceSummary = {
   employeeId?: string;
   employeeName: string;

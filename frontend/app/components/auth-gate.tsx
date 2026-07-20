@@ -14,8 +14,8 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const mode: "signin" = "signin";
 
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("superadmin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -87,8 +87,8 @@ export default function AuthGate({ children }: AuthGateProps) {
 
   function resetSigninDefaults() {
     setError("");
-    setUsername("admin");
-    setPassword("superadmin");
+    setUsername("");
+    setPassword("");
   }
 
   if (checkingAuth) {
@@ -104,122 +104,79 @@ export default function AuthGate({ children }: AuthGateProps) {
 
   if (!isAuthenticated) {
     return (
-      <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_32rem),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.14),_transparent_30rem)]" />
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/70 to-transparent" />
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-6 lg:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30rem),radial-gradient(circle_at_bottom_right,_rgba(15,23,42,0.08),_transparent_28rem)]" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/85 to-transparent" />
 
-        <section className="relative z-10 grid w-full max-w-[min(96vw,72rem)] overflow-hidden rounded-[2rem] border border-white/80 bg-white/82 shadow-[0_28px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="hidden min-h-[660px] flex-col justify-between bg-slate-950 p-9 text-white lg:flex">
-            <div>
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-white p-1.5 shadow-sm ring-1 ring-white/10">
+        <section className="relative z-10 w-full max-w-[min(94vw,40rem)] overflow-hidden rounded-[2rem] border border-white/80 bg-white/96 shadow-[0_32px_100px_rgba(15,23,42,0.14)] backdrop-blur-2xl ring-1 ring-slate-100/70">
+          <div className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10 xl:px-12">
+            <div className="mx-auto flex min-h-[620px] w-full max-w-[38rem] flex-col justify-center">
+              <div className="relative mb-10 flex items-start gap-5 overflow-hidden rounded-[1.5rem] border border-slate-100 bg-slate-50/90 px-5 py-4 shadow-sm ring-1 ring-slate-100">
+                <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-blue-700 via-blue-600 to-cyan-500" />
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-slate-200">
                   <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase leading-tight tracking-[0.18em] text-sky-300/90 sm:text-[11px]">
+                <div className="min-w-0 flex-1 pt-1">
+                  <p className="text-[15px] font-black uppercase leading-tight tracking-[0.48em] text-blue-700 sm:text-[16px]">
                     Rabino Home Builders Corporation
                   </p>
-                  <p className="mt-0.5 text-sm font-semibold leading-tight text-slate-300/90 sm:text-[13px]">
-                    Turning dreams into possibilities.
+                  <p className="mt-2 text-[13px] font-semibold uppercase tracking-[0.2em] text-slate-500 sm:text-[14px]">
+                    HR Command Center
                   </p>
                 </div>
               </div>
 
-              <div className="mt-10 max-w-xl">
-                <p className="eyebrow text-sky-300/90">HR Command Center</p>
-                <h1 className="mt-4 text-4xl font-black leading-[1.02] tracking-tight text-white sm:text-5xl lg:text-[3.3rem]">
-                  Secure access to your payroll operations.
-                </h1>
-                <p className="mt-5 max-w-lg text-sm leading-7 text-slate-300/90 sm:text-base">
-                  Sign in to manage employees, attendance, payroll, recruitment,
-                  reports, compliance, and admin controls in one place.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { title: "PHP Payroll", value: "₱", tone: "from-blue-600 to-cyan-500" },
-                { title: "Deductions", value: "SSS", tone: "from-slate-700 to-slate-600" },
-                { title: "Corporate Portal", value: "RHBC", tone: "from-blue-500 to-sky-500" },
-              ].map((item) => (
-                <div key={item.title} className="rounded-2xl border border-white/10 bg-white/6 p-4 shadow-lg shadow-black/10 backdrop-blur-sm">
-                  <div className={`inline-flex rounded-xl bg-gradient-to-r ${item.tone} px-3 py-1 text-lg font-black text-white`}>
-                    {item.value}
-                  </div>
-                  <p className="mt-3 text-xs font-bold text-slate-300">{item.title}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10 xl:px-12">
-            <div className="mx-auto flex min-h-[600px] w-full max-w-[32rem] flex-col justify-center gap-0">
-              <div className="mb-4 lg:hidden">
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-sm backdrop-blur-sm">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 shadow-sm">
+              <div className="mb-6 lg:hidden">
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur-sm">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2.5 shadow-sm">
                     <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-[10px] font-black uppercase leading-tight tracking-[0.22em] text-sky-500">
+                    <p className="text-[13px] font-black uppercase leading-tight tracking-[0.28em] text-blue-700">
                       Rabino Home Builders Corporation
                     </p>
-                    <p className="mt-0.5 truncate text-xs font-semibold leading-tight text-slate-500">
+                    <p className="mt-1 text-sm font-semibold leading-tight text-slate-600">
                       HR Command Center
                     </p>
                   </div>
                 </div>
               </div>
 
-              <p className="eyebrow">{mode === "signin" ? "Sign in required" : "Create account"}</p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                {mode === "signin" ? "Welcome back" : "Sign up"}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                {mode === "signin"
-                  ? "Enter your credentials before using the system."
-                  : "Create an account. It will be saved in Supabase."}
-              </p>
-
-              {mode === "signin" && (
-                <div className="mt-5 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 text-sm text-blue-800 shadow-sm">
-                  <p className="font-black">Login required</p>
-                  <p className="mt-1">Use your assigned username and password to sign in.</p>
-                </div>
-              )}
-
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/90 p-3 text-xs font-semibold leading-5 text-slate-600 shadow-sm">
-                Public signup is disabled. Only the super admin can create department head admins.
-                <button
-                  type="button"
-                  onClick={resetSigninDefaults}
-                  className="ml-2 mt-2 inline-flex rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-black text-slate-700 transition hover:bg-slate-50"
-                >
-                  Reset super admin defaults
-                </button>
+              <div className="space-y-3">
+                <p className="eyebrow text-blue-700">Sign in required</p>
+                <p className="max-w-xl text-sm leading-6 text-slate-600">
+                  {mode === "signin"
+                    ? "Enter your credentials to access the system."
+                    : "Create an account. It will be saved in Supabase."}
+                </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="mt-7 space-y-4.5">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 text-sm text-slate-700 shadow-sm ring-1 ring-slate-100">
+                  <p className="font-black uppercase tracking-[0.16em] text-blue-700">System access notice</p>
+                  <p className="mt-1 text-slate-600">Use your assigned username and password to sign in. Public signup is disabled, and only the super admin can create department head admins.</p>
+                </div>
+
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Username</span>
+                  <span className="text-sm font-semibold tracking-[0.01em] text-slate-800">Username</span>
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                    placeholder="admin"
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/10"
+                    placeholder="Username"
                     required
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-sm font-bold text-slate-600">Password</span>
+                  <span className="text-sm font-semibold tracking-[0.01em] text-slate-800">Password</span>
                   <div className="relative mt-2">
                     <input
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       type={showPassword ? "text" : "password"}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                      placeholder="superadmin"
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/10"
+                      placeholder="Password"
                       required
                     />
                     <button
@@ -249,7 +206,7 @@ export default function AuthGate({ children }: AuthGateProps) {
                   </p>
                 )}
 
-                <button type="submit" disabled={loading} className="primary-button w-full">
+                <button type="submit" disabled={loading} className="primary-button w-full py-3.5 text-base shadow-lg shadow-blue-700/25 ring-1 ring-blue-600/10">
                   {loading ? "Signing in..." : "Sign in"}
                 </button>
               </form>

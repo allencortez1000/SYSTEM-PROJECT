@@ -74,7 +74,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
   const navigation: NavItem[] =
     sessionUser?.role === "super-admin"
-      ? [...baseNavigation, { href: "/admin-users", label: "Admin Access", icon: <NavIcon path={NAV_ICONS["/admin-users"]} /> }]
+      ? [...baseNavigation, { href: "/office-payroll", label: "Office Payroll", icon: <NavIcon path={NAV_ICONS["/payroll"]} /> }, { href: "/admin-users", label: "Admin Access", icon: <NavIcon path={NAV_ICONS["/admin-users"]} /> }]
       : baseNavigation;
 
   const isActive = (path: string) => {
