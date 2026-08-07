@@ -17,7 +17,68 @@ router.post('/calculate', (req, res) => {
   }
 });
 
-router.post('/office/save', requireSuperAdmin, async (req, res) => {
+router.get('/office/by-payout-date', requireSuperAdmin, async (req, res) => {
+  try {
+    const payoutDate = String(req.query?.payoutDate || '').trim();
+    if (!payoutDate) {
+      return res.status(400).json({ message: 'payoutDate is required' });
+    }
+
+    const { data: runs, error: runError } = await supabase
+      .from('payroll_runs')
+      .select('id, run_code, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
+      .eq('payout_date', payoutDate)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (runError) throw runError;
+    const officeRun = Array.isArray(runs) && runs.length > 0 ? runs[0] : null;
+
+    if (!officeRun) {
+      return res.status(404).json({ message: 'No office payroll found for that payout date' });
+    }
+
+    const { data: items, error: itemsError } = await supabase
+      .from('payroll_items')
+      .select('employee_id, hourly_rate, regular_hours, regular_pay, overtime_hours, overtime_pay, allowances, bonus, gross_pay, sss_deduction, pagibig_deduction, philhealth_deduction, other_deductions, total_deductions, net_pay, remarks')
+      .eq('payroll_run_id', officeRun.id)
+      .order('employee_id', { ascending: true });
+
+    if (itemsError) throw itemsError;
+
+    const notes = typeof officeRun.notes === 'string' ? JSON.parse(officeRun.notes) : (officeRun.notes || {});
+    const snapshotRows = Array.isArray((notes as any)?.rows) ? (notes as any).rows : null;
+    const rows = snapshotRows && snapshotRows.length > 0 ? snapshotRows : Array.isArray(items) ? items.map((item: any) => ({
+      id: String(item.employee_id || ''),
+      employeeId: String(item.employee_id || ''),
+      monthlySalary: Number(item.hourly_rate || 0),
+      days: Number(item.regular_hours || 0),
+      proratedAmount: Number(item.regular_pay || 0),
+      otHours: Number(item.overtime_hours || 0),
+      otPay: Number(item.overtime_pay || 0),
+      allowances: Number(item.allowances || 0),
+      bonus: Number(item.bonus || 0),
+      gross: Number(item.gross_pay || 0),
+      sssAmount: Number(item.sss_deduction || 0),
+      pagIbigAmount: Number(item.pagibig_deduction || 0),
+      philHealthAmount: Number(item.philhealth_deduction || 0),
+      additionalDeduction: Number(item.other_deductions || 0),
+      totalDeduction: Number(item.total_deductions || 0),
+      netSalary: Number(item.net_pay || 0),
+      remarks: String(item.remarks || ''),
+    })) : [];
+
+    res.json({
+      run: officeRun,
+      rows,
+      notes,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load office payroll', error: (error as Error).message });
+  }
+});
+
+router.post('/office/save', requireSuperAdmin, async (req, res) => { 
   try {
     const payPeriod = String(req.body?.payPeriod || 'Monthly').trim();
     const payoutDate = String(req.body?.payoutDate || '').trim();
@@ -83,7 +144,7 @@ router.post('/office/save', requireSuperAdmin, async (req, res) => {
         sss_deduction: Number(row.sssAmount) || 0,
         pagibig_deduction: Number(row.pagIbigAmount) || 0,
         philhealth_deduction: Number(row.philHealthAmount) || 0,
-        other_deductions: Number(row.cashAdvance || 0) + Number(row.tax || 0) + Number(row.sssLoan || 0) + Number(row.additionalDeduction || 0),
+        other_deductions: Number(row.tax || 0) + Number(row.sssLoan || 0) + Number(row.additionalDeduction || 0),
         total_deductions: Number(row.totalDeduction) || 0,
         net_pay: Number(row.netSalary) || 0,
         remarks: String(row.remarks || ''),
@@ -460,7 +521,7 @@ router.get('/project-sync', async (req, res) => {
                 totalSalary: overrideMap.get(String(employee.id))?.total_salary ?? null,
                 totalDeduction: overrideMap.get(String(employee.id))?.total_deduction ?? null,
                 netSalary: overrideMap.get(String(employee.id))?.net_salary ?? null,
-                cashAdvance: overrideMap.get(String(employee.id))?.cash_advance ?? null,
+
                 taxAmount: overrideMap.get(String(employee.id))?.tax_amount ?? null,
                 additionalDeduction: overrideMap.get(String(employee.id))?.additional_deduction ?? null,
               }
@@ -517,7 +578,7 @@ router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
       totalSalary,
       totalDeduction,
       netSalary,
-      cashAdvance,
+
       taxAmount,
       additionalDeduction,
       remarks,
@@ -544,7 +605,7 @@ router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
         total_salary: totalSalary ?? null,
         total_deduction: totalDeduction ?? null,
         net_salary: netSalary ?? null,
-        cash_advance: cashAdvance ?? null,
+
         tax_amount: taxAmount ?? null,
         additional_deduction: additionalDeduction ?? null,
         remarks: remarks || null,

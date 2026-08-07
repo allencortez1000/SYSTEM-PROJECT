@@ -26,6 +26,7 @@ type Row = {
   days?: number;
   otHours?: number;
   cashAdvance?: number;
+  cashAdvanceDeduction?: number;
   sssAmount?: number;
   pagIbigAmount?: number;
   philHealthAmount?: number;
@@ -130,18 +131,18 @@ export default function PayslipPage() {
         </div>
 
         <style jsx global>{`
-          @page { size: legal landscape; margin: 6mm; }
+          @page { size: legal landscape; margin: 5mm; }
           @media print { .print-hidden { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
           .pay-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: Arial, Helvetica, sans-serif; }
-          .pay-table td { border: 1px solid #2457c5; padding: 2px 4px; font-size: 9px; line-height: 1.08; vertical-align: middle; }
-          .title { font-size: 14px; font-weight: 700; text-align: center; color: #2457c5; }
-          .subtitle { text-align: center; font-weight: 700; }
+          .pay-table td { border: 0.7px solid #2457c5; padding: 1px 3px; font-size: 7.3px; line-height: 1; vertical-align: middle; }
+          .title { font-size: 11px; font-weight: 800; text-align: center; color: #2457c5; }
+          .subtitle { text-align: center; font-weight: 700; font-size: 7.7px; }
           .label { font-weight: 700; }
-          .section { color: #2457c5; font-weight: 700; text-align: center; }
+          .section { color: #2457c5; font-weight: 800; text-align: center; font-size: 7.8px; }
           .right { text-align: right; }
           .center { text-align: center; }
-          .logo { width: 72px; height: 72px; object-fit: contain; }
-          .sig-row td { height: 34px; vertical-align: bottom; }
+          .logo { width: 58px; height: 58px; object-fit: contain; }
+          .sig-row td { height: 28px; vertical-align: bottom; }
         `}</style>
 
         <table className="pay-table">
@@ -174,7 +175,7 @@ export default function PayslipPage() {
             <tr><td className="label">OT PAY</td><td className="right">{money(computed.otPay)}</td><td className="label">PAGIBIG LOAN</td><td className="right">{money(0)}</td><td className="label">PAG-IBIG NO.</td></tr>
             <tr><td className="label">SSS LOAN</td><td className="right">{money(0)}</td><td className="label">AMICA CREDITS</td><td className="right">{money(0)}</td><td className="label">{text(employee.pagIbigNo)}</td></tr>
             <tr><td className="label">HOLIDAY</td><td className="right">{money(0)}</td><td className="label">CASH ADVANCE</td><td className="right">{money(row.cashAdvance)}</td><td className="label">TIN NO.</td></tr>
-            <tr><td className="label">LEAVE / ABSENCES</td><td className="right">{money(0)}</td><td className="label">C/A BALANCE</td><td className="right">{money(0)}</td><td className="label">{text(employee.tinNo)}</td></tr>
+            <tr><td className="label">CASH ADVANCE DEDUCTION</td><td className="right">{money(row.cashAdvanceDeduction)}</td><td className="label">CASH BALANCE</td><td className="right">{money(number(row.cashAdvance) - number(row.cashAdvanceDeduction))}</td><td className="label">{text(employee.tinNo)}</td></tr>
             <tr><td className="label right">TOTAL EARNINGS:</td><td className="right">{money(computed.gross)}</td><td className="label">TOTAL DEDUCTIONS</td><td className="right">{money(computed.totalDeduction)}</td><td className="label">SIL USED</td></tr>
             <tr><td colSpan={4} className="label">TOTAL NET PAY: {money(computed.netSalary)}</td><td className="label">{money(employee.silUsed)} / BAL {money(employee.silBalance)}</td></tr>
             <tr className="sig-row"><td className="label">Prepared by:</td><td className="center">{text(preparedBy)}</td><td className="center">{text(accountingBy)}</td><td className="label">Signature</td><td className="label">{text(employee.fullName)}</td></tr>

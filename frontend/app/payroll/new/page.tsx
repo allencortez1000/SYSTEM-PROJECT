@@ -330,6 +330,19 @@ export default function NewPayrollPage() {
     return token ? { Authorization: `Bearer ${token}` } : null;
   }, []);
 
+  const fetchEmployeeDetail = useCallback(async (employeeId: string) => {
+    if (!employeeId) return null;
+    try {
+      const authHeaders = getAuthHeaders();
+      const response = await fetch(`${API_BASE}/employees/${encodeURIComponent(employeeId)}`, authHeaders ? { headers: authHeaders } : undefined);
+      const data = await response.json().catch(() => null);
+      if (!response.ok) return null;
+      return data?.employee || null;
+    } catch {
+      return null;
+    }
+  }, [getAuthHeaders]);
+
   const loadEmployees = useCallback(async () => {
     setLoadingEmployees(true);
     setError(null);
@@ -425,6 +438,30 @@ export default function NewPayrollPage() {
 
     void loadEmployees();
   }, [loadEmployees, payrollStorageKey]);
+
+  useEffect(() => {
+    if (employees.length === 0 || rows.length === 0) return;
+
+    const employeeMap = new Map<string, Employee>();
+    employees.forEach((employee) => {
+      employeeMap.set(String(employee.id).trim(), employee);
+      employeeMap.set(String(employee.fullName || "").trim().toLowerCase(), employee);
+    });
+
+    setRows((currentRows) =>
+      currentRows.map((row) => {
+        const rowNameKey = String(row.name || "").trim().toLowerCase();
+        const employee = employeeMap.get(String(row.employeeId || "").trim()) || employeeMap.get(rowNameKey);
+        if (!employee) return row;
+        return {
+          ...row,
+          sssManual: employee.sssAmount ?? row.sssManual ?? 0,
+          pagIbigManual: employee.pagIbigAmount ?? row.pagIbigManual ?? 0,
+          philHealthManual: employee.philHealthAmount ?? row.philHealthManual ?? 0,
+        };
+      }),
+    );
+  }, [employees, rows.length]);
 
   useEffect(() => {
     try {
@@ -706,35 +743,38 @@ export default function NewPayrollPage() {
     }
   }
 
-  function selectEmployee(rowId: string, employeeName: string) {
+  async function selectEmployee(rowId: string, employeeName: string) {
     const formatted = formatSurnameFirst(employeeName);
     const employee = employees.find((item) => item.fullName === formatted) || employees.find((item) => item.fullName === employeeName);
-    const employeeSalary = employee?.salary ? Number(employee.salary) : 0;
-    const estimatedDailyRate = employee?.salaryBasis?.toLowerCase() === "daily"
+    const detail = await fetchEmployeeDetail(employee?.id || "");
+    const source = detail || employee;
+    const employeeSalary = source?.salary ? Number(source.salary) : 0;
+    const estimatedDailyRate = source?.salaryBasis?.toLowerCase() === "daily"
       ? employeeSalary || undefined
       : employeeSalary
         ? Math.round(employeeSalary / 26)
         : undefined;
+    const currentRow = rows.find((row) => row.id === rowId);
 
-  updateRow(rowId, {
-    employeeId: employee?.id,
-    name: formatted,
-    position: employee?.position || "Labor",
-    syncedFromAttendance: false,
-    ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
-    hasSss: employee?.hasSss ?? true,
-    hasPagIbig: employee?.hasPagIbig ?? true,
-    hasPhilHealth: employee?.hasPhilHealth ?? true,
-    hasSssLoan: employee?.hasSssLoan ?? true,
-    hasTax: employee?.hasTax ?? true,
-    hasAdditionalDeduction: employee?.hasAdditionalDeduction ?? true,
-    sssManual: employee?.sssAmount ?? 0,
-    pagIbigManual: employee?.pagIbigAmount ?? 0,
-    philHealthManual: employee?.philHealthAmount ?? 0,
-    sssLoan: employee?.sssLoanAmount ?? 0,
-    tax: employee?.taxAmount ?? 0,
-    additionalDeduction: employee?.additionalDeductionAmount ?? 0,
-  });
+    updateRow(rowId, {
+      employeeId: source?.id || employee?.id,
+      name: formatted,
+      position: source?.position || "Labor",
+      syncedFromAttendance: false,
+      ...(estimatedDailyRate ? { dailyRate: estimatedDailyRate } : {}),
+      hasSss: source?.hasSss ?? true,
+      hasPagIbig: source?.hasPagIbig ?? true,
+      hasPhilHealth: source?.hasPhilHealth ?? true,
+      hasSssLoan: source?.hasSssLoan ?? true,
+      hasTax: source?.hasTax ?? true,
+      hasAdditionalDeduction: source?.hasAdditionalDeduction ?? true,
+      sssManual: source?.sssAmount ?? currentRow?.sssManual ?? 0,
+      pagIbigManual: source?.pagIbigAmount ?? currentRow?.pagIbigManual ?? 0,
+      philHealthManual: source?.philHealthAmount ?? currentRow?.philHealthManual ?? 0,
+      sssLoan: source?.sssLoanAmount ?? 0,
+      tax: source?.taxAmount ?? 0,
+      additionalDeduction: source?.additionalDeductionAmount ?? 0,
+    });
   }
 
   useEffect(() => {
@@ -797,9 +837,14 @@ export default function NewPayrollPage() {
 
       const rowsWithFallbacks = await Promise.all(
         workers.map(async (worker): Promise<WorkerRow> => {
-          const employee = employees.find((item) => item.id === worker.employeeId)
-            || employees.find((item) => item.fullName.toLowerCase() === worker.employeeName.toLowerCase());
-          const displayName = employee?.fullName || formatSurnameFirst(worker.employeeName);
+          const workerEmployeeId = String(worker.employeeId || "").trim();
+          const workerEmployeeName = String(worker.employeeName || "").trim().toLowerCase();
+          const employee = employees.find((item) => String(item.id || "").trim() === workerEmployeeId)
+            || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === workerEmployeeName)
+            || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === String(formatSurnameFirst(worker.employeeName)).trim().toLowerCase());
+          const detail = await fetchEmployeeDetail(workerEmployeeId || employee?.id || "");
+          const source = detail || employee;
+          const displayName = source?.fullName || formatSurnameFirst(worker.employeeName);
 
           let paidDays = Number(worker.attendance?.paidDays || 0);
           let overtimeHours = Number(worker.attendance?.overtimeHours || 0);
@@ -878,12 +923,12 @@ export default function NewPayrollPage() {
             days: paidDays,
             otHours: overtimeHours,
             holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
-            sssManual: employee?.sssAmount ?? 0,
-            pagIbigManual: employee?.pagIbigAmount ?? 0,
-            philHealthManual: employee?.philHealthAmount ?? 0,
-            sssLoan: employee?.sssLoanAmount ?? 0,
-            tax: employee?.taxAmount ?? 0,
-            additionalDeduction: employee?.additionalDeductionAmount ?? 0,
+            sssManual: worker.payrollSnapshot?.sssAmount != null ? Number(worker.payrollSnapshot.sssAmount) || 0 : (source?.sssAmount ?? 0),
+            pagIbigManual: worker.payrollSnapshot?.pagIbigAmount != null ? Number(worker.payrollSnapshot.pagIbigAmount) || 0 : (source?.pagIbigAmount ?? 0),
+            philHealthManual: worker.payrollSnapshot?.philHealthAmount != null ? Number(worker.payrollSnapshot.philHealthAmount) || 0 : (source?.philHealthAmount ?? 0),
+            sssLoan: source?.sssLoanAmount ?? 0,
+            tax: source?.taxAmount ?? 0,
+            additionalDeduction: source?.additionalDeductionAmount ?? 0,
             cashAdvance: worker.payrollSnapshot?.cashAdvance != null ? Number(worker.payrollSnapshot.cashAdvance) || 0 : 0,
             remarks: worker.remarks || "Synced from attendance",
             hasSss: employee?.hasSss ?? true,
@@ -1540,14 +1585,17 @@ export default function NewPayrollPage() {
                         <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">PhilHealth</span>
                           <input type="number" value={row.philHealthManual ?? 0} onChange={(event) => updateRow(row.id, { philHealthManual: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                          <span className="mt-1 inline-flex rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">From employee profile</span>
                         </label>
                         <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">Pag-IBIG</span>
                           <input type="number" value={row.pagIbigManual ?? 0} onChange={(event) => updateRow(row.id, { pagIbigManual: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                          <span className="mt-1 inline-flex rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">From employee profile</span>
                         </label>
                         <label className="block rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-600">SSS</span>
                           <input type="number" value={row.sssManual ?? 0} onChange={(event) => updateRow(row.id, { sssManual: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                          <span className="mt-1 inline-flex rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">From employee profile</span>
                         </label>
                         <label className="block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:col-span-2 xl:col-span-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">SSS loan</span>
