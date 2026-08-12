@@ -842,7 +842,7 @@ export default function NewPayrollPage() {
           const employee = employees.find((item) => String(item.id || "").trim() === workerEmployeeId)
             || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === workerEmployeeName)
             || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === String(formatSurnameFirst(worker.employeeName)).trim().toLowerCase());
-          const detail = await fetchEmployeeDetail(workerEmployeeId || employee?.id || "");
+          const detail = workerEmployeeId ? await fetchEmployeeDetail(workerEmployeeId) : null;
           const source = detail || employee;
           const displayName = source?.fullName || formatSurnameFirst(worker.employeeName);
 
