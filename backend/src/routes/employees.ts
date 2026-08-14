@@ -542,8 +542,6 @@ router.post('/', async (req, res) => {
 
     const positionId = await getOrCreatePosition(organizationId, departmentId, position || 'Employee');
     const employeeNo = `EMP-${Date.now()}`;
-    const fullNameValue = canonicalFullName || cleanedFullName || `${cleanedLastName}, ${cleanedFirstName}`;
-
     const { data, error } = await supabase
       .from('employees')
       .insert({
@@ -551,7 +549,6 @@ router.post('/', async (req, res) => {
         employee_no: employeeNo,
         first_name: cleanedFirstName,
         last_name: cleanedLastName,
-        full_name: fullNameValue,
         email,
         department_id: departmentId,
         position_id: positionId,

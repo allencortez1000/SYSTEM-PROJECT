@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 
 import { useNotification } from "../components/notification";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
@@ -387,7 +388,56 @@ export default function OfficePayrollPage() {
     }
   }
 
-  function exportExcel() { 
+  function exportExcel() {
+    if (sortedOfficeEmployees.length === 0) {
+      notify("No Main Office employees to export");
+      return;
+    }
+
+    const rawRows = sortedOfficeEmployees.map((employee) => {
+      const row = rows.find((item) => item.employeeId === employee.employeeId || item.id === employee.id);
+      const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
+      return {
+        "Employee Name": employee.fullName,
+        "Employee ID": employee.employeeId || "",
+        Department: employee.department || "",
+        Position: employee.position || "",
+        "Monthly Salary": row?.monthlySalary || 0,
+        Days: row?.days || 0,
+        Holiday: row?.holiday || 0,
+        SIL: row?.sil || 0,
+        "Late Minutes": row?.lateMinutes || 0,
+        "OT Hours": row?.otHours || 0,
+        Bonus: row?.bonus || 0,
+        Allowances: row?.allowances || 0,
+        "Cash Advance": row?.cashAdvance || 0,
+        "Cash Advance Deduction": row?.cashAdvanceDeduction || 0,
+        Tax: row?.tax || 0,
+        "Amica Credits": row?.amicaCredits || 0,
+        "SSS Loan": row?.sssLoan || 0,
+        "Pag-IBIG Loan": row?.pagIbigLoan || 0,
+        Remarks: row?.remarks || "",
+        "SSS Amount": row?.sssAmount || 0,
+        "Pag-IBIG Amount": row?.pagIbigAmount || 0,
+        "PhilHealth Amount": row?.philHealthAmount || 0,
+        "Additional Deduction": row?.additionalDeduction || 0,
+        "Daily Rate": computed.dailyRate,
+        "Effective Days": computed.effectiveDays,
+        "Prorated Amount": computed.proratedAmount,
+        "OT Pay": computed.otPay,
+        Gross: computed.gross,
+        "Total Deduction": computed.totalDeduction,
+        "Net Salary": computed.netSalary,
+      };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rawRows), "Office Payroll");
+    XLSX.writeFile(wb, `office-payroll-${String(payPeriod).toLowerCase().replace(/\s+/g, "-")}.xlsx`);
+    notify("Payroll Excel exported");
+  }
+
+  function exportPayslipExcel() {
     if (sortedOfficeEmployees.length === 0) {
       notify("No Main Office employees to export");
       return;
@@ -553,7 +603,7 @@ export default function OfficePayrollPage() {
   }
 
   function handlePrint() {
-    exportExcel();
+    exportPayslipExcel();
   }
 
   async function releasePayroll() {
@@ -660,7 +710,8 @@ export default function OfficePayrollPage() {
           <button type="button" onClick={releasePayroll} className="secondary-button">
             {released ? "Released" : "Mark for release"}
           </button>
-          <button type="button" onClick={exportExcel} className="secondary-button">Generate Payslip</button>
+          <button type="button" onClick={exportExcel} className="secondary-button">Export Excel</button>
+          <button type="button" onClick={exportPayslipExcel} className="secondary-button">Generate Payslip</button>
           <button type="button" onClick={handlePrint} className="secondary-button">Print</button>
         </div>
       </div>

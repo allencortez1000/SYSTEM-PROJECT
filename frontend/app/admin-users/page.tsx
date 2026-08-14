@@ -95,7 +95,8 @@ export default function AdminUsersPage() {
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
 
   // Worker form state
-  const [workerFullName, setWorkerFullName] = useState("");
+  const [workerFirstName, setWorkerFirstName] = useState("");
+  const [workerLastName, setWorkerLastName] = useState("");
   const [workerEmail, setWorkerEmail] = useState("");
   const [workerDepartment, setWorkerDepartment] = useState("");
   const [workerPosition, setWorkerPosition] = useState("");
@@ -358,15 +359,17 @@ export default function AdminUsersPage() {
     try {
       const token = localStorage.getItem("hr_token");
       if (!token) throw new Error("Missing login token. Please sign in again.");
-      if (!workerFullName.trim()) {
-        throw new Error("Worker full name is required.");
+      if (!workerFirstName.trim() || !workerLastName.trim()) {
+        throw new Error("First name and last name are required.");
       }
       if (!workerProjectSite.trim()) {
         throw new Error("Project site is required.");
       }
 
       const payload = {
-        fullName: workerFullName,
+        fullName: `${workerLastName.trim()}, ${workerFirstName.trim()}`,
+        firstName: workerFirstName.trim(),
+        lastName: workerLastName.trim(),
         email: workerEmail.trim() || null,
         department: workerDepartment || "Unassigned",
         position: workerPosition || "Worker",
@@ -431,7 +434,8 @@ export default function AdminUsersPage() {
       }
 
       setEditingEmployeeId(null);
-      setWorkerFullName("");
+      setWorkerFirstName("");
+      setWorkerLastName("");
       setWorkerEmail("");
       setWorkerDepartment("");
       setWorkerPosition("Worker");
@@ -466,7 +470,15 @@ export default function AdminUsersPage() {
 
   function startEditWorker(employee: Employee) {
     setEditingEmployeeId(employee.id);
-    setWorkerFullName(employee.fullName);
+    const parts = String(employee.fullName || "").split(/,\s*/);
+    if (parts.length >= 2) {
+      setWorkerFirstName(parts.slice(1).join(", ").trim());
+      setWorkerLastName(parts[0].trim());
+    } else {
+      const nameParts = String(employee.fullName || "").trim().split(/\s+/).filter(Boolean);
+      setWorkerFirstName(nameParts.slice(1).join(" ") || nameParts[0] || "");
+      setWorkerLastName(nameParts[0] || "");
+    }
     setWorkerEmail(employee.email);
     setWorkerDepartment(employee.department);
     setWorkerPosition(employee.position);
@@ -946,13 +958,23 @@ export default function AdminUsersPage() {
 
             <form onSubmit={handleCreateWorker} className="mt-6 space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block sm:col-span-2">
-                  <span className="text-sm font-bold text-slate-700">Full name</span>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-700">First name</span>
                   <input
-                    value={workerFullName}
-                    onChange={(event) => setWorkerFullName(event.target.value)}
+                    value={workerFirstName}
+                    onChange={(event) => setWorkerFirstName(event.target.value)}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                    placeholder="Maria Santos"
+                    placeholder="Maria"
+                    required
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-700">Last name</span>
+                  <input
+                    value={workerLastName}
+                    onChange={(event) => setWorkerLastName(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                    placeholder="Santos"
                     required
                   />
                 </label>

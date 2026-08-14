@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { useNotification } from "../components/notification";
@@ -81,7 +82,7 @@ function parseTimeToMinutes(value: string) {
   if (!match) return null; return Number(match[1]) * 60 + Number(match[2]);
 }
 function computeGrossHours(checkIn: string, checkOut: string) { const s = parseTimeToMinutes(checkIn); const e = parseTimeToMinutes(checkOut); if (s === null || e === null || e <= s) return 0; return (e - s) / 60; }
-function computeWorkedHours(checkIn: string, checkOut: string, department?: string | null) { const gross = computeGrossHours(checkIn, checkOut); if (gross <= 0) return 0; const isConstruction = String(department || "").trim().toLowerCase() === "construction"; return Math.floor(Math.max(0, isConstruction && gross >= 8 ? gross - 1 : gross)); }
+function computeWorkedHours(checkIn: string, checkOut: string, department?: string | null, projectSite?: string | null) { const gross = computeGrossHours(checkIn, checkOut); if (gross <= 0) return 0; const dept = String(department || "").trim().toLowerCase(); const site = String(projectSite || "").trim().toLowerCase(); const usesLunchDeduction = dept === "construction" || (dept === "rbac" && site === "main office"); return Math.floor(Math.max(0, usesLunchDeduction && gross >= 8 ? gross - 1 : gross)); }
 function computeAutoOvertime(checkIn: string, checkOut: string, department?: string | null) {
   const grossHours = computeGrossHours(checkIn, checkOut);
   if (grossHours <= 0) return 0;
@@ -113,7 +114,7 @@ function isLockedAttendanceStatus(status?: string) {
 }
 
 function getDefaultDisplayStatus(date: string) {
-  return parseIsoDate(date).getDay() === 0 ? "Rest Day" : "Present";
+  return parseIsoDate(date).getDay() === 0 ? "Rest Day" : "";
 }
 
 function getDisplayStatus(record: AttendanceRecord | null | undefined, date: string) {
@@ -161,6 +162,7 @@ export default function AttendancePage() {
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [assignmentSavingId, setAssignmentSavingId] = useState<string | null>(null);
   const [editor, setEditor] = useState<{ employeeId: string; date: string } | null>(null);
+  const [editorAnchorRect, setEditorAnchorRect] = useState<{ top: number; left: number; right: number; bottom: number; width: number; height: number } | null>(null);
   const [editorPosition, setEditorPosition] = useState<{ top: number; left: number } | null>(null);
   const [editorPlacement, setEditorPlacement] = useState<"left" | "right">("right");
   const [deleteTarget, setDeleteTarget] = useState<{ employeeId: string; date: string } | null>(null);
@@ -250,7 +252,7 @@ export default function AttendancePage() {
     const key = getDraftKey(employeeId, date); const existing = getSavedRecord(employeeId, date);
     const existingStatus = existing?.status as AttendanceStatus | undefined;
     return drafts[key] || {
-      status: existingStatus || getDefaultDisplayStatus(date),
+      status: existingStatus || DEFAULT_DRAFT.status,
       checkIn: existing?.checkIn || DEFAULT_DRAFT.checkIn,
       checkOut: existing?.checkOut || DEFAULT_DRAFT.checkOut,
       notes: existing?.notes || "",
@@ -343,16 +345,41 @@ export default function AttendancePage() {
             ? 8
             : draft.status === "Halfday"
               ? 4
-              : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department);
+              : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department, selectedProject || assignments[employee.id] || "Main Office");
         return { employeeId, employeeName: employee.fullName, date, status: draft.status, checkIn: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkIn, checkOut: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite: selectedProject, periodMode, workedHours, overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode };
       }).filter(Boolean) as any[];
       if (payloads.length === 0) { notify("No changes to save"); return; }
-      const results = await Promise.all(payloads.map((payload) => fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }).then(async (res) => { const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data?.message || `Failed to save ${payload.employeeName}`); return res; })));
+      const results = await Promise.all(payloads.map((payload) => fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }).then(async (res) => { const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data?.message || data?.error || `Failed to save ${payload.employeeName} (${res.status})`); return res; })));
       void results;
       const refreshed = await fetch(`${API_BASE}/attendance`, { headers }); const refreshedData = await refreshed.json().catch(() => ({})); if (refreshed.ok) setRecords(refreshedData?.attendance || []);
       setDrafts({}); triggerAppDataRefresh(["attendance_records"]); notify("Attendance changes saved");
     } catch (e) { setError((e as Error).message); } finally { setSaving(false); }
   };
+
+  const clampEditorPosition = useCallback((rect: { top: number; left: number; right: number; bottom: number; width: number; height: number }) => {
+    if (typeof window === "undefined") return null;
+
+    const viewportPadding = 24;
+    const gap = 8;
+    const popupWidth = Math.min(320, window.innerWidth - viewportPadding * 2);
+    const popupHeight = Math.min(540, window.innerHeight - viewportPadding * 2);
+    const maxLeft = window.innerWidth - popupWidth - viewportPadding;
+
+    const shouldOpenLeft = rect.right > window.innerWidth * 0.55 || rect.left + popupWidth + gap > window.innerWidth - viewportPadding;
+    let left = shouldOpenLeft ? rect.left - popupWidth - gap : rect.right + gap;
+    let placement: "left" | "right" = shouldOpenLeft ? "left" : "right";
+
+    left = Math.max(viewportPadding, Math.min(left, maxLeft));
+    if (left + popupWidth > window.innerWidth - viewportPadding) {
+      left = window.innerWidth - popupWidth - viewportPadding;
+    }
+
+    let top = rect.top - 8;
+    const maxTop = window.innerHeight - popupHeight - viewportPadding;
+    top = Math.max(viewportPadding, Math.min(top, maxTop));
+
+    return { top, left, placement };
+  }, []);
 
   const openEditor = (employeeId: string, date: string, event?: React.MouseEvent<HTMLElement>) => {
     const record = getSavedRecord(employeeId, date);
@@ -363,35 +390,27 @@ export default function AttendancePage() {
 
     if (event) {
       const rect = event.currentTarget.getBoundingClientRect();
-      const viewportPadding = 24;
-      const gap = 8;
-      const popupWidth = Math.min(320, window.innerWidth - viewportPadding * 2);
-      const popupHeight = Math.min(540, window.innerHeight - viewportPadding * 2);
-      const maxLeft = window.innerWidth - popupWidth - viewportPadding;
-
-      const shouldOpenLeft = rect.right > window.innerWidth * 0.55 || rect.left + popupWidth + gap > window.innerWidth - viewportPadding;
-      let left = shouldOpenLeft ? rect.left - popupWidth - gap : rect.right + gap;
-      let placement: "left" | "right" = shouldOpenLeft ? "left" : "right";
-
-      left = Math.max(viewportPadding, Math.min(left, maxLeft));
-      if (left + popupWidth > window.innerWidth - viewportPadding) {
-        left = window.innerWidth - popupWidth - viewportPadding;
-      }
-
-      let top = rect.top - 8;
-      const maxTop = window.innerHeight - popupHeight - viewportPadding;
-      top = Math.max(viewportPadding, Math.min(top, maxTop));
-
-      setEditorPosition({ top, left });
-      setEditorPlacement(placement);
+      const nextAnchorRect = {
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      };
+      const positioned = clampEditorPosition(nextAnchorRect);
+      setEditorAnchorRect(nextAnchorRect);
+      setEditorPosition(positioned ? { top: positioned.top, left: positioned.left } : null);
+      setEditorPlacement(positioned?.placement || "right");
     } else {
+      setEditorAnchorRect(null);
       setEditorPosition(null);
       setEditorPlacement("right");
     }
 
     setEditor({ employeeId, date });
   };
-  const saveSingle = async () => { if (!editor) return; const employee = employees.find((e) => e.id === editor.employeeId); if (!employee) return; setSaving(true); try { const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; } const draft = ensureDraft(editor.employeeId, editor.date); const payload = { employeeId: employee.id, employeeName: employee.fullName, date: editor.date, status: draft.status, checkIn: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkIn, checkOut: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite: selectedProject, periodMode, workedHours: draft.status === "Absent" || draft.status === "Rest Day" ? 0 : draft.status === "Leave" ? 8 : draft.status === "Halfday" ? 4 : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department), overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode }; const res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data?.message || "Failed to save attendance"); setEditor(null); await loadData(); notify("Attendance saved"); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } };
+  const saveSingle = async () => { if (!editor) return; const employee = employees.find((e) => e.id === editor.employeeId); if (!employee) return; setSaving(true); try { const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; } const draft = ensureDraft(editor.employeeId, editor.date); const projectSite = (selectedProject || assignments[employee.id] || "Main Office").trim() || "Main Office"; const payload = { employeeId: employee.id, employeeName: employee.fullName, date: editor.date, status: draft.status, checkIn: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkIn, checkOut: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite, periodMode, workedHours: draft.status === "Absent" || draft.status === "Rest Day" ? 0 : draft.status === "Leave" ? 8 : draft.status === "Halfday" ? 4 : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department), overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode }; let res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }); let data = await res.json().catch(() => ({})); if (!res.ok && data?.message === "Employee not found for attendance save") { res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify({ ...payload, employeeId: undefined }) }); data = await res.json().catch(() => ({})); } if (!res.ok) throw new Error(data?.message || data?.error || `Failed to save attendance (${res.status})`); setEditor(null); setEditorAnchorRect(null); setEditorPosition(null); await loadData(); notify("Attendance saved"); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } };
   const deleteAttendance = async () => { if (!deleteTarget) return; setSaving(true); try { const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; } const res = await fetch(`${API_BASE}/attendance`, { method: "DELETE", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(deleteTarget) }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data?.message || "Failed to delete attendance"); setDeleteTarget(null); await loadData(); notify("Attendance deleted"); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } };
 
   const exportExcel = () => {
@@ -410,16 +429,35 @@ export default function AttendancePage() {
   function getLiveWorkedHours(employeeId: string, date: string) {
     const employee = employees.find((item) => item.id === employeeId);
     const draft = ensureDraft(employeeId, date);
+    const projectSite = selectedProject || assignments[employeeId] || "Main Office";
 
     if (draft.status === "Absent" || draft.status === "Rest Day") return 0;
     if (draft.status === "Leave") return 8;
     if (draft.status === "Halfday") return 4;
-    return computeWorkedHours(draft.checkIn, draft.checkOut, employee?.department);
+    return computeWorkedHours(draft.checkIn, draft.checkOut, employee?.department, projectSite);
   }
 
-  const editorOverlay = editor && editorPosition ? (
+  useEffect(() => {
+    if (!editor || !editorAnchorRect) return;
+    const handleResize = () => {
+      const positioned = clampEditorPosition(editorAnchorRect);
+      setEditorPosition(positioned ? { top: positioned.top, left: positioned.left } : null);
+      setEditorPlacement(positioned?.placement || "right");
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+    handleResize();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+    };
+  }, [clampEditorPosition, editor, editorAnchorRect]);
+
+  const editorOverlay = editor && editorPosition && typeof document !== "undefined" ? createPortal(
     <>
-      <div className="fixed inset-0 z-40 bg-slate-950/40" onClick={() => { setEditor(null); setEditorPosition(null); }} />
+      <div className="fixed inset-0 z-40 bg-slate-950/40" onClick={() => { setEditor(null); setEditorAnchorRect(null); setEditorPosition(null); }} />
       <div
         className="fixed z-50 w-[320px] max-w-[calc(100vw-48px)] max-h-[calc(100vh-48px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         style={{
@@ -434,7 +472,7 @@ export default function AttendancePage() {
             <div className="truncate text-base font-black text-slate-950">{employees.find((e) => e.id === editor.employeeId)?.fullName}</div>
             <div className="text-[11px] text-slate-500">{formatDateFull(editor.date)}</div>
           </div>
-          <button onClick={() => { setEditor(null); setEditorPosition(null); }} className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">Close</button>
+          <button onClick={() => { setEditor(null); setEditorAnchorRect(null); setEditorPosition(null); }} className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold">Close</button>
         </div>
 
         <div className="max-h-[calc(100vh-180px)] overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
@@ -456,12 +494,12 @@ export default function AttendancePage() {
 
         <div className="sticky bottom-0 border-t bg-white px-4 py-4 sm:px-5">
           <div className="flex justify-end gap-3">
-            <button onClick={() => { setEditor(null); setEditorPosition(null); }} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold">Cancel</button>
+            <button onClick={() => { setEditor(null); setEditorAnchorRect(null); setEditorPosition(null); }} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold">Cancel</button>
             <button onClick={saveSingle} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Save Changes</button>
           </div>
         </div>
       </div>
-    </>
+    </>, document.body
   ) : null;
 
   return <div className="space-y-4 p-4 md:p-6">
@@ -532,7 +570,7 @@ export default function AttendancePage() {
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
                     <div className="rounded-xl bg-slate-50 px-2 py-2"><div className="font-bold text-slate-400">Project</div><div className="truncate">{assignments[employee.id] || "Main Office"}</div></div>
-                    <div className="rounded-xl bg-slate-50 px-2 py-2"><div className="font-bold text-slate-400">Hours</div><div>{record?.workedHours ?? "—"}</div></div>
+                    <div className="rounded-xl bg-slate-50 px-2 py-2"><div className="font-bold text-slate-400">Hours</div><div>{record ? computeWorkedHours(record.checkIn || "", record.checkOut || "", employee.department, assignments[employee.id] || "Main Office") : "—"}</div></div>
                   </div>
                 </button>
               );
@@ -565,7 +603,10 @@ export default function AttendancePage() {
                   const regularHours = weeklyRecords.reduce((sum, record, index) => {
                     const date = visibleDates[index];
                     const status = getDisplayStatus(record, date);
-                    if (status === "Present" || status === "Halfday" || status === "Remote") return sum + Number(record?.workedHours || (status === "Halfday" ? 4 : 0));
+                    const projectSite = assignments[employee.id] || "Main Office";
+                    if (status === "Present" || status === "Halfday" || status === "Remote") {
+                      return sum + (record ? computeWorkedHours(record.checkIn || "", record.checkOut || "", employee.department, projectSite) : (status === "Halfday" ? 4 : 0));
+                    }
                     return sum;
                   }, 0);
                   const overtimeHours = weeklyRecords.reduce((sum, record) => sum + Number(record?.overtimeHours || 0), 0);
@@ -584,14 +625,15 @@ export default function AttendancePage() {
                         const displayStatus = getDisplayStatus(record, date);
                         const isRestDay = displayStatus === "Rest Day";
                         const isLeave = displayStatus === "Leave";
+                        const isEmpty = !displayStatus;
                         return (
                           <td key={date} className="border-b px-2 py-2 text-center align-top">
                             <button onClick={(event) => openEditor(employee.id, date, event)} className={`w-full rounded-xl border px-2 py-2 transition ${drafts[getDraftKey(employee.id, date)] || record ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white"}`}>
                               <div className="flex items-center justify-center gap-1.5">
-                                <StatusPill status={displayStatus} />
-                                <span className="text-[10px] font-semibold text-slate-500">{isRestDay ? "RD" : isLeave ? "8.0" : record?.workedHours ?? ""}</span>
+                                {isEmpty ? <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Not set</span> : <StatusPill status={displayStatus} />}
+                                <span className="text-[10px] font-semibold text-slate-500">{isRestDay ? "RD" : isLeave ? "8.0" : record ? computeWorkedHours(record.checkIn || "", record.checkOut || "", employee.department, assignments[employee.id] || "Main Office") : ""}</span>
                               </div>
-                              <div className="mt-1 text-[10px] text-slate-500">{isRestDay ? "Rest day" : isLeave ? "Paid leave" : `${record?.checkIn || draft.checkIn || "--"} - ${record?.checkOut || draft.checkOut || "--"}`}</div>
+                              <div className="mt-1 text-[10px] text-slate-500">{isRestDay ? "Rest day" : isLeave ? "Paid leave" : isEmpty ? "No attendance yet" : `${record?.checkIn || draft.checkIn || "--"} - ${record?.checkOut || draft.checkOut || "--"}`}</div>
                             </button>
                           </td>
                         );

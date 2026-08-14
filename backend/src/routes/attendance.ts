@@ -467,7 +467,10 @@ router.post('/', async (req, res) => {
       }
 
       if (!existingEmployee?.id) {
-        return res.status(400).json({ message: 'Employee not found for attendance save' });
+        employeeId = await findOrCreateEmployeeByName(employeeName, {
+          salary: Number(req.body?.salaryAmount ?? 0) || 0,
+          projectSite: projectSite || null,
+        });
       }
     } else {
       employeeId = await findOrCreateEmployeeByName(employeeName, {
