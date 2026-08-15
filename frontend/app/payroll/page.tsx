@@ -438,7 +438,39 @@ export default function PayrollIndex() {
                         <td className="px-4 py-4 text-sm text-slate-600"><div className="flex items-center gap-2"><svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg><span className="font-semibold">{pick(run, ["period_start", "pay_period_start", "start_date"])} → {pick(run, ["period_end", "pay_period_end", "end_date"])}</span></div></td>
                         <td className="px-4 py-4 text-sm font-semibold text-slate-600">{pick(run, ["payout_date"])}</td>
                         <td className="px-4 py-4 text-right"><span className="text-base font-black text-emerald-700">{pesos(Number(run["total_net_pay"] ?? 0))}</span></td>
-                        <td className="px-4 py-4 text-center"><span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm"><svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8"><circle cx={4} cy={4} r={3} /></svg>{pick(run, ["status"])}</span></td>
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm"><svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8"><circle cx={4} cy={4} r={3} /></svg>{pick(run, ["status"])}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const params = new URLSearchParams();
+                                const runCode = String(pick(run, ["run_code"]) || "").trim();
+                                const department = String(pick(run, ["department_name", "department"]) || "").trim();
+                                const projectSite = String(pick(run, ["project_site_name", "project_site"]) || "").trim();
+                                const startDate = String(pick(run, ["period_start", "pay_period_start", "start_date"]) || "").trim();
+                                const endDate = String(pick(run, ["period_end", "pay_period_end", "end_date"]) || "").trim();
+                                const payoutDate = String(pick(run, ["payout_date"]) || "").trim();
+
+                                if (department) params.set("department", department);
+                                if (projectSite) params.set("projectSite", projectSite);
+                                if (startDate) params.set("startDate", startDate);
+                                if (endDate) params.set("endDate", endDate);
+                                if (payoutDate) params.set("payoutDate", payoutDate);
+
+                                if (runCode.toUpperCase().startsWith("PR")) {
+                                  router.push(`/payroll/new?${params.toString()}`);
+                                  return;
+                                }
+
+                                router.push(`/office-payroll?${params.toString()}`);
+                              }}
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+                            >
+                              Open
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

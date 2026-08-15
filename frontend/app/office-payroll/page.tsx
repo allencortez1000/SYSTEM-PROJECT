@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import * as XLSX from "xlsx";
 
 import { useNotification } from "../components/notification";
@@ -117,7 +118,9 @@ function computeRow(row: OfficePayrollRow) {
 
 export default function OfficePayrollPage() {
   const { notify } = useNotification();
+  const searchParams = useSearchParams();
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const autoLoadedPayoutDateRef = useRef<string | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -130,10 +133,17 @@ export default function OfficePayrollPage() {
     direction: "asc",
   });
   const [payPeriod, setPayPeriod] = useState("Monthly");
-  const [payoutDate, setPayoutDate] = useState("");
+  const [payoutDate, setPayoutDate] = useState(searchParams.get("payoutDate") || "");
   const [rows, setRows] = useState<OfficePayrollRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [released, setReleased] = useState(false);
+
+  useEffect(() => {
+    const urlPayoutDate = searchParams.get("payoutDate") || "";
+    if (urlPayoutDate) {
+      setPayoutDate(urlPayoutDate);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const raw = localStorage.getItem("hr_user");
@@ -245,6 +255,14 @@ export default function OfficePayrollPage() {
       }),
     );
   }, [employees]);
+
+  useEffect(() => {
+    if (!payoutDate || employees.length === 0 || rows.length === 0) return;
+    if (autoLoadedPayoutDateRef.current === payoutDate) return;
+
+    autoLoadedPayoutDateRef.current = payoutDate;
+    void loadPayrollByPayoutDate();
+  }, [payoutDate, employees.length, rows.length]);
 
   const isSuperAdmin = user?.role === "super-admin";
 
