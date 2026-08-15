@@ -877,10 +877,12 @@ export default function NewPayrollPage() {
               const recordName = String(record.employeeName || '').trim().toLowerCase();
               const recordEmployeeId = String(record.employeeId || '').trim();
               const recordProject = String(record.projectSite || '').trim().toLowerCase();
+              const recordDate = String(record.attendance_date || record.date || '').trim();
               const matchesName = targetNames.has(recordName);
               const matchesEmployee = worker.employeeId ? recordEmployeeId === worker.employeeId : false;
               const matchesProject = !selectedProject || recordProject === selectedProject.toLowerCase();
-              return (matchesEmployee || matchesName) && matchesProject;
+              const matchesDate = recordDate >= periodStart && recordDate <= periodEnd;
+              return (matchesEmployee || matchesName) && matchesProject && matchesDate;
             });
 
             if (paidDays === 0) {

@@ -631,7 +631,7 @@ export default function AttendancePage() {
                             <button onClick={(event) => openEditor(employee.id, date, event)} className={`w-full rounded-xl border px-2 py-2 transition ${drafts[getDraftKey(employee.id, date)] || record ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white"}`}>
                               <div className="flex items-center justify-center gap-1.5">
                                 {isEmpty ? <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Not set</span> : <StatusPill status={displayStatus} />}
-                                <span className="text-[10px] font-semibold text-slate-500">{isRestDay ? "RD" : isLeave ? "8.0" : record ? computeWorkedHours(record.checkIn || "", record.checkOut || "", employee.department, assignments[employee.id] || "Main Office") : ""}</span>
+                                <span className="text-[10px] font-semibold text-slate-500">{isRestDay ? "RD" : isLeave ? "8.0" : displayStatus === "Absent" ? "0" : record ? computeWorkedHours(record.checkIn || "", record.checkOut || "", employee.department, assignments[employee.id] || "Main Office") : ""}</span>
                               </div>
                               <div className="mt-1 text-[10px] text-slate-500">{isRestDay ? "Rest day" : isLeave ? "Paid leave" : isEmpty ? "No attendance yet" : `${record?.checkIn || draft.checkIn || "--"} - ${record?.checkOut || draft.checkOut || "--"}`}</div>
                             </button>

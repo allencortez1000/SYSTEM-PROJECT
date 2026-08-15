@@ -129,23 +129,24 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
   for (const record of records) {
     const status = String(record.status || '').trim().toLowerCase();
     const isCanceledWork = status === 'canceled work';
-    const workedHours = workedHoursFromRecord(record);
-    const hasTimeEntry = workedHours > 0;
+    const isAbsent = status === 'absent' || isCanceledWork;
+    const workedHours = isAbsent ? 0 : workedHoursFromRecord(record);
+    const hasTimeEntry = !isAbsent && workedHours > 0;
 
     if (isSunday(record.attendance_date)) {
-      summary.overtimeHours += overtimeHoursFromRecord(record);
+      summary.overtimeHours += isAbsent ? 0 : overtimeHoursFromRecord(record);
       continue;
     }
 
-    const countsAsPaidWorkDay = (status !== 'absent' && !isCanceledWork) || hasTimeEntry;
+    const countsAsPaidWorkDay = status !== 'absent' && !isCanceledWork;
 
     // Status counters (whole-day buckets for reporting)
     if (countsAsPaidWorkDay) summary.presentDays += 1;
     if (status === 'remote') summary.remoteDays += 1;
     if (status === 'leave') summary.leaveDays += 1;
-    if (status === 'absent' || isCanceledWork) summary.absentDays += 1;
+    if (isAbsent) summary.absentDays += 1;
     if (status === 'late') summary.lateDays += 1;
-    summary.overtimeHours += overtimeHoursFromRecord(record);
+    summary.overtimeHours += isAbsent ? 0 : overtimeHoursFromRecord(record);
 
     // Regular hours — used to compute fractional paid days
     if (status === 'leave') {
