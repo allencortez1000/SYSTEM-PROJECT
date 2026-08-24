@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { useNotification } from "../components/notification";
 import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
+import { computeAutoOvertime, computeWorkedHours, isAbsentAttendanceStatus, isLeaveAttendanceStatus } from "../../lib/attendanceRules";
 
 type AttendanceStatus = "Present" | "Absent" | "Leave" | "Rest Day" | "Halfday" | "Canceled Work" | "Remote";
 type PeriodMode = "weekly" | "semi-monthly";
@@ -72,25 +73,7 @@ function formatDateFull(value: string) { return parseIsoDate(value).toLocaleDate
 function weekStart(date: Date) { const next = new Date(date); next.setDate(next.getDate() - ((next.getDay() + 6) % 7)); return next; }
 function addDays(date: Date, days: number) { const next = new Date(date); next.setDate(next.getDate() + days); return next; }
 function getPeriodDates(startDate: string, endDate: string) { const start = parseIsoDate(startDate); const end = parseIsoDate(endDate); const dates: string[] = []; const cursor = new Date(start); while (cursor <= end) { dates.push(isoDate(cursor)); cursor.setDate(cursor.getDate() + 1); } return dates; }
-function parseTimeToMinutes(value: string) {
-  const trimmed = String(value || "").trim();
-  const meridiem = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)$/i);
-  if (meridiem) {
-    let hours = Number(meridiem[1]); const minutes = Number(meridiem[2]); const ampm = meridiem[3].toLowerCase(); if (hours === 12) hours = 0; if (ampm === "pm") hours += 12; return hours * 60 + minutes;
-  }
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-  if (!match) return null; return Number(match[1]) * 60 + Number(match[2]);
-}
-function computeGrossHours(checkIn: string, checkOut: string) { const s = parseTimeToMinutes(checkIn); const e = parseTimeToMinutes(checkOut); if (s === null || e === null || e <= s) return 0; return (e - s) / 60; }
-function computeWorkedHours(checkIn: string, checkOut: string, department?: string | null, projectSite?: string | null) { const gross = computeGrossHours(checkIn, checkOut); if (gross <= 0) return 0; const dept = String(department || "").trim().toLowerCase(); const site = String(projectSite || "").trim().toLowerCase(); const usesLunchDeduction = dept === "construction" || (dept === "rbac" && site === "main office"); return Math.floor(Math.max(0, usesLunchDeduction && gross >= 8 ? gross - 1 : gross)); }
-function computeAutoOvertime(checkIn: string, checkOut: string, department?: string | null) {
-  const grossHours = computeGrossHours(checkIn, checkOut);
-  if (grossHours <= 0) return 0;
 
-  const isConstruction = String(department || "").trim().toLowerCase() === "construction";
-  const overtimeHours = isConstruction ? grossHours - 9 : grossHours - 8;
-  return Math.max(0, Math.round(overtimeHours * 100) / 100);
-}
 function getDraftKey(employeeId: string, date: string) { return `${employeeId}__${date}`; }
 function uniqueById(employees: Employee[]) { const seen = new Set<string>(); return employees.filter((e) => e.id && !seen.has(e.id) && seen.add(e.id)); }
 
@@ -268,7 +251,7 @@ export default function AttendancePage() {
     const current = ensureDraft(employeeId, date);
     const next = { ...current, ...patch };
 
-    if (patch.status && ["Absent", "Leave", "Rest Day"].includes(patch.status)) {
+    if (patch.status && (isAbsentAttendanceStatus(patch.status) || patch.status === "Leave" || patch.status === "Rest Day")) {
       next.checkIn = "";
       next.checkOut = "";
       next.overtimeHours = "0";
@@ -284,7 +267,7 @@ export default function AttendancePage() {
     }
 
     if (patch.checkIn !== undefined || patch.checkOut !== undefined) {
-      const shouldAutoCompute = !["Absent", "Leave", "Rest Day"].includes(next.status);
+      const shouldAutoCompute = !isAbsentAttendanceStatus(next.status) && !isLeaveAttendanceStatus(next.status) && next.status !== "Rest Day";
       if (shouldAutoCompute) {
         const employee = employees.find((item) => item.id === employeeId);
         next.overtimeHours = String(computeAutoOvertime(next.checkIn, next.checkOut, employee?.department));
@@ -339,14 +322,14 @@ export default function AttendancePage() {
       const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; }
       const payloads = Object.entries(drafts).map(([key, draft]) => {
         const [employeeId, date] = key.split("__"); const employee = employees.find((e) => e.id === employeeId); if (!employee || !periodDates.includes(date)) return null;
-        const workedHours = draft.status === "Absent" || draft.status === "Rest Day"
+        const workedHours = isAbsentAttendanceStatus(draft.status) || draft.status === "Rest Day"
           ? 0
-          : draft.status === "Leave"
+          : isLeaveAttendanceStatus(draft.status)
             ? 8
             : draft.status === "Halfday"
               ? 4
               : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department, selectedProject || assignments[employee.id] || "Main Office");
-        return { employeeId, employeeName: employee.fullName, date, status: draft.status, checkIn: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkIn, checkOut: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite: selectedProject, periodMode, workedHours, overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode };
+        return { employeeId, employeeName: employee.fullName, date, status: draft.status, checkIn: isAbsentAttendanceStatus(draft.status) || isLeaveAttendanceStatus(draft.status) || draft.status === "Rest Day" ? "" : draft.checkIn, checkOut: isAbsentAttendanceStatus(draft.status) || isLeaveAttendanceStatus(draft.status) || draft.status === "Rest Day" ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite: selectedProject, periodMode, workedHours, overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode };
       }).filter(Boolean) as any[];
       if (payloads.length === 0) { notify("No changes to save"); return; }
       const results = await Promise.all(payloads.map((payload) => fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }).then(async (res) => { const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data?.message || data?.error || `Failed to save ${payload.employeeName} (${res.status})`); return res; })));
@@ -410,7 +393,13 @@ export default function AttendancePage() {
 
     setEditor({ employeeId, date });
   };
-  const saveSingle = async () => { if (!editor) return; const employee = employees.find((e) => e.id === editor.employeeId); if (!employee) return; setSaving(true); try { const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; } const draft = ensureDraft(editor.employeeId, editor.date); const projectSite = (selectedProject || assignments[employee.id] || "Main Office").trim() || "Main Office"; const payload = { employeeId: employee.id, employeeName: employee.fullName, date: editor.date, status: draft.status, checkIn: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkIn, checkOut: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite, periodMode, workedHours: draft.status === "Absent" || draft.status === "Rest Day" ? 0 : draft.status === "Leave" ? 8 : draft.status === "Halfday" ? 4 : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department), overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode }; let res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }); let data = await res.json().catch(() => ({})); if (!res.ok && data?.message === "Employee not found for attendance save") { res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify({ ...payload, employeeId: undefined }) }); data = await res.json().catch(() => ({})); } if (!res.ok) throw new Error(data?.message || data?.error || `Failed to save attendance (${res.status})`); setEditor(null); setEditorAnchorRect(null); setEditorPosition(null); await loadData(); notify("Attendance saved"); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } };
+  const saveSingle = async () => { if (!editor) return; const employee = employees.find((e) => e.id === editor.employeeId); if (!employee) return; setSaving(true); try { const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; } const draft = ensureDraft(editor.employeeId, editor.date); const projectSite = (selectedProject || assignments[employee.id] || "Main Office").trim() || "Main Office"; const payrollWorkHours = draft.status === "Absent" || draft.status === "Rest Day"
+          ? 0
+          : draft.status === "Leave"
+            ? 8
+            : draft.status === "Halfday"
+              ? 4
+              : computeWorkedHours(draft.checkIn, draft.checkOut, employee.department, projectSite); const payload = { employeeId: employee.id, employeeName: employee.fullName, date: editor.date, status: draft.status, checkIn: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkIn, checkOut: ["Absent", "Leave", "Rest Day"].includes(draft.status) ? "" : draft.checkOut, notes: draft.notes.trim(), projectSite, periodMode, workedHours: payrollWorkHours, overtimeHours: Number(draft.overtimeHours || 0), overtimeMode: draft.overtimeMode }; let res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(payload) }); let data = await res.json().catch(() => ({})); if (!res.ok && data?.message === "Employee not found for attendance save") { res = await fetch(`${API_BASE}/attendance`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify({ ...payload, employeeId: undefined }) }); data = await res.json().catch(() => ({})); } if (!res.ok) throw new Error(data?.message || data?.error || `Failed to save attendance (${res.status})`); setEditor(null); setEditorAnchorRect(null); setEditorPosition(null); await loadData(); notify("Attendance saved"); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } };
   const deleteAttendance = async () => { if (!deleteTarget) return; setSaving(true); try { const headers = getAuthHeaders(); if (!headers) { router.replace("/login"); return; } const res = await fetch(`${API_BASE}/attendance`, { method: "DELETE", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(deleteTarget) }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data?.message || "Failed to delete attendance"); setDeleteTarget(null); await loadData(); notify("Attendance deleted"); } catch (e) { setError((e as Error).message); } finally { setSaving(false); } };
 
   const exportExcel = () => {
@@ -431,8 +420,8 @@ export default function AttendancePage() {
     const draft = ensureDraft(employeeId, date);
     const projectSite = selectedProject || assignments[employeeId] || "Main Office";
 
-    if (draft.status === "Absent" || draft.status === "Rest Day") return 0;
-    if (draft.status === "Leave") return 8;
+    if (isAbsentAttendanceStatus(draft.status) || draft.status === "Rest Day") return 0;
+    if (isLeaveAttendanceStatus(draft.status)) return 8;
     if (draft.status === "Halfday") return 4;
     return computeWorkedHours(draft.checkIn, draft.checkOut, employee?.department, projectSite);
   }

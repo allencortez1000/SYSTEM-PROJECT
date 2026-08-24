@@ -359,21 +359,30 @@ export default function AdminUsersPage() {
     try {
       const token = localStorage.getItem("hr_token");
       if (!token) throw new Error("Missing login token. Please sign in again.");
-      if (!workerFirstName.trim() || !workerLastName.trim()) {
+      const cleanedFirstName = workerFirstName.trim();
+      const cleanedLastName = workerLastName.trim();
+      const cleanedProjectSite = workerProjectSite.trim();
+      const salaryValue = workerSalary.trim();
+      const parsedSalary = salaryValue === "" ? 0 : Number(salaryValue);
+
+      if (!cleanedFirstName || !cleanedLastName) {
         throw new Error("First name and last name are required.");
       }
-      if (!workerProjectSite.trim()) {
+      if (!cleanedProjectSite) {
         throw new Error("Project site is required.");
+      }
+      if (!Number.isFinite(parsedSalary) || parsedSalary < 0) {
+        throw new Error("Salary must be a valid non-negative number.");
       }
 
       const payload = {
-        fullName: `${workerLastName.trim()}, ${workerFirstName.trim()}`,
-        firstName: workerFirstName.trim(),
-        lastName: workerLastName.trim(),
+        fullName: `${cleanedLastName}, ${cleanedFirstName}`,
+        firstName: cleanedFirstName,
+        lastName: cleanedLastName,
         email: workerEmail.trim() || null,
         department: workerDepartment || "Unassigned",
         position: workerPosition || "Worker",
-        salary: Number(workerSalary) || 0,
+        salary: parsedSalary,
         salaryBasis: workerSalaryBasis,
         status: workerStatus,
         hasSss: workerHasSss,

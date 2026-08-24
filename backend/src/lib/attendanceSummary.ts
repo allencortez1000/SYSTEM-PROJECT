@@ -33,7 +33,7 @@ function isSunday(dateValue?: string | null) {
   return Number.isFinite(date.getTime()) && date.getDay() === 0;
 }
 
-function workedHoursFromRecord(record: AttendanceRecordLike) {
+export function workedHoursFromRecord(record: AttendanceRecordLike) {
   if (record.worked_hours !== null && record.worked_hours !== undefined) {
     const worked = Number(record.worked_hours);
     return Number.isFinite(worked) ? worked : 0;
@@ -103,7 +103,7 @@ function grossHoursFromRecord(record: AttendanceRecordLike): number {
   return roundCurrency((checkOut - checkIn) / 60);
 }
 
-function overtimeHoursFromRecord(record: AttendanceRecordLike) {
+export function overtimeHoursFromRecord(record: AttendanceRecordLike) {
   if (record.overtime_hours !== null && record.overtime_hours !== undefined) {
     const overtime = Number(record.overtime_hours);
     return Number.isFinite(overtime) ? overtime : 0;
@@ -111,6 +111,23 @@ function overtimeHoursFromRecord(record: AttendanceRecordLike) {
 
   // Use gross hours (not floored) so OT minutes are never lost
   return Math.max(0, roundCurrency(grossHoursFromRecord(record) - 8));
+}
+
+export function classifyAttendanceStatus(statusValue: string) {
+  const status = String(statusValue || '').trim().toLowerCase();
+  const isCanceledWork = status === 'canceled work';
+  const isAbsent = status === 'absent' || isCanceledWork;
+  const countsAsPaidWorkDay = status !== 'absent' && !isCanceledWork;
+
+  return {
+    status,
+    isCanceledWork,
+    isAbsent,
+    countsAsPaidWorkDay,
+    isLeave: status === 'leave',
+    isRemote: status === 'remote',
+    isLate: status === 'late',
+  };
 }
 
 export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
@@ -127,9 +144,14 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
   };
 
   for (const record of records) {
-    const status = String(record.status || '').trim().toLowerCase();
-    const isCanceledWork = status === 'canceled work';
-    const isAbsent = status === 'absent' || isCanceledWork;
+    const {
+      status,
+      isAbsent,
+      countsAsPaidWorkDay,
+      isLeave,
+      isRemote,
+      isLate,
+    } = classifyAttendanceStatus(record.status || '');
     const workedHours = isAbsent ? 0 : workedHoursFromRecord(record);
     const hasTimeEntry = !isAbsent && workedHours > 0;
 
@@ -138,14 +160,12 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
       continue;
     }
 
-    const countsAsPaidWorkDay = status !== 'absent' && !isCanceledWork;
-
     // Status counters (whole-day buckets for reporting)
     if (countsAsPaidWorkDay) summary.presentDays += 1;
-    if (status === 'remote') summary.remoteDays += 1;
-    if (status === 'leave') summary.leaveDays += 1;
+    if (isRemote) summary.remoteDays += 1;
+    if (isLeave) summary.leaveDays += 1;
     if (isAbsent) summary.absentDays += 1;
-    if (status === 'late') summary.lateDays += 1;
+    if (isLate) summary.lateDays += 1;
     summary.overtimeHours += isAbsent ? 0 : overtimeHoursFromRecord(record);
 
     // Regular hours — used to compute fractional paid days

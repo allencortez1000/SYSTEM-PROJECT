@@ -115,16 +115,15 @@ function formatDisplayName(row: EmployeeRow) {
   const firstName = String(row.first_name || '').trim();
   const middleName = String(row.middle_name || '').trim();
   const lastName = String(row.last_name || '').trim();
-
   const normalizedFullName = String(row.full_name || '').trim();
-  const canonical = [lastName, firstName, middleName].filter(Boolean).join(', ').replace(/,\s*,/g, ', ').trim();
 
-  if (canonical && canonical !== ',') {
-    return canonical;
+  const structuredName = [lastName, firstName, middleName].filter(Boolean).join(', ').replace(/,\s*,/g, ', ').trim();
+  if (structuredName && structuredName !== ',') {
+    return structuredName;
   }
 
   if (normalizedFullName) {
-    return normalizedFullName.includes(',') ? normalizedFullName : normalizedFullName;
+    return normalizedFullName;
   }
 
   return 'Unnamed employee';

@@ -2,11 +2,72 @@ import { Router } from 'express';
 import { calculatePayroll, computeGovernmentContributions } from '../controllers/payroll';
 import { summarizeAttendanceDays } from '../lib/attendanceSummary';
 import { supabase } from '../lib/supabase';
-import { requireSuperAdmin, verifyToken } from '../middleware/auth';
+import { requireSuperAdmin, verifyToken, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
 router.use(verifyToken);
+
+function requireTrimmedString(value: unknown, fieldName: string) {
+  const text = String(value || '').trim();
+  if (!text) {
+    throw new Error(`${fieldName} is required`);
+  }
+  return text;
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string, options?: { min?: number }) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) {
+    throw new Error(`${fieldName} must be a valid number`);
+  }
+  if (options?.min !== undefined && numberValue < options.min) {
+    throw new Error(`${fieldName} must be greater than or equal to ${options.min}`);
+  }
+  return numberValue;
+}
+
+function resolvePeriodField(row: Record<string, unknown> | null | undefined, preferred: string, fallbacks: string[]) {
+  const source = row || {};
+  const values = [preferred, ...fallbacks];
+  for (const key of values) {
+    const value = String(source[key] || '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+function buildAuditMetadata(req: AuthRequest, now: Date, context: string) {
+  return {
+    source: context,
+    createdAt: now.toISOString(),
+    createdBy: req.user ? {
+      userId: req.user.userId,
+      role: req.user.role,
+      name: req.user.name,
+    } : null,
+  };
+}
+
+async function assertNoDuplicatePayrollRun(organizationId: string, runType: string, payPeriodStart: string, payPeriodEnd: string, payoutDate?: string | null) {
+  const query = supabase
+    .from('payroll_runs')
+    .select('id, run_code, status')
+    .eq('organization_id', organizationId)
+    .eq('run_type', runType)
+    .eq('pay_period_start', payPeriodStart)
+    .eq('pay_period_end', payPeriodEnd);
+
+  if (payoutDate) {
+    query.eq('payout_date', payoutDate);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle();
+  if (error) throw error;
+  if (data) {
+    throw new Error(`A ${runType} payroll run already exists for this period`);
+  }
+}
 
 router.post('/calculate', (req, res) => {
   try {
@@ -17,16 +78,74 @@ router.post('/calculate', (req, res) => {
   }
 });
 
+async function loadOfficePayrollRun(res: any, officeRun: any) {
+  const { data: items, error: itemsError } = await supabase
+    .from('payroll_items')
+    .select('employee_id, hourly_rate, regular_hours, regular_pay, overtime_hours, overtime_pay, allowances, bonus, gross_pay, sss_deduction, pagibig_deduction, philhealth_deduction, other_deductions, total_deductions, net_pay, remarks')
+    .eq('payroll_run_id', officeRun.id)
+    .order('employee_id', { ascending: true });
+
+  if (itemsError) throw itemsError;
+
+  const { data: auditEvents, error: auditEventsError } = await supabase
+    .from('payroll_run_audit_events')
+    .select('from_status, to_status, changed_at, changed_by_user_id, changed_by_role, changed_by_name, reason')
+    .eq('payroll_run_id', officeRun.id)
+    .order('changed_at', { ascending: true });
+
+  if (auditEventsError) throw auditEventsError;
+
+  const rows = Array.isArray(items) ? items.map((item: any) => ({
+    id: String(item.employee_id || ''),
+    employeeId: String(item.employee_id || ''),
+    monthlySalary: Number(item.hourly_rate || 0),
+    days: Number(item.regular_hours || 0),
+    proratedAmount: Number(item.regular_pay || 0),
+    otHours: Number(item.overtime_hours || 0),
+    otPay: Number(item.overtime_pay || 0),
+    allowances: Number(item.allowances || 0),
+    bonus: Number(item.bonus || 0),
+    gross: Number(item.gross_pay || 0),
+    sssAmount: Number(item.sss_deduction || 0),
+    pagIbigAmount: Number(item.pagibig_deduction || 0),
+    philHealthAmount: Number(item.philhealth_deduction || 0),
+    additionalDeduction: Number(item.other_deductions || 0),
+    totalDeduction: Number(item.total_deductions || 0),
+    netSalary: Number(item.net_pay || 0),
+    remarks: String(item.remarks || ''),
+  })) : [];
+
+  res.json({
+    run: officeRun,
+    rows,
+    notes: {
+      statusHistory: Array.isArray(auditEvents)
+        ? auditEvents.map((event: any) => ({
+            from: String(event.from_status || 'Draft'),
+            to: String(event.to_status || ''),
+            changedAt: event.changed_at,
+            changedBy: {
+              userId: event.changed_by_user_id,
+              role: event.changed_by_role,
+              name: event.changed_by_name,
+            },
+            reason: event.reason,
+          }))
+        : [],
+    },
+  });
+}
+
 router.get('/office/by-payout-date', requireSuperAdmin, async (req, res) => {
   try {
-    const payoutDate = String(req.query?.payoutDate || '').trim();
+    const payoutDate = resolvePeriodField(req.query as Record<string, unknown>, 'payoutDate', ['payout_date']);
     if (!payoutDate) {
       return res.status(400).json({ message: 'payoutDate is required' });
     }
 
     const { data: runs, error: runError } = await supabase
       .from('payroll_runs')
-      .select('id, run_code, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
+      .select('id, run_code, run_type, calculation_version, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
       .eq('payout_date', payoutDate)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -38,54 +157,141 @@ router.get('/office/by-payout-date', requireSuperAdmin, async (req, res) => {
       return res.status(404).json({ message: 'No office payroll found for that payout date' });
     }
 
-    const { data: items, error: itemsError } = await supabase
-      .from('payroll_items')
-      .select('employee_id, hourly_rate, regular_hours, regular_pay, overtime_hours, overtime_pay, allowances, bonus, gross_pay, sss_deduction, pagibig_deduction, philhealth_deduction, other_deductions, total_deductions, net_pay, remarks')
-      .eq('payroll_run_id', officeRun.id)
-      .order('employee_id', { ascending: true });
-
-    if (itemsError) throw itemsError;
-
-    const notes = typeof officeRun.notes === 'string' ? JSON.parse(officeRun.notes) : (officeRun.notes || {});
-    const snapshotRows = Array.isArray((notes as any)?.rows) ? (notes as any).rows : null;
-    const rows = snapshotRows && snapshotRows.length > 0 ? snapshotRows : Array.isArray(items) ? items.map((item: any) => ({
-      id: String(item.employee_id || ''),
-      employeeId: String(item.employee_id || ''),
-      monthlySalary: Number(item.hourly_rate || 0),
-      days: Number(item.regular_hours || 0),
-      proratedAmount: Number(item.regular_pay || 0),
-      otHours: Number(item.overtime_hours || 0),
-      otPay: Number(item.overtime_pay || 0),
-      allowances: Number(item.allowances || 0),
-      bonus: Number(item.bonus || 0),
-      gross: Number(item.gross_pay || 0),
-      sssAmount: Number(item.sss_deduction || 0),
-      pagIbigAmount: Number(item.pagibig_deduction || 0),
-      philHealthAmount: Number(item.philhealth_deduction || 0),
-      additionalDeduction: Number(item.other_deductions || 0),
-      totalDeduction: Number(item.total_deductions || 0),
-      netSalary: Number(item.net_pay || 0),
-      remarks: String(item.remarks || ''),
-    })) : [];
-
-    res.json({
-      run: officeRun,
-      rows,
-      notes,
-    });
+    return await loadOfficePayrollRun(res, officeRun);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load office payroll', error: (error as Error).message });
   }
 });
 
-router.post('/office/save', requireSuperAdmin, async (req, res) => { 
+router.get('/office/by-run-id', requireSuperAdmin, async (req, res) => {
   try {
-    const payPeriod = String(req.body?.payPeriod || 'Monthly').trim();
-    const payoutDate = String(req.body?.payoutDate || '').trim();
+    const runId = resolvePeriodField(req.query as Record<string, unknown>, 'runId', ['id', 'run_id']);
+    if (!runId) {
+      return res.status(400).json({ message: 'runId is required' });
+    }
+
+    const { data: officeRun, error: runError } = await supabase
+      .from('payroll_runs')
+      .select('id, run_code, run_type, calculation_version, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
+      .eq('id', runId)
+      .maybeSingle();
+
+    if (runError) throw runError;
+    if (!officeRun) {
+      return res.status(404).json({ message: 'No office payroll found for that run' });
+    }
+
+    return await loadOfficePayrollRun(res, officeRun);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to load office payroll', error: (error as Error).message });
+  }
+});
+
+function safeParseNotes(notes: unknown) {
+  if (!notes) return {};
+  if (typeof notes !== 'string') return notes || {};
+  try {
+    return JSON.parse(notes);
+  } catch {
+    return {};
+  }
+}
+
+function assertUniqueEmployeeRows(rows: Array<Record<string, unknown>>) {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const employeeId = String(row?.id || row?.employee_id || '').trim();
+    if (!employeeId) continue;
+    if (seen.has(employeeId)) {
+      throw new Error(`Duplicate payroll row found for employee ${employeeId}`);
+    }
+    seen.add(employeeId);
+  }
+}
+
+function normalizePayrollStatusValue(value: unknown) {
+  const status = String(value || '').trim();
+  if (!status) return '';
+  const lower = status.toLowerCase();
+  if (lower === 'draft' || lower === 'reviewed' || lower === 'released' || lower === 'paid') {
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  }
+  return '';
+}
+
+function isAllowedPayrollTransition(currentStatus: string, nextStatus: string) {
+  const current = normalizePayrollStatusValue(currentStatus) || 'Draft';
+  const next = normalizePayrollStatusValue(nextStatus);
+  if (!next) return false;
+  if (current === next) return true;
+
+  const allowedTransitions: Record<string, string[]> = {
+    Draft: ['Reviewed'],
+    Reviewed: ['Released', 'Draft'],
+    Released: ['Paid'],
+    Paid: [],
+  };
+
+  return (allowedTransitions[current] || []).includes(next);
+}
+
+router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => { 
+  try {
+    const payPeriod = requireTrimmedString(resolvePeriodField(req.body as Record<string, unknown>, 'payPeriod', ['pay_period_label']), 'payPeriod');
+    const payoutDate = resolvePeriodField(req.body as Record<string, unknown>, 'payoutDate', ['payout_date']);
+    const runId = resolvePeriodField(req.body as Record<string, unknown>, 'runId', ['run_id', 'id']);
     const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
 
     if (rows.length === 0) {
       return res.status(400).json({ message: 'rows are required' });
+    }
+
+    if (runId) {
+      const { data: existingRun, error: existingRunError } = await supabase
+        .from('payroll_runs')
+        .select('id, status')
+        .eq('id', runId)
+        .maybeSingle();
+
+      if (existingRunError) throw existingRunError;
+      if (existingRun && ['reviewed', 'released', 'paid'].includes(String(existingRun.status || '').toLowerCase())) {
+        return res.status(409).json({ message: 'This payroll run is locked and cannot be saved' });
+      }
+    }
+
+    for (const row of rows) {
+      if (!row || !String(row.id || '').trim()) {
+        return res.status(400).json({ message: 'Each payroll row must include an employee id' });
+      }
+      requireFiniteNumber(row.monthlySalary ?? row.salary ?? 0, 'monthlySalary', { min: 0 });
+      requireFiniteNumber(row.days ?? 0, 'days', { min: 0 });
+      requireFiniteNumber(row.otHours ?? 0, 'otHours', { min: 0 });
+      requireFiniteNumber(row.gross ?? 0, 'gross', { min: 0 });
+      requireFiniteNumber(row.totalDeduction ?? 0, 'totalDeduction', { min: 0 });
+      requireFiniteNumber(row.netSalary ?? 0, 'netSalary', { min: 0 });
+    }
+
+    assertUniqueEmployeeRows(rows as Array<Record<string, unknown>>);
+
+    const employeeIds = rows.map((row: any) => String(row.id || '').trim()).filter(Boolean);
+    const { data: employeeRows, error: employeeRowsError } = await supabase
+      .from('employees')
+      .select('id, full_name, project_site, status')
+      .in('id', employeeIds);
+
+    if (employeeRowsError) throw employeeRowsError;
+
+    const employeeById = new Map<string, any>((employeeRows || []).map((employee: any) => [String(employee.id), employee]));
+    for (const row of rows as Array<Record<string, unknown>>) {
+      const employeeId = String(row.id || '').trim();
+      const employee = employeeById.get(employeeId);
+      if (!employee) {
+        return res.status(400).json({ message: `No employee found for office payroll row ${employeeId}` });
+      }
+      const projectSite = String(employee.project_site || '').trim().toLowerCase();
+      if (projectSite && projectSite !== 'main office') {
+        return res.status(400).json({ message: `Employee ${employeeId} is not assigned to Main Office` });
+      }
     }
 
     const { data: orgs, error: orgError } = await supabase
@@ -101,7 +307,21 @@ router.post('/office/save', requireSuperAdmin, async (req, res) => {
 
     const organizationId = orgs[0].id as string;
     const now = new Date();
+    const audit = buildAuditMetadata(req, now, 'office-payroll');
     const runCode = `OFFICE-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
+
+    const { data: duplicateRun, error: duplicateRunError } = await supabase
+      .from('payroll_runs')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('run_type', 'OFFICE')
+      .eq('pay_period_label', payPeriod)
+      .maybeSingle();
+
+    if (duplicateRunError) throw duplicateRunError;
+    if (duplicateRun) {
+      return res.status(409).json({ message: 'An office payroll run already exists for this pay period' });
+    }
     const totalGross = rows.reduce((sum: number, row: any) => sum + (Number(row.gross) || 0), 0);
     const totalDeductions = rows.reduce((sum: number, row: any) => sum + (Number(row.totalDeduction) || 0), 0);
     const totalNetPay = rows.reduce((sum: number, row: any) => sum + (Number(row.netSalary) || 0), 0);
@@ -111,6 +331,8 @@ router.post('/office/save', requireSuperAdmin, async (req, res) => {
       .insert({
         organization_id: organizationId,
         run_code: runCode,
+        run_type: 'OFFICE',
+        calculation_version: 1,
         pay_period_start: now.toISOString().slice(0, 10),
         pay_period_end: now.toISOString().slice(0, 10),
         payout_date: payoutDate || null,
@@ -119,7 +341,13 @@ router.post('/office/save', requireSuperAdmin, async (req, res) => {
         total_deductions: totalDeductions,
         total_net_pay: totalNetPay,
         pay_period_label: payPeriod,
-        notes: JSON.stringify({ type: 'office-payroll', rows }),
+        notes: JSON.stringify({
+          type: 'office-payroll',
+          source: 'office-payroll',
+          route: '/payroll/office/save',
+          audit,
+          rows,
+        }),
       })
       .select('id')
       .single();
@@ -155,7 +383,14 @@ router.post('/office/save', requireSuperAdmin, async (req, res) => {
       if (itemsError) throw itemsError;
     }
 
-    res.status(201).json({ message: 'Office payroll saved to Supabase', runId: payrollRunId, runCode });
+    res.status(201).json({
+      message: 'Office payroll saved to Supabase',
+      runId: payrollRunId,
+      runCode,
+      runType: 'OFFICE',
+      calculationVersion: 1,
+      audit,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Failed to save office payroll', error: (error as Error).message });
   }
@@ -634,7 +869,7 @@ router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
   }
 });
 
-router.post('/save', requireSuperAdmin, async (req, res) => {
+router.post('/save', requireSuperAdmin, async (req: AuthRequest, res) => {
   try {
     const {
       employeeName,
@@ -656,6 +891,34 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
       attendanceSummary,
     } = req.body;
 
+    const cleanedEmployeeName = String(employeeName || '').trim();
+    const cleanedPayPeriod = requireTrimmedString(resolvePeriodField(req.body as Record<string, unknown>, 'payPeriod', ['pay_period_label']) || 'Payroll', 'payPeriod');
+    const cleanedPayBasis = requireTrimmedString(payBasis || 'daily', 'payBasis');
+    const cleanedPayFrequency = requireTrimmedString(payFrequency || 'monthly', 'payFrequency');
+    const runId = resolvePeriodField(req.body as Record<string, unknown>, 'runId', ['run_id', 'id']);
+
+    if (runId) {
+      const { data: existingRun, error: existingRunError } = await supabase
+        .from('payroll_runs')
+        .select('id, status')
+        .eq('id', runId)
+        .maybeSingle();
+
+      if (existingRunError) throw existingRunError;
+      if (existingRun && ['reviewed', 'released', 'paid'].includes(String(existingRun.status || '').toLowerCase())) {
+        return res.status(409).json({ message: 'This payroll run is locked and cannot be saved' });
+      }
+    }
+    requireFiniteNumber(rate ?? 0, 'rate', { min: 0 });
+    requireFiniteNumber(units ?? 0, 'units', { min: 0 });
+    requireFiniteNumber(overtimeHours ?? 0, 'overtimeHours', { min: 0 });
+    requireFiniteNumber(overtimeRate ?? 0, 'overtimeRate', { min: 0 });
+    requireFiniteNumber(bonus ?? 0, 'bonus', { min: 0 });
+    requireFiniteNumber(allowances ?? 0, 'allowances', { min: 0 });
+    requireFiniteNumber(loanDeduction ?? 0, 'loanDeduction', { min: 0 });
+    requireFiniteNumber(basicSalary ?? 0, 'basicSalary', { min: 0 });
+    requireFiniteNumber(grossEarnings ?? 0, 'grossEarnings', { min: 0 });
+
     // 1. Get default organization
     const { data: orgs, error: orgError } = await supabase
       .from('organizations')
@@ -672,6 +935,7 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
 
     // 2. Generate unique run_code
     const now = new Date();
+    const audit = buildAuditMetadata(req, now, 'payroll');
     const runCode = `PR-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
 
     // 3. Compute pay period dates. If payroll was linked to attendance,
@@ -685,6 +949,20 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
     const lastDay = new Date(currentYear, now.getMonth() + 1, 0).getDate();
     const periodEnd = attendance?.endDate || `${monthPrefix}${String(lastDay).padStart(2, '0')}`;
 
+    const { data: duplicateRun, error: duplicateRunError } = await supabase
+      .from('payroll_runs')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('run_type', 'PR')
+      .eq('pay_period_start', periodStart)
+      .eq('pay_period_end', periodEnd)
+      .maybeSingle();
+
+    if (duplicateRunError) throw duplicateRunError;
+    if (duplicateRun) {
+      return res.status(409).json({ message: 'A payroll run already exists for this pay period' });
+    }
+
     // 4. Compute payout_date from schedule
     const resolveDay = (value: unknown) => {
       const raw = String(value || '').trim();
@@ -697,7 +975,7 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
     };
 
     let payoutDate: string;
-    if (payFrequency === 'monthly') {
+    if (cleanedPayFrequency === 'monthly') {
       const day = resolveDay(payoutDay);
       payoutDate = `${monthPrefix}${String(day).padStart(2, '0')}`;
     } else {
@@ -705,6 +983,8 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
       const day = resolveDay(secondCutoffDay);
       payoutDate = `${monthPrefix}${String(day).padStart(2, '0')}`;
     }
+
+    await assertNoDuplicatePayrollRun(organizationId, 'PR', periodStart, periodEnd, payoutDate);
 
     const gross = roundCurrency(Number(grossEarnings) || 0);
     const loan = roundCurrency(Number(loanDeduction) || 0);
@@ -722,6 +1002,8 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
       .insert({
         organization_id: organizationId,
         run_code: runCode,
+        run_type: 'PR',
+        calculation_version: 1,
         pay_period_start: periodStart,
         pay_period_end: periodEnd,
         payout_date: payoutDate,
@@ -734,12 +1016,12 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
         total_deductions: totalDeductions,
         total_net_pay: netPay,
         total_employer_cost: employerCost,
-        pay_basis: payBasis,
-        pay_frequency: payFrequency,
-        payout_day: payFrequency === 'monthly' ? payoutDay : null,
-        second_payout_day: payFrequency === 'semi-monthly' ? secondCutoffDay : null,
-        pay_period_label: payPeriod,
-        notes: buildPayrollNotes(payBasis, payFrequency, payoutDay, firstCutoffDay, secondCutoffDay, attendanceSummary),
+        pay_basis: cleanedPayBasis,
+        pay_frequency: cleanedPayFrequency,
+        payout_day: cleanedPayFrequency === 'monthly' ? payoutDay : null,
+        second_payout_day: cleanedPayFrequency === 'semi-monthly' ? secondCutoffDay : null,
+        pay_period_label: cleanedPayPeriod,
+        notes: `${buildPayrollNotes(cleanedPayBasis, cleanedPayFrequency, payoutDay, firstCutoffDay, secondCutoffDay, attendanceSummary)} Audit: source=payroll; route=/payroll/save; createdAt=${now.toISOString()}; createdBy=${audit.createdBy ? `${audit.createdBy.userId}/${audit.createdBy.role}/${audit.createdBy.name}` : 'unknown'}; runType=PR; calculationVersion=1.`,
       })
       .select('id')
       .single();
@@ -748,11 +1030,11 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
     const payrollRunId = run.id as string;
 
     // 6. Try to find employee by name, insert payroll_item if found
-    if (employeeName && employeeName.trim()) {
+    if (cleanedEmployeeName) {
       const { data: employees, error: empError } = await supabase
         .from('employees')
         .select('id')
-        .ilike('full_name', employeeName.trim())
+        .ilike('full_name', cleanedEmployeeName)
         .limit(1);
 
       if (!empError && employees && employees.length > 0) {
@@ -786,10 +1068,101 @@ router.post('/save', requireSuperAdmin, async (req, res) => {
       message: 'Payroll run saved to Supabase',
       runCode,
       runId: payrollRunId,
+      audit,
+      runType: 'PR',
+      calculationVersion: 1,
     });
   } catch (error) {
     res.status(500).json({
       message: 'Failed to save payroll run',
+      error: (error as Error).message,
+    });
+  }
+});
+
+router.post('/status', requireSuperAdmin, async (req: AuthRequest, res) => {
+  try {
+    const runId = requireTrimmedString(resolvePeriodField(req.body as Record<string, unknown>, 'runId', ['run_id', 'id']), 'runId');
+    const nextStatus = normalizePayrollStatusValue(resolvePeriodField(req.body as Record<string, unknown>, 'status', ['nextStatus', 'next_status']));
+    const reason = String((req.body as Record<string, unknown>)?.reason || '').trim();
+
+    if (!nextStatus) {
+      return res.status(400).json({ message: 'status must be Draft, Reviewed, Released, or Paid' });
+    }
+
+    const { data: currentRun, error: currentRunError } = await supabase
+      .from('payroll_runs')
+      .select('id, status, notes')
+      .eq('id', runId)
+      .maybeSingle();
+
+    if (currentRunError) throw currentRunError;
+    if (!currentRun) {
+      return res.status(404).json({ message: 'Payroll run not found' });
+    }
+
+    if (!isAllowedPayrollTransition(String(currentRun.status || 'Draft'), nextStatus)) {
+      return res.status(409).json({
+        message: `Cannot change payroll status from ${String(currentRun.status || 'Draft')} to ${nextStatus}`,
+      });
+    }
+
+    const audit = {
+      status: nextStatus,
+      changedAt: new Date().toISOString(),
+      changedBy: req.user ? { userId: req.user.userId, role: req.user.role, name: req.user.name } : null,
+      reason: reason || null,
+    };
+
+    const notesObject = safeParseNotes(currentRun.notes);
+    const nextNotes = typeof notesObject === 'object' && notesObject !== null
+      ? {
+          ...notesObject,
+          statusHistory: [
+            ...(Array.isArray((notesObject as any).statusHistory) ? (notesObject as any).statusHistory : []),
+            { from: String(currentRun.status || 'Draft'), to: nextStatus, ...audit },
+          ],
+        }
+      : {
+          statusHistory: [{ from: String(currentRun.status || 'Draft'), to: nextStatus, ...audit }],
+        };
+
+    const { error: auditInsertError } = await supabase
+      .from('payroll_status_history')
+      .insert({
+        payroll_run_id: runId,
+        from_status: String(currentRun.status || 'Draft'),
+        to_status: nextStatus,
+        changed_at: audit.changedAt,
+        changed_by_user_id: audit.changedBy?.userId || null,
+        changed_by_role: audit.changedBy?.role || null,
+        changed_by_name: audit.changedBy?.name || null,
+        reason: audit.reason,
+        source: 'payroll-status-api',
+      });
+
+    if (auditInsertError) throw auditInsertError;
+
+    const { data: updated, error: updateError } = await supabase
+      .from('payroll_runs')
+      .update({
+        status: nextStatus,
+        notes: JSON.stringify(nextNotes),
+      })
+      .eq('id', runId)
+      .select('id, status')
+      .single();
+
+    if (updateError) throw updateError;
+
+    res.json({
+      message: 'Payroll status updated',
+      runId: updated.id,
+      status: updated.status,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to update payroll status',
       error: (error as Error).message,
     });
   }
@@ -849,7 +1222,9 @@ function applyAttendanceOverride(summary: AttendanceSummary, override: PayrollOv
 function buildAttendanceRemarks(summary: unknown) {
   if (!summary || typeof summary !== 'object') return null;
   const attendance = summary as Partial<AttendanceSummary>;
-  return `Attendance ${attendance.startDate || ''} to ${attendance.endDate || ''}: ${attendance.presentDays || 0} present, ${attendance.remoteDays || 0} remote, ${attendance.leaveDays || 0} leave, ${attendance.lateDays || 0} late, ${attendance.absentDays || 0} absent, ${attendance.regularHours || 0} regular hours.`;
+  const startDate = attendance.startDate || '';
+  const endDate = attendance.endDate || '';
+  return `Attendance ${startDate} to ${endDate}: ${attendance.presentDays || 0} present, ${attendance.remoteDays || 0} remote, ${attendance.leaveDays || 0} leave, ${attendance.lateDays || 0} late, ${attendance.absentDays || 0} absent, ${attendance.regularHours || 0} regular hours.`;
 }
 
 function buildPayrollNotes(

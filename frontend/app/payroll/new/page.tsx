@@ -7,6 +7,10 @@ import * as XLSX from "xlsx";
 import { filterInputClassName } from "../../components/filter-config";
 import { useNotification } from "../../components/notification";
 import { uniqueCanonicalDepartments } from "../../../lib/supabaseRealtime";
+import { buildPayrollExportName, sanitizeExportFileName } from "../../../lib/payrollExport";
+import { appendDateToExportName } from "../../../lib/fileName";
+import { getFallbackAttendanceDays, getFallbackAttendanceOvertime } from "../../../lib/attendanceRules";
+import { formatSurnameFirst as formatEmployeeNameSurnameFirst } from "../../../lib/employeeName";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
 
@@ -51,16 +55,8 @@ type WorkerRow = {
   syncedFromAttendance?: boolean;
 };
 
-/** Convert "First Middle Last" → "Last, First Middle". Already-formatted names (containing a comma) are returned as-is. */
-function formatSurnameFirst(name: string): string {
-  const trimmed = (name || "").trim();
-  if (!trimmed || trimmed.includes(",")) return trimmed;
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) return trimmed;
-  const last = parts[parts.length - 1];
-  const rest = parts.slice(0, parts.length - 1).join(" ");
-  return `${last}, ${rest}`;
-}
+
+
 
 type Employee = {
   id: string;
@@ -110,6 +106,13 @@ type ProjectWorkerSync = {
     additionalDeduction?: number | null;
   } | null;
   remarks?: string;
+};
+
+type SavedPayrollAudit = {
+  runId?: string;
+  runType?: string;
+  calculationVersion?: number | null;
+  savedAt?: string;
 };
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "").replace(/\/api$/, "") + "/api";
@@ -261,9 +264,7 @@ function formatCoveredPeriod(startDate: string, endDate: string) {
   return `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`;
 }
 
-function sanitizeFileName(value: string) {
-  return value.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-");
-}
+
 
 const inputClass =
   "relative z-0 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:z-50 focus:border-blue-400 focus:shadow-lg focus:ring-2 focus:ring-blue-100";
@@ -305,6 +306,7 @@ export default function NewPayrollPage() {
   const [savingOverrides, setSavingOverrides] = useState(false);
   const [savingPayrollTable, setSavingPayrollTable] = useState(false);
   const [savingRowId, setSavingRowId] = useState<string | null>(null);
+  const [savedPayrollAudit, setSavedPayrollAudit] = useState<SavedPayrollAudit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const autosaveTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -698,6 +700,8 @@ export default function NewPayrollPage() {
         payPeriod: coveredPeriod,
         payBasis: "daily",
         payFrequency,
+        runType: "PR",
+        calculationVersion: 1,
         payoutDay: periodEnd,
         firstCutoffDay: periodStart,
         secondCutoffDay: periodEnd,
@@ -734,6 +738,12 @@ export default function NewPayrollPage() {
         throw new Error((data?.message || "Failed to save payroll run") + backendError);
       }
 
+      setSavedPayrollAudit({
+        runId: data?.runId ? String(data.runId) : undefined,
+        runType: data?.runType ? String(data.runType) : "PR",
+        calculationVersion: data?.calculationVersion ?? 1,
+        savedAt: new Date().toISOString(),
+      });
       notify("Saved — opening payroll records...");
       router.push("/payroll");
     } catch (err) {
@@ -744,7 +754,7 @@ export default function NewPayrollPage() {
   }
 
   async function selectEmployee(rowId: string, employeeName: string) {
-    const formatted = formatSurnameFirst(employeeName);
+    const formatted = formatEmployeeNameSurnameFirst(employeeName);
     const employee = employees.find((item) => item.fullName === formatted) || employees.find((item) => item.fullName === employeeName);
     const detail = await fetchEmployeeDetail(employee?.id || "");
     const source = detail || employee;
@@ -841,10 +851,10 @@ export default function NewPayrollPage() {
           const workerEmployeeName = String(worker.employeeName || "").trim().toLowerCase();
           const employee = employees.find((item) => String(item.id || "").trim() === workerEmployeeId)
             || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === workerEmployeeName)
-            || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === String(formatSurnameFirst(worker.employeeName)).trim().toLowerCase());
+            || employees.find((item) => String(item.fullName || "").trim().toLowerCase() === String(formatEmployeeNameSurnameFirst(worker.employeeName)).trim().toLowerCase());
           const detail = workerEmployeeId ? await fetchEmployeeDetail(workerEmployeeId) : null;
           const source = detail || employee;
-          const displayName = source?.fullName || formatSurnameFirst(worker.employeeName);
+          const displayName = source?.fullName || formatEmployeeNameSurnameFirst(worker.employeeName);
 
           let paidDays = Number(worker.attendance?.paidDays || 0);
           let overtimeHours = Number(worker.attendance?.overtimeHours || 0);
@@ -886,31 +896,12 @@ export default function NewPayrollPage() {
             });
 
             if (paidDays === 0) {
-              const manualPaidDays = recordsForWorker.reduce((total: number, record: any) => {
-                const status = String(record.status || '').trim().toLowerCase();
-                const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
-                // Leave = 1 full day
-                if (status === 'leave') return total + 1;
-                // Hours recorded → fractional days (hours / 8, capped at 1)
-                if (workedHours > 0) {
-                  const dayFraction = Math.round((Math.min(workedHours, 8) / 8) * 1000) / 1000;
-                  return total + dayFraction;
-                }
-                // Present/remote/late with no hours → assume full day
-                if (status === 'present' || status === 'remote' || status === 'late') return total + 1;
-                return total;
-              }, 0);
+              const manualPaidDays = recordsForWorker.reduce((total: number, record: any) => total + getFallbackAttendanceDays(record), 0);
               paidDays = manualPaidDays;
             }
 
             if (overtimeHours === 0) {
-              const manualOvertimeHours = recordsForWorker.reduce((total: number, record: any) => {
-                const overtime = Number(record.overtimeHours ?? record.overtime_hours ?? 0) || 0;
-                const workedHours = Number(record.workedHours ?? record.worked_hours ?? 0) || 0;
-                if (overtime > 0) return total + overtime;
-                if (workedHours > 8) return total + (workedHours - 8);
-                return total;
-              }, 0);
+              const manualOvertimeHours = recordsForWorker.reduce((total: number, record: any) => total + getFallbackAttendanceOvertime(record), 0);
               overtimeHours = manualOvertimeHours;
             }
           }
@@ -1213,6 +1204,7 @@ export default function NewPayrollPage() {
             <tr><td class="meta" colspan="19">PAYROLL COVERED: ${escapeCell(coveredPeriod)}</td></tr>
             <tr><td class="meta" colspan="19">PAYROLL DATE: ${escapeCell(payrollDate)}</td></tr>
             <tr><td class="meta" colspan="19">DEDUCTION SCHEDULE: ${escapeCell(frequencyConfig[payFrequency].label)}</td></tr>
+            <tr><td class="meta" colspan="19">RUN TYPE: PR | CALCULATION V1</td></tr>
             <tr></tr>
             <tr>${headers.map((header, index) => `<th class="${index >= 10 && index <= 17 ? "deduction" : ""}">${escapeCell(header)}</th>`).join("")}</tr>
             ${workerRows}
@@ -1227,9 +1219,9 @@ export default function NewPayrollPage() {
     const blob = new Blob([worksheetHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const fileNameBase = sanitizeFileName(exportFileName) || `${payFrequency}-payroll`;
+    const fileNameBase = sanitizeExportFileName(exportFileName) || buildPayrollExportName(payFrequency);
     link.href = url;
-    link.download = `${fileNameBase}-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.download = appendDateToExportName(fileNameBase);
     link.click();
     URL.revokeObjectURL(url);
     notify("Payroll Excel file exported");
@@ -1758,6 +1750,17 @@ export default function NewPayrollPage() {
             <p className="mt-2 max-w-3xl text-sm leading-5 text-slate-200/80">
               SSS, Pag-IBIG, and PhilHealth are computed automatically from each worker&apos;s gross salary and the selected deduction schedule, while each payroll row stays fully visible in the editor.
             </p>
+            <p className="mt-2 text-xs font-semibold text-slate-300">
+              Run type: PR • Calculation v1
+            </p>
+            {savedPayrollAudit && (
+              <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-200">
+                {savedPayrollAudit.runId ? <span className="rounded-full bg-white/10 px-3 py-1 font-black">Run ID: {savedPayrollAudit.runId}</span> : null}
+                {savedPayrollAudit.runType ? <span className="rounded-full bg-white/10 px-3 py-1 font-black">Type: {savedPayrollAudit.runType}</span> : null}
+                {savedPayrollAudit.calculationVersion !== null ? <span className="rounded-full bg-white/10 px-3 py-1 font-black">Calculation v{savedPayrollAudit.calculationVersion}</span> : null}
+                {savedPayrollAudit.savedAt ? <span className="rounded-full bg-white/10 px-3 py-1 font-black">Saved: {new Date(savedPayrollAudit.savedAt).toLocaleString()}</span> : null}
+              </div>
+            )}
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
               <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>

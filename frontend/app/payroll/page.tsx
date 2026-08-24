@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName } from "../components/filter-config";
 import { uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
+import { getPayrollRunTypeLabel, inferPayrollRunType, normalizePayrollRunType } from "../../lib/payrollRunType";
+import { getPayrollStatusTone, normalizePayrollStatus } from "../../lib/payrollStatus";
 
 const API_BASE = "/api";
 
@@ -33,8 +35,29 @@ function pesos(value: number) {
   }).format(value || 0);
 }
 
+function getRunPeriod(run: Row) {
+  const start = pick(run, ["pay_period_start", "period_start", "start_date"]);
+  const end = pick(run, ["pay_period_end", "period_end", "end_date"]);
+  return { start, end, label: `${start} → ${end}` };
+}
+
+function formatCreatedAt(value: unknown) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return date.toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function PayrollIndex() {
   const router = useRouter();
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [runs, setRuns] = useState<Row[]>([]);
   const [employeeCount, setEmployeeCount] = useState(0);
   const [payrollCost, setPayrollCost] = useState(0);
@@ -106,13 +129,15 @@ export default function PayrollIndex() {
     const query = searchQuery.trim().toLowerCase();
 
     const filtered = runs.filter((run) => {
+      const period = getRunPeriod(run);
       const values = [
         pick(run, ["run_code"]),
-        pick(run, ["period_start", "start_date"]),
-        pick(run, ["period_end", "end_date"]),
+        period.start,
+        period.end,
         pick(run, ["department_name", "department"]),
         pick(run, ["project_site_name", "project_site"]),
         pick(run, ["status"]),
+        pick(run, ["created_at"]),
       ].join(" ").toLowerCase();
 
       const departmentMatch = !selectedDepartment || pick(run, ["department_name", "department"]) === selectedDepartment;
@@ -125,10 +150,8 @@ export default function PayrollIndex() {
     return filtered.sort((a, b) => {
       const aRun = pick(a, ["run_code"]);
       const bRun = pick(b, ["run_code"]);
-      const aStart = pick(a, ["period_start", "pay_period_start", "start_date"]);
-      const bStart = pick(b, ["period_start", "pay_period_start", "start_date"]);
-      const aEnd = pick(a, ["period_end", "end_date"]);
-      const bEnd = pick(b, ["period_end", "end_date"]);
+      const { start: aStart, end: aEnd } = getRunPeriod(a);
+      const { start: bStart, end: bEnd } = getRunPeriod(b);
       const aPeriod = `${aStart} ${aEnd}`;
       const bPeriod = `${bStart} ${bEnd}`;
 
@@ -145,6 +168,30 @@ export default function PayrollIndex() {
       }
     });
   }, [runs, searchQuery, selectedDepartment, selectedProjectSite, sortMode]);
+
+  async function updateRunStatus(runId: string, status: "Draft" | "Reviewed" | "Released" | "Paid") {
+    setStatusUpdatingId(runId);
+    try {
+      const token = localStorage.getItem("hr_token");
+      const response = await fetch(`${API_BASE}/payroll/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ runId, status }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update payroll status");
+      }
+      setRuns((current) => current.map((run) => (String(run.id || run.run_id || "") === runId ? { ...run, status } : run)));
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  }
 
   const stats = useMemo(
     () => [
@@ -427,48 +474,92 @@ export default function PayrollIndex() {
                       <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Run Code</th>
                       <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Period</th>
                       <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Payout Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-700">Created</th>
                       <th className="px-4 py-3 text-right text-xs font-black uppercase tracking-wider text-slate-700">Net Pay</th>
-                      <th className="px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700">Status</th>
+                      <th className="px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700">Type / Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredRuns.map((run, index) => (
                       <tr key={String(pick(run, ["id", "run_code", "run_id"]) ?? index)} className="group transition-all duration-200 hover:bg-slate-50">
                         <td className="px-4 py-4"><span className="font-black text-slate-900">{pick(run, ["run_code"])}</span></td>
-                        <td className="px-4 py-4 text-sm text-slate-600"><div className="flex items-center gap-2"><svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg><span className="font-semibold">{pick(run, ["period_start", "pay_period_start", "start_date"])} → {pick(run, ["period_end", "pay_period_end", "end_date"])}</span></div></td>
+                        <td className="px-4 py-4 text-sm text-slate-600"><div className="flex items-center gap-2"><svg className="h-4 w-4 text-slate-400 transition-colors group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg><span className="font-semibold">{getRunPeriod(run).label}</span></div></td>
                         <td className="px-4 py-4 text-sm font-semibold text-slate-600">{pick(run, ["payout_date"])}</td>
+                        <td className="px-4 py-4 text-sm font-semibold text-slate-600">{formatCreatedAt(pick(run, ["created_at"]))}</td>
                         <td className="px-4 py-4 text-right"><span className="text-base font-black text-emerald-700">{pesos(Number(run["total_net_pay"] ?? 0))}</span></td>
                         <td className="px-4 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm"><svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8"><circle cx={4} cy={4} r={3} /></svg>{pick(run, ["status"])}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const params = new URLSearchParams();
-                                const runCode = String(pick(run, ["run_code"]) || "").trim();
-                                const department = String(pick(run, ["department_name", "department"]) || "").trim();
-                                const projectSite = String(pick(run, ["project_site_name", "project_site"]) || "").trim();
-                                const startDate = String(pick(run, ["period_start", "pay_period_start", "start_date"]) || "").trim();
-                                const endDate = String(pick(run, ["period_end", "pay_period_end", "end_date"]) || "").trim();
-                                const payoutDate = String(pick(run, ["payout_date"]) || "").trim();
+                            {(() => {
+                              const runType = getPayrollRunTypeLabel(pick(run, ["run_code"]), pick(run, ["run_type"]));
+                              return <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black shadow-sm ${runType === "PR" ? "bg-blue-50 text-blue-700" : "bg-cyan-50 text-cyan-700"}`}>{runType}</span>;
+                            })()}
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black shadow-sm ${getPayrollStatusTone(pick(run, ["status"]))}`}><svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8"><circle cx={4} cy={4} r={3} /></svg>{normalizePayrollStatus(pick(run, ["status"]))}</span>
+                            {String(run.created_by_name || "").trim() ? <span className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700">By: {String(run.created_by_name)}</span> : null}
 
-                                if (department) params.set("department", department);
-                                if (projectSite) params.set("projectSite", projectSite);
-                                if (startDate) params.set("startDate", startDate);
-                                if (endDate) params.set("endDate", endDate);
-                                if (payoutDate) params.set("payoutDate", payoutDate);
+                            {(() => {
+                              const runId = String(pick(run, ["id", "run_id"]) || "").trim();
+                              const isUpdating = statusUpdatingId === runId;
 
-                                if (runCode.toUpperCase().startsWith("PR")) {
-                                  router.push(`/payroll/new?${params.toString()}`);
-                                  return;
-                                }
+                              return (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const params = new URLSearchParams();
+                                      const runCode = String(pick(run, ["run_code"]) || "").trim();
+                                      const runType = normalizePayrollRunType(pick(run, ["run_type"])) || inferPayrollRunType(pick(run, ["run_code"]), pick(run, ["run_type"]));
+                                      const department = String(pick(run, ["department_name", "department"]) || "").trim();
+                                      const projectSite = String(pick(run, ["project_site_name", "project_site"]) || "").trim();
+                                      const startDate = String(pick(run, ["pay_period_start", "period_start", "start_date"]) || "").trim();
+                                      const endDate = String(pick(run, ["pay_period_end", "period_end", "end_date"]) || "").trim();
+                                      const payoutDate = String(pick(run, ["payout_date"]) || "").trim();
+                                      const runId = String(pick(run, ["id", "run_id"]) || "").trim();
 
-                                router.push(`/office-payroll?${params.toString()}`);
-                              }}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
-                            >
-                              Open
-                            </button>
+                                      if (department) params.set("department", department);
+                                      if (projectSite) params.set("projectSite", projectSite);
+                                      if (startDate) params.set("startDate", startDate);
+                                      if (endDate) params.set("endDate", endDate);
+                                      if (payoutDate) params.set("payoutDate", payoutDate);
+                                      if (runId) params.set("runId", runId);
+
+                                      if (runType === "PR" || (!runType && runCode.toUpperCase().startsWith("PR"))) {
+                                        router.push(`/payroll/new?${params.toString()}`);
+                                        return;
+                                      }
+
+                                      router.push(`/office-payroll?${params.toString()}`);
+                                    }}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+                                  >
+                                    Open
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => runId && void updateRunStatus(runId, "Reviewed")}
+                                    disabled={!runId || isUpdating}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    Review
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => runId && void updateRunStatus(runId, "Released")}
+                                    disabled={!runId || isUpdating}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-cyan-300 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    Release
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => runId && void updateRunStatus(runId, "Paid")}
+                                    disabled={!runId || isUpdating}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    Mark Paid
+                                  </button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>

@@ -15,6 +15,17 @@ router.use(verifyToken);
 
 type Row = Record<string, unknown>;
 
+function safeParseJson(value: unknown) {
+  if (!value) return null;
+  if (typeof value === 'object') return value as Record<string, unknown>;
+  if (typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 function numberValue(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -106,7 +117,15 @@ router.get('/leave-types', async (_, res) => {
 
 router.get('/payroll-runs', async (_, res) => {
   const { rows, error } = await fetchTable('payroll_runs', 'created_at');
-  res.json({ payrollRuns: rows, error });
+  const payrollRuns = rows.map((run) => {
+    const notes = safeParseJson(run.notes);
+    const createdByName = String((notes as any)?.audit?.createdBy?.name || '').trim();
+    return {
+      ...run,
+      created_by_name: createdByName || null,
+    };
+  });
+  res.json({ payrollRuns, error });
 });
 
 router.get('/job-openings', async (_, res) => {

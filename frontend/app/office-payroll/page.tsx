@@ -7,6 +7,9 @@ import * as XLSX from "xlsx";
 
 import { useNotification } from "../components/notification";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
+import { buildOfficeExportName, buildOfficePayslipName } from "../../lib/payrollExport";
+import { appendDateToExportName } from "../../lib/fileName";
+import { getPayrollStatusTone, normalizePayrollStatus } from "../../lib/payrollStatus";
 
 type SessionUser = {
   id?: string;
@@ -35,6 +38,32 @@ type Employee = {
 };
 
 const API_BASE = "/api";
+
+type PayrollAuditUser = {
+  userId?: string;
+  role?: string;
+  name?: string;
+};
+
+type PayrollNotes = {
+  type?: string;
+  source?: string;
+  route?: string;
+  rows?: unknown[];
+  audit?: {
+    source?: string;
+    createdAt?: string;
+    createdBy?: PayrollAuditUser | null;
+  };
+  statusHistory?: Array<{
+    from?: string;
+    to?: string;
+    status?: string;
+    changedAt?: string;
+    changedBy?: PayrollAuditUser | null;
+    reason?: string | null;
+  }>;
+};
 
 type OfficePayrollRow = {
   id: string;
@@ -87,6 +116,10 @@ function round2(value: number) {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 }
 
+
+
+
+
 function computeRow(row: OfficePayrollRow) {
   const dailyRate = row.monthlySalary / 26;
   const holidayDays = Number(row.holiday) || 0;
@@ -135,13 +168,23 @@ export default function OfficePayrollPage() {
   const [payPeriod, setPayPeriod] = useState("Monthly");
   const [payoutDate, setPayoutDate] = useState(searchParams.get("payoutDate") || "");
   const [rows, setRows] = useState<OfficePayrollRow[]>([]);
+  const [activeRunId, setActiveRunId] = useState<string>("");
+  const [activeRunType, setActiveRunType] = useState<string>("");
+  const [activeRunStatus, setActiveRunStatus] = useState<string>("");
+  const [calculationVersion, setCalculationVersion] = useState<number | null>(null);
+  const [auditNotes, setAuditNotes] = useState<PayrollNotes | null>(null);
   const [saving, setSaving] = useState(false);
   const [released, setReleased] = useState(false);
+  const isLockedRun = activeRunStatus === "Reviewed" || activeRunStatus === "Released" || activeRunStatus === "Paid";
 
   useEffect(() => {
     const urlPayoutDate = searchParams.get("payoutDate") || "";
+    const urlRunId = searchParams.get("runId") || "";
     if (urlPayoutDate) {
       setPayoutDate(urlPayoutDate);
+    }
+    if (urlRunId) {
+      setActiveRunId(urlRunId);
     }
   }, [searchParams]);
 
@@ -257,12 +300,12 @@ export default function OfficePayrollPage() {
   }, [employees]);
 
   useEffect(() => {
-    if (!payoutDate || employees.length === 0 || rows.length === 0) return;
+    if (activeRunId || !payoutDate || employees.length === 0 || rows.length === 0) return;
     if (autoLoadedPayoutDateRef.current === payoutDate) return;
 
     autoLoadedPayoutDateRef.current = payoutDate;
-    void loadPayrollByPayoutDate();
-  }, [payoutDate, employees.length, rows.length]);
+    void loadOfficePayrollRun();
+  }, [activeRunId, payoutDate, employees.length, rows.length]);
 
   const isSuperAdmin = user?.role === "super-admin";
 
@@ -318,6 +361,7 @@ export default function OfficePayrollPage() {
   }
 
   function updateRow(id: string, patch: Partial<OfficePayrollRow>) {
+    if (isLockedRun) return;
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
 
@@ -370,9 +414,9 @@ export default function OfficePayrollPage() {
     );
   }
 
-  async function loadPayrollByPayoutDate() {
-    if (!payoutDate) {
-      notify("Select a payout date first");
+  async function loadOfficePayrollRun() {
+    if (!activeRunId && !payoutDate) {
+      notify("Select a run or payout date first");
       return;
     }
 
@@ -381,14 +425,18 @@ export default function OfficePayrollPage() {
 
     try {
       const token = localStorage.getItem("hr_token");
-      const response = await fetch(`${API_BASE}/payroll/office/by-payout-date?payoutDate=${encodeURIComponent(payoutDate)}`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+      const endpoint = activeRunId
+        ? `${API_BASE}/payroll/office/by-run-id?runId=${encodeURIComponent(activeRunId)}`
+        : `${API_BASE}/payroll/office/by-payout-date?payoutDate=${encodeURIComponent(payoutDate)}`;
+      const response = await fetch(endpoint, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data?.message || "No payroll run found for that payout date");
+        throw new Error(data?.message || "No payroll run found");
       }
 
       const savedRows = getSavedRowsSnapshot(Array.isArray(data?.rows) ? data.rows : [], data?.notes);
+      setAuditNotes((data?.notes && typeof data.notes === "object") ? data.notes : null);
       if (savedRows.length > 0) {
         hydrateRowsFromSavedRows(savedRows);
       }
@@ -396,8 +444,24 @@ export default function OfficePayrollPage() {
       if (data?.run?.pay_period_label) {
         setPayPeriod(String(data.run.pay_period_label));
       }
+      const loadedRunId = data?.run?.id ? String(data.run.id) : activeRunId;
+      if (data?.run?.id) {
+        setActiveRunId(String(data.run.id));
+      }
+      if (data?.run?.run_type) {
+        setActiveRunType(String(data.run.run_type));
+      }
+      if (data?.run?.status) {
+        setActiveRunStatus(String(data.run.status));
+      }
+      if (data?.run?.calculation_version !== undefined && data?.run?.calculation_version !== null) {
+        setCalculationVersion(Number(data.run.calculation_version));
+      }
+      if (data?.run?.payout_date) {
+        setPayoutDate(String(data.run.payout_date));
+      }
 
-      notify(`Loaded payroll run for ${payoutDate}`);
+      notify(loadedRunId ? `Loaded office payroll run ${loadedRunId}` : `Loaded payroll run for ${payoutDate}`);
     } catch (err) {
       setError((err as Error).message);
       notify((err as Error).message);
@@ -451,7 +515,7 @@ export default function OfficePayrollPage() {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rawRows), "Office Payroll");
-    XLSX.writeFile(wb, `office-payroll-${String(payPeriod).toLowerCase().replace(/\s+/g, "-")}.xlsx`);
+    XLSX.writeFile(wb, appendDateToExportName(buildOfficeExportName(payPeriod), new Date(), "xlsx"));
     notify("Payroll Excel exported");
   }
 
@@ -499,6 +563,7 @@ export default function OfficePayrollPage() {
               <tr class="top-row"><td colspan="4" class="subtitle">PAYSLIP FOR THE PERIOD</td></tr>
               <tr class="top-row"><td colspan="4" class="subtitle">${String(payPeriod || "Monthly").toUpperCase()}</td></tr>
               <tr class="top-row"><td colspan="4" class="subtitle">${String(payoutDate || "0")}</td></tr>
+              ${(activeRunType || calculationVersion !== null) ? `<tr class="top-row"><td colspan="4" class="subtitle">${activeRunType ? `TYPE: ${String(activeRunType).toUpperCase()}` : ""}${activeRunType && calculationVersion !== null ? " • " : ""}${calculationVersion !== null ? `CALCULATION V${calculationVersion}` : ""}</td></tr>` : ""}
 
               <tr class="info-row">
                 <td class="label">EMPLOYEE NAME:</td><td colspan="2" class="value">${employee.fullName}</td>
@@ -612,7 +677,7 @@ export default function OfficePayrollPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `office-payslip-${String(payPeriod).toLowerCase().replace(/\s+/g, "-")}.xls`;
+    link.download = appendDateToExportName(buildOfficePayslipName(payPeriod));
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -624,18 +689,71 @@ export default function OfficePayrollPage() {
     exportPayslipExcel();
   }
 
+  async function updatePayrollStatus(nextStatus: "Draft" | "Reviewed" | "Released" | "Paid") {
+    if (!activeRunId) {
+      notify("Load a saved run first");
+      return;
+    }
+
+    if (isLockedRun && nextStatus !== "Released" && nextStatus !== "Paid") {
+      notify("This payroll run is locked");
+      return;
+    }
+
+    if (activeRunStatus === nextStatus) {
+      notify(`Payroll is already ${nextStatus}`);
+      return;
+    }
+
+    if (!activeRunId) {
+      notify("Load a saved run first");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("hr_token");
+      const response = await fetch(`${API_BASE}/payroll/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ runId: activeRunId, status: nextStatus }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update payroll status");
+      }
+
+      setActiveRunStatus(nextStatus);
+      setReleased(nextStatus === "Released" || nextStatus === "Paid");
+      notify(`Payroll marked as ${nextStatus}`);
+    } catch (error) {
+      notify((error as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function releasePayroll() {
-    setReleased(true);
-    notify("Office payroll marked for release");
+    await updatePayrollStatus("Released");
   }
 
   async function savePayroll() {
+    if (isLockedRun) {
+      notify("This payroll run is locked");
+      return;
+    }
     setSaving(true);
     try {
       const token = localStorage.getItem("hr_token");
       const payload = {
+        runId: activeRunId || undefined,
         payPeriod,
         payoutDate,
+        runType: "OFFICE",
+        calculationVersion: 1,
         rows: sortedOfficeEmployees.map((employee) => {
           const row = rows.find((item) => item.employeeId === employee.employeeId || item.id === employee.id);
           const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
@@ -720,16 +838,53 @@ export default function OfficePayrollPage() {
           <p className="eyebrow">Payroll management</p>
           <h1 className="page-title mt-1">Office Payroll</h1>
           <p className="page-subtitle">Super-admin only payroll workspace for employees assigned to Main Office.</p>
+          {(activeRunId || activeRunType || activeRunStatus || calculationVersion !== null || payoutDate || auditNotes?.audit) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+              <span>Loaded run</span>
+              {activeRunId ? <span className="rounded-full bg-slate-100 px-2.5 py-1 font-black text-slate-700">ID: {activeRunId}</span> : null}
+              {activeRunType ? <span className="rounded-full bg-blue-50 px-2.5 py-1 font-black text-blue-700">Type: {activeRunType}</span> : null}
+              {activeRunStatus ? <span className={`rounded-full px-2.5 py-1 font-black ${getPayrollStatusTone(activeRunStatus)}`}>Status: {normalizePayrollStatus(activeRunStatus)}</span> : null}
+              {calculationVersion !== null ? <span className="rounded-full bg-slate-100 px-2.5 py-1 font-black text-slate-700">Calculation v{calculationVersion}</span> : null}
+              {payoutDate ? <span className="rounded-full bg-cyan-50 px-2.5 py-1 font-black text-cyan-700">Payout: {payoutDate}</span> : null}
+              {auditNotes?.audit?.createdAt ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-black text-emerald-700">Created: {auditNotes.audit.createdAt}</span> : null}
+              {auditNotes?.audit?.createdBy?.name ? <span className="rounded-full bg-violet-50 px-2.5 py-1 font-black text-violet-700">By: {auditNotes.audit.createdBy.name}</span> : null}
+            </div>
+          )}
+          {Array.isArray(auditNotes?.statusHistory) && auditNotes.statusHistory.length > 0 && (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Status history</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {auditNotes.statusHistory.slice(-4).reverse().map((entry, index) => (
+                  <div key={`${entry?.changedAt || entry?.from || entry?.to || index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-black text-slate-700">{entry?.from || "Draft"} → {entry?.to || entry?.status || "Unknown"}</span>
+                      {entry?.changedAt ? <span className="font-semibold text-slate-400">{entry.changedAt}</span> : null}
+                    </div>
+                    <div className="mt-1 text-slate-500">
+                      {entry?.changedBy?.name ? <span className="font-semibold text-slate-600">{entry.changedBy.name}</span> : <span>System</span>}
+                      {entry?.reason ? <span> • {entry.reason}</span> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={savePayroll} className="primary-button" disabled={saving}>
-            {saving ? "Saving..." : "Save office payroll"}
+          <button type="button" onClick={savePayroll} className="primary-button" disabled={saving || isLockedRun}>
+            {saving ? "Saving..." : isLockedRun ? "Locked" : "Save office payroll"}
           </button>
-          <button type="button" onClick={releasePayroll} className="secondary-button">
-            {released ? "Released" : "Mark for release"}
+          <button type="button" onClick={() => updatePayrollStatus("Reviewed")} className="secondary-button" disabled={!activeRunId || saving || isLockedRun}>
+            Review
           </button>
-          <button type="button" onClick={exportExcel} className="secondary-button">Export Excel</button>
-          <button type="button" onClick={exportPayslipExcel} className="secondary-button">Generate Payslip</button>
+          <button type="button" onClick={() => updatePayrollStatus("Released")} className="secondary-button" disabled={!activeRunId || saving || activeRunStatus !== "Reviewed"}>
+            Release
+          </button>
+          <button type="button" onClick={() => updatePayrollStatus("Paid")} className="secondary-button" disabled={!activeRunId || saving || activeRunStatus !== "Released"}>
+            Mark Paid
+          </button>
+          <button type="button" onClick={exportExcel} className="secondary-button">Export Excel (Raw Data)</button>
+          <button type="button" onClick={exportPayslipExcel} className="secondary-button">Generate Payslip (Formatted)</button>
           <button type="button" onClick={handlePrint} className="secondary-button">Print</button>
         </div>
       </div>
@@ -752,8 +907,8 @@ export default function OfficePayrollPage() {
         </article>
       </section>
 
-      <section className="section-card border border-slate-200/70 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className={`section-card border border-slate-200/70 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur ${isLockedRun ? "opacity-70" : ""}`}>
+        <div className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${isLockedRun ? "pointer-events-none select-none" : ""}`}>
           <div>
             <p className="eyebrow">Office payroll controls</p>
             <h2 className="mt-1 text-xl font-black text-slate-950">Main Office staff only</h2>
@@ -782,19 +937,25 @@ export default function OfficePayrollPage() {
               </select>
             </label>
 
-            <button type="button" onClick={savePayroll} className="secondary-button" disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+            <button type="button" onClick={savePayroll} className="secondary-button" disabled={saving || isLockedRun}>
+              {saving ? "Saving..." : isLockedRun ? "Locked" : "Save"}
             </button>
-            <button type="button" onClick={loadPayrollByPayoutDate} className="secondary-button">
-              Load by payout date
+            <button type="button" onClick={loadOfficePayrollRun} className="secondary-button">
+              Load saved run
             </button>
-            <button type="button" onClick={releasePayroll} className="secondary-button">
-              {released ? "Released" : "Release"}
+            <button type="button" onClick={() => updatePayrollStatus("Reviewed")} className="secondary-button" disabled={!activeRunId || saving || isLockedRun}>
+              Review
+            </button>
+            <button type="button" onClick={() => updatePayrollStatus("Released")} className="secondary-button" disabled={!activeRunId || saving || activeRunStatus !== "Reviewed"}>
+              Release
+            </button>
+            <button type="button" onClick={() => updatePayrollStatus("Paid")} className="secondary-button" disabled={!activeRunId || saving || activeRunStatus !== "Released"}>
+              Mark Paid
             </button>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className={`mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr] ${isLockedRun ? "pointer-events-none select-none" : ""}`}>
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">Search Main Office employees</span>
             <input
