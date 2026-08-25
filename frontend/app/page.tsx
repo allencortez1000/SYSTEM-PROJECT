@@ -157,6 +157,33 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Company Purpose */}
+        <section className="mb-6 grid gap-3 lg:grid-cols-3">
+          <div className="stat-card accent-blue">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500">Our Vision</p>
+            <h2 className="mt-2 text-base font-black tracking-tight text-slate-950">Building lasting possibilities</h2>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              To be a trusted leader in homebuilding and community development, transforming the dreams of Filipino families into lasting possibilities through innovative, quality, and sustainable homes.
+            </p>
+          </div>
+
+          <div className="stat-card accent-cyan">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-500">Our Mission</p>
+            <h2 className="mt-2 text-base font-black tracking-tight text-slate-950">Turning dreams into possibilities</h2>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Rabino Home Builders Corporation is committed to providing quality homes, innovative construction solutions, and exceptional customer service while building communities that inspire growth and lasting value.
+            </p>
+          </div>
+
+          <div className="stat-card accent-slate">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Core Message</p>
+            <h2 className="mt-2 text-base font-black tracking-tight text-slate-950">One home, one family, one community</h2>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Every family deserves a place to call home. Through integrity, excellence, and innovation, we turn dreams into possibilities — one home, one family, and one community at a time.
+            </p>
+          </div>
+        </section>
+
         {/* Loading & Error States */}
         {loading && (
           <div className="flex items-center justify-center py-16">
