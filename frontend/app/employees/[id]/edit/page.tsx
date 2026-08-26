@@ -240,24 +240,25 @@ export default function EditEmployeePage() {
 
   return (
     <div className="page-shell">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Edit Employee</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Update Profile</h1>
-          <p className="mt-1 text-sm text-slate-500">Modify employee details and save the updated record.</p>
+          <p className="eyebrow">Edit Employee</p>
+          <h1 className="page-title mt-1">Update Profile</h1>
+          <p className="page-subtitle">Modify employee details and save the updated record.</p>
           <span className="badge-active-only mt-3 inline-flex items-center gap-2">
             <span className="badge-dot" />
             Active employees only
           </span>
         </div>
-        <Link href={`/employees/${id}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+        <Link href={`/employees/${id}`} className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
           Back to details
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+      <form onSubmit={handleSubmit} className="section-card overflow-hidden p-0">
         <div className="border-b border-slate-100 px-6 py-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">Employee Details</h2>
+          <p className="eyebrow">Employee profile</p>
+          <h2 className="mt-1 text-sm font-bold uppercase tracking-wider text-slate-400">Employee Details</h2>
         </div>
         <div className="px-4 py-5 sm:px-6 sm:py-6">
         <div className="grid gap-5 sm:grid-cols-2">
@@ -282,7 +283,7 @@ export default function EditEmployeePage() {
                 type="button"
                 onClick={createProjectSite}
                 disabled={creatingProjectSite}
-                className="mt-auto inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                className="mt-auto inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 {creatingProjectSite ? "Adding..." : "Add site"}
               </button>
@@ -332,10 +333,10 @@ export default function EditEmployeePage() {
         {error && <div className="mt-6 rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
 
         <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
-          <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50">
+          <button type="submit" disabled={saving} className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50">
             {saving ? "Saving..." : "Save changes"}
           </button>
-          <Link href={`/employees/${id}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+          <Link href={`/employees/${id}`} className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             Cancel
           </Link>
         </div>

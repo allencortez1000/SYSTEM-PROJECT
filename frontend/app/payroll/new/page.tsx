@@ -1763,13 +1763,13 @@ export default function NewPayrollPage() {
             )}
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <button onClick={() => setIsWorksheetOpen(true)} className="primary-button" type="button">Edit payroll table</button>
-              <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
-              <button onClick={savePayrollTable} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
-              <button onClick={triggerExcelImport} type="button" className="secondary-button bg-white/10 text-white hover:bg-white/15">Insert Excel</button>
+              <button onClick={syncPayrollFromAttendance} type="button" className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15">{syncingAttendance ? "Syncing..." : "Sync from attendance"}</button>
+              <button onClick={savePayrollTable} type="button" className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15" disabled={savingPayrollTable}>{savingPayrollTable ? "Saving..." : "Save payroll table"}</button>
+              <button onClick={triggerExcelImport} type="button" className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15">Insert Excel</button>
               <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
-              <button onClick={applyPayrollEditsToAttendance} className="secondary-button bg-white/10 text-white hover:bg-white/15" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
-              <button onClick={addRow} className="secondary-button bg-white/10 text-white hover:bg-white/15" type="button">Add worker row</button>
-              <Link href="/payroll" className="secondary-button bg-white/10 text-white hover:bg-white/15">Back to payroll center</Link>
+              <button onClick={applyPayrollEditsToAttendance} className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
+              <button onClick={addRow} className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15" type="button">Add worker row</button>
+              <Link href="/payroll" className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15">Back to payroll center</Link>
             </div>
           </div>
 

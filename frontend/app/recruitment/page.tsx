@@ -107,17 +107,21 @@ export default function RecruitmentPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-2">
+      <section className="grid gap-4 md:grid-cols-2">
         {metrics.map(({ label, value, icon }) => (
           <div
             key={label}
-            className="stat-card accent-blue"
+            className={`stat-card ${label === "Open roles" ? "accent-blue" : "accent-cyan"} min-h-[128px]`}
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              {icon}
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                {icon}
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+                <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
+              </div>
             </div>
-            <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
           </div>
         ))}
       </section>

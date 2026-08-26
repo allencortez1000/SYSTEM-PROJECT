@@ -17,6 +17,7 @@ function labelFromRole(role?: string) {
 }
 
 type NavItem = { href: string; label: string; icon: ReactNode };
+type NavGroup = { label: string; items: NavItem[] };
 
 function NavIcon({ path }: { path: string }) {
   return (
@@ -38,15 +39,24 @@ const NAV_ICONS: Record<string, string> = {
   "/admin-users": "M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z",
 };
 
-const baseNavigation: NavItem[] = [
-  { href: "/",            label: "Dashboard",    icon: <NavIcon path={NAV_ICONS["/"]} /> },
-  { href: "/employees",   label: "Employees",    icon: <NavIcon path={NAV_ICONS["/employees"]} /> },
-  { href: "/attendance",  label: "Attendance",   icon: <NavIcon path={NAV_ICONS["/attendance"]} /> },
-  { href: "/payroll",     label: "Payroll",      icon: <NavIcon path={NAV_ICONS["/payroll"]} /> },
-  { href: "/leave",       label: "Leave",        icon: <NavIcon path={NAV_ICONS["/leave"]} /> },
-  { href: "/recruitment", label: "Recruitment",  icon: <NavIcon path={NAV_ICONS["/recruitment"]} /> },
-  { href: "/reports",     label: "Reports",      icon: <NavIcon path={NAV_ICONS["/reports"]} /> },
-  { href: "/compliance",  label: "Compliance",   icon: <NavIcon path={NAV_ICONS["/compliance"]} /> },
+const overviewNavigation: NavItem[] = [
+  { href: "/", label: "Dashboard", icon: <NavIcon path={NAV_ICONS["/"]} /> },
+];
+
+const workforceNavigation: NavItem[] = [
+  { href: "/employees", label: "Employees", icon: <NavIcon path={NAV_ICONS["/employees"]} /> },
+  { href: "/attendance", label: "Attendance", icon: <NavIcon path={NAV_ICONS["/attendance"]} /> },
+  { href: "/leave", label: "Leave", icon: <NavIcon path={NAV_ICONS["/leave"]} /> },
+  { href: "/recruitment", label: "Recruitment", icon: <NavIcon path={NAV_ICONS["/recruitment"]} /> },
+];
+
+const financeNavigation: NavItem[] = [
+  { href: "/payroll", label: "Payroll", icon: <NavIcon path={NAV_ICONS["/payroll"]} /> },
+];
+
+const managementNavigation: NavItem[] = [
+  { href: "/reports", label: "Reports", icon: <NavIcon path={NAV_ICONS["/reports"]} /> },
+  { href: "/compliance", label: "Compliance", icon: <NavIcon path={NAV_ICONS["/compliance"]} /> },
 ];
 
 export default function DashboardShell({ children }: DashboardShellProps) {
@@ -72,10 +82,22 @@ export default function DashboardShell({ children }: DashboardShellProps) {
     };
   }, [mobileMenuOpen]);
 
-  const navigation: NavItem[] =
-    sessionUser?.role === "super-admin"
-      ? [...baseNavigation, { href: "/office-payroll", label: "Office Payroll", icon: <NavIcon path={NAV_ICONS["/payroll"]} /> }, { href: "/admin-users", label: "Admin Access", icon: <NavIcon path={NAV_ICONS["/admin-users"]} /> }]
-      : baseNavigation;
+  const navigationGroups: NavGroup[] = [
+    { label: "Overview", items: overviewNavigation },
+    { label: "Workforce", items: workforceNavigation },
+    {
+      label: "Finance",
+      items: sessionUser?.role === "super-admin"
+        ? [...financeNavigation, { href: "/office-payroll", label: "Office Payroll", icon: <NavIcon path={NAV_ICONS["/payroll"]} /> }]
+        : financeNavigation,
+    },
+    {
+      label: "Management",
+      items: sessionUser?.role === "super-admin"
+        ? [...managementNavigation, { href: "/admin-users", label: "Admin Access", icon: <NavIcon path={NAV_ICONS["/admin-users"]} /> }]
+        : managementNavigation,
+    },
+  ];
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
@@ -128,33 +150,39 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                 </svg>
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 py-4">
-              <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">Navigation</p>
-              <ul className="space-y-1.5">
-                {navigation.map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={
-                          "group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 " +
-                          (active
-                            ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"
-                            : "text-slate-300 hover:bg-white/8 hover:text-white")
-                        }
-                      >
-                        <span className={active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}>
-                          {item.icon}
-                        </span>
-                        {item.label}
-                        {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/70" />}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            <nav className="sidebar-scrollbar flex-1 overflow-y-auto px-3 py-4">
+              <div className="space-y-5">
+                {navigationGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500">{group.label}</p>
+                    <ul className="space-y-1.5">
+                      {group.items.map((item) => {
+                        const active = isActive(item.href);
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={
+                                "group flex items-center gap-3 rounded-xl border px-4 py-3 text-base font-semibold transition-all duration-200 " +
+                                (active
+                                  ? "border-blue-400/20 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/10"
+                                  : "border-transparent text-slate-300 hover:border-white/10 hover:bg-white/8 hover:text-white")
+                              }
+                            >
+                              <span className={active ? "text-white drop-shadow-sm" : "text-slate-400 group-hover:text-slate-200"}>
+                                {item.icon}
+                              </span>
+                              {item.label}
+                              {active && <span className="ml-auto h-6 w-1 rounded-full bg-white/75" />}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </nav>
           </aside>
         </div>
@@ -176,34 +204,40 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">
-            Navigation
-          </p>
-          <ul className="space-y-1.5">
-            {navigation.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={
-                      "group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 " +
-                      (active
-                        ? "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25"
-                        : "text-slate-300 hover:bg-white/8 hover:text-white hover:translate-x-0.5")
-                    }
-                  >
-                    <span className={active ? "text-white" : "text-slate-400 group-hover:text-slate-200"}>
-                      {item.icon}
-                    </span>
-                    {item.label}
-                    {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/70" />}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        <nav className="sidebar-scrollbar flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-5">
+            {navigationGroups.map((group) => (
+              <div key={group.label}>
+                <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.28em] text-slate-500">
+                  {group.label}
+                </p>
+                <ul className="space-y-1.5">
+                  {group.items.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={
+                            "group flex items-center gap-3 rounded-xl border px-4 py-3 text-base font-semibold transition-all duration-200 " +
+                            (active
+                              ? "border-blue-400/20 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/10"
+                              : "border-transparent text-slate-300 hover:border-white/10 hover:bg-white/8 hover:text-white hover:translate-x-0.5")
+                          }
+                        >
+                          <span className={active ? "text-white drop-shadow-sm" : "text-slate-400 group-hover:text-slate-200"}>
+                            {item.icon}
+                          </span>
+                          {item.label}
+                          {active && <span className="ml-auto h-6 w-1 rounded-full bg-white/75" />}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
         </nav>
 
         <div className="border-t border-white/10 px-4 py-3">
@@ -244,11 +278,11 @@ export default function DashboardShell({ children }: DashboardShellProps) {
       </aside>
 
       <div className="min-h-screen w-full min-w-0 lg:pl-[280px] xl:pl-[292px]">
-        <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-white/70 bg-white/75 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:h-[68px] sm:px-6"> 
+        <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-slate-200/80 bg-white/85 px-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl sm:h-[68px] sm:px-6"> 
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 lg:hidden"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-100 lg:hidden"
             aria-label="Open menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -266,21 +300,22 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             </div>
           </div>
 
-          <div className="relative hidden flex-1 max-w-lg sm:block">
+          <div className="relative hidden max-w-lg flex-1 sm:block">
             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
             <input
               type="search"
-              placeholder="Search people, payroll, reports…"
+              placeholder="Search employees, payroll, attendance, or reports"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-base text-slate-700 placeholder-slate-400 transition focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
             />
           </div>
 
           {(() => {
-            const currentLabel = navigation.find(item => isActive(item.href))?.label ?? "";
+            const currentLabel = navigationGroups.flatMap((group) => group.items).find((item) => isActive(item.href))?.label ?? "";
             return currentLabel ? (
-              <div className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-4 py-2 xl:flex">
+              <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50/90 px-4 py-2 xl:flex">
+                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Current</span>
                 <span className="text-slate-300 text-sm select-none">/</span>
                 <span className="text-sm font-semibold text-slate-700">{currentLabel}</span>
               </div>
@@ -289,14 +324,14 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
           <div className="ml-auto flex items-center gap-2.5">
 
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm shadow-slate-200/60">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-[11px] font-black text-white">{initials}</div>
                 <div className="hidden min-w-0 sm:block pr-1">
                 <p className="text-[11px] font-bold leading-tight text-slate-900">{sessionUser?.name || "User"}</p>
                 <p className="text-[10px] leading-tight text-slate-400">{labelFromRole(sessionUser?.role)}</p>
               </div>
             </div>
-            <button onClick={handleLogout} className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100">
+            <button onClick={handleLogout} className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-100">
               Logout
             </button>
           </div>

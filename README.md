@@ -6,6 +6,7 @@ Enterprise-grade HR and payroll management platform for small, medium, and large
 
 - `frontend/` - Next.js + Tailwind CSS UI
 - `backend/` - Express.js API, JWT authentication, payroll engine
+- `docs/ui-style-guide.md` - shared UI design standards for future pages
 - `docker-compose.yml` - PostgreSQL, backend, and frontend services
 
 ## Setup

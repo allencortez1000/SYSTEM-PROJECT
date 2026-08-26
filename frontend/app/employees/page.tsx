@@ -171,7 +171,7 @@ export default function EmployeesPage() {
           </div>
           <Link
             href="/employees/new"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -181,12 +181,12 @@ export default function EmployeesPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
-          <div className="stat-card accent-emerald">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+          <div className="stat-card accent-emerald min-h-[128px]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-500">Active Employees</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{stats.activeStaff}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Active Employees</p>
+                <p className="mt-2 text-3xl font-black text-slate-950">{stats.activeStaff}</p>
               </div>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -196,11 +196,11 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="stat-card accent-blue">
+          <div className="stat-card accent-blue min-h-[128px]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-500">Departments</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{stats.departments}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Departments</p>
+                <p className="mt-2 text-3xl font-black text-slate-950">{stats.departments}</p>
               </div>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -210,11 +210,11 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="stat-card accent-cyan">
+          <div className="stat-card accent-cyan min-h-[128px]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-500">Total Records</p>
-                <p className="mt-2 text-2xl font-black text-slate-950">{stats.totalRecords}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Total Records</p>
+                <p className="mt-2 text-3xl font-black text-slate-950">{stats.totalRecords}</p>
               </div>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

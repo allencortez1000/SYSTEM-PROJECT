@@ -51,10 +51,10 @@ export default function RecordDetailsModal({ title, subtitle, row, isOpen }: Rec
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-2 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={(e) => { if (e.target === overlayRef.current) window.dispatchEvent(new Event(CLOSE_EVENT)); }}
     >
-      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-2xl shadow-slate-950/10 sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
           <div className="min-w-0">
-            <h2 className="truncate text-xl font-black text-slate-950">{title}</h2>
+            <h2 className="truncate text-xl font-black tracking-tight text-slate-950">{title}</h2>
             {subtitle && <p className="mt-1 truncate text-sm font-semibold text-slate-500">{subtitle}</p>}
           </div>
           <button
@@ -69,15 +69,15 @@ export default function RecordDetailsModal({ title, subtitle, row, isOpen }: Rec
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <div className="space-y-3">
             {entries.map(([key, value]) => (
-              <div key={key} className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{formatKey(key)}</span>
+              <div key={key} className="flex items-start justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{formatKey(key)}</span>
                 <span className="text-right text-sm font-semibold text-slate-800 break-all">{formatValue(value)}</span>
               </div>
             ))}
 
             {nestedEntries.map(([key, value]) => (
               <div key={key} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">{formatKey(key)}</p>
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{formatKey(key)}</p>
                 <div className="space-y-2">
                   {Object.entries(value as Record<string, unknown>).map(([subKey, subVal]) => (
                     <div key={subKey} className="flex items-start justify-between gap-4">

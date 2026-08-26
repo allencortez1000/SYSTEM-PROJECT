@@ -29,7 +29,7 @@ export default function FilterBar({
   showClear = true,
 }: FilterBarProps) {
   return (
-    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="grid flex-1 gap-4 xl:grid-cols-[minmax(220px,1.3fr)_repeat(3,minmax(160px,1fr))] xl:items-end">
           {onSearchChange && (
@@ -52,7 +52,7 @@ export default function FilterBar({
           {children}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 lg:justify-end">
           {summary}
           {showClear && onClearFilters && (
             <button

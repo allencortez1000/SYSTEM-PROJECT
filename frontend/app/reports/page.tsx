@@ -66,7 +66,7 @@ export default function ReportsPage() {
         </div>
         <Link
           href="/"
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
         >
           Back to dashboard
         </Link>
@@ -87,7 +87,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Content */}
-              <h3 className="mt-4 text-lg font-bold text-slate-900">
+              <h3 className="mt-4 text-lg font-black tracking-tight text-slate-900">
                 {card.title}
               </h3>
 
@@ -96,7 +96,7 @@ export default function ReportsPage() {
               </p>
 
               {/* Action link */}
-              <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">
+              <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 transition group-hover:translate-x-0.5 group-hover:text-blue-700">
                 {card.action}
                 <ArrowRightIcon className="h-4 w-4" />
               </div>

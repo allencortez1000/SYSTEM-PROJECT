@@ -110,12 +110,12 @@ function LegendPill({ label, tone }: { label: string; tone: string }) {
 
 function SummaryCard({ label, value, icon, accent }: { label: string; value: string | number; icon: string; accent: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <div className={`grid h-10 w-10 place-items-center rounded-full text-base ${accent}`}>{icon}</div>
+    <div className="stat-card min-h-[128px]">
+      <div className="flex items-start gap-3">
+        <div className={`grid h-10 w-10 place-items-center rounded-xl text-base shadow-sm ${accent}`}>{icon}</div>
         <div className="min-w-0">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
-          <div className="mt-1 text-2xl font-black text-slate-950">{value}</div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+          <div className="mt-2 text-3xl font-black text-slate-950">{value}</div>
         </div>
       </div>
     </div>
@@ -501,10 +501,10 @@ export default function AttendancePage() {
           <p className="mt-2 max-w-3xl text-sm text-slate-300">Spreadsheet-style attendance controls for HR/Admin teams, with fast search, bulk updates, and Excel export.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={loadData} className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold">Import</button>
-          <button onClick={exportExcel} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white">Export Excel</button>
-          <button onClick={() => bulkApply(visibleEmployees.map((e) => e.id))} className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold text-white">Bulk Edit</button>
-          <button onClick={saveAttendance} disabled={!hasUnsavedChanges || saving} className="rounded-xl bg-blue-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save Changes"}</button>
+          <button onClick={loadData} className="h-11 rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-bold">Import</button>
+          <button onClick={exportExcel} className="h-11 rounded-xl bg-emerald-500 px-4 text-sm font-bold text-white">Export Excel</button>
+          <button onClick={() => bulkApply(visibleEmployees.map((e) => e.id))} className="h-11 rounded-xl bg-slate-700 px-4 text-sm font-bold text-white">Bulk Edit</button>
+          <button onClick={saveAttendance} disabled={!hasUnsavedChanges || saving} className="h-11 rounded-xl bg-blue-500 px-4 text-sm font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save Changes"}</button>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300">{hasUnsavedChanges ? <span className="rounded-full bg-amber-500/20 px-3 py-1 font-semibold text-amber-200">Unsaved changes</span> : <span className="rounded-full bg-emerald-500/20 px-3 py-1 font-semibold text-emerald-200">All changes saved</span>} {syncStatus && <span className="rounded-full bg-white/10 px-3 py-1">{syncStatus}</span>}</div>
@@ -512,7 +512,7 @@ export default function AttendancePage() {
 
     {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">{error}</div>}
 
-    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-6">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
       <SummaryCard label="Total Workers" value={visibleEmployees.length} icon="👥" accent="bg-blue-50 text-blue-700" />
       <SummaryCard label="Present" value={summary.Present || 0} icon="✓" accent="bg-emerald-50 text-emerald-700" />
       <SummaryCard label="Absent" value={summary.Absent || 0} icon="✕" accent="bg-red-50 text-red-700" />

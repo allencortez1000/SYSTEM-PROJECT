@@ -889,20 +889,20 @@ export default function OfficePayrollPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-        <article className="stat-card accent-blue border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-sky-50 shadow-[0_10px_30px_rgba(37,99,235,0.08)]">
-          <p className="text-sm font-semibold text-slate-500">Main Office Employees</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{officeEmployees.length}</p>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+        <article className="stat-card accent-blue min-h-[128px] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-sky-50 shadow-[0_10px_30px_rgba(37,99,235,0.08)]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Main Office Employees</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">{officeEmployees.length}</p>
           <p className="mt-1 text-sm text-slate-600">Only Main Office staff are shown</p>
         </article>
-        <article className="stat-card accent-emerald border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-[0_10px_30px_rgba(16,185,129,0.08)]">
-          <p className="text-sm font-semibold text-slate-500">Active Staff</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{activeEmployees}</p>
+        <article className="stat-card accent-emerald min-h-[128px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 shadow-[0_10px_30px_rgba(16,185,129,0.08)]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Active Staff</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">{activeEmployees}</p>
           <p className="mt-1 text-sm text-slate-600">Active Main Office employees</p>
         </article>
-        <article className="stat-card accent-cyan border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 shadow-[0_10px_30px_rgba(6,182,212,0.08)]">
-          <p className="text-sm font-semibold text-slate-500">Estimated Payroll</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">₱{totals.netSalary.toLocaleString()}</p>
+        <article className="stat-card accent-cyan min-h-[128px] border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 shadow-[0_10px_30px_rgba(6,182,212,0.08)]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Estimated Payroll</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">₱{totals.netSalary.toLocaleString()}</p>
           <p className="mt-1 text-sm text-slate-600">Based on editable office payroll rows</p>
         </article>
       </section>

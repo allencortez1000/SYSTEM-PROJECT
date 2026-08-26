@@ -154,17 +154,29 @@ export default function LeavePage() {
               : label === "Pending"
               ? "bg-amber-50 text-amber-600"
               : "bg-blue-50 text-blue-600";
+          const accentClass =
+            label === "Approved"
+              ? "accent-emerald"
+              : label === "Rejected"
+              ? "accent-red"
+              : label === "Pending"
+              ? "accent-amber"
+              : "accent-blue";
           return (
             <div
               key={label}
-              className="stat-card accent-blue"
+              className={`stat-card ${accentClass} min-h-[128px]`}
             >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
-                {icon}
+              <div className="flex items-start gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}>
+                  {icon}
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+                  <p className="mt-2 text-3xl font-black text-slate-950">{value}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">{detail}</p>
+                </div>
               </div>
-              <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-700">{label}</p>
-              <p className="mt-0.5 text-xs text-slate-400">{detail}</p>
             </div>
           );
         })}

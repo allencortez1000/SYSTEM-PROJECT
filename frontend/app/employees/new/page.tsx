@@ -90,13 +90,13 @@ export default function NewEmployeePage() {
   return (
     <div className="page-shell">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="page-header">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">New Employee</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Add Worker or Employee</h1>
-          <p className="mt-1 text-sm text-slate-500">Create a new employee profile with compensation details.</p>
+          <p className="eyebrow">New Employee</p>
+          <h1 className="page-title mt-1">Add Worker or Employee</h1>
+          <p className="page-subtitle">Create a new employee profile with compensation details.</p>
         </div>
-        <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+        <Link href="/employees" className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -105,7 +105,7 @@ export default function NewEmployeePage() {
       </div>
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit} className="rounded-[0.875rem] border border-slate-200 bg-white overflow-hidden shadow-sm">
+      <form onSubmit={handleSubmit} className="section-card overflow-hidden p-0">
         <div className="flex items-center gap-4 border-b border-slate-100 px-6 py-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
             <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,7 +113,8 @@ export default function NewEmployeePage() {
             </svg>
           </div>
           <div>
-            <h3 className="text-2xl font-black text-slate-950">Employee Information</h3>
+            <p className="eyebrow">Employee profile</p>
+            <h3 className="mt-1 text-2xl font-black text-slate-950">Employee Information</h3>
             <p className="mt-1 text-sm text-slate-600">Fill in the details below to create a new employee</p>
             <span className="badge-active-only mt-3">
                           <span className="badge-dot" />

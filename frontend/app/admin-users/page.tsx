@@ -700,25 +700,25 @@ export default function AdminUsersPage() {
 
       {/* Data Summary */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin users</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{users.length}</p>
-          <p className="mt-1 text-sm text-slate-500">Loaded from /api/admin-users</p>
+        <div className="stat-card accent-blue min-h-[128px]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Admin users</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">{users.length}</p>
+          <p className="mt-1 text-sm text-slate-600">Loaded from /api/admin-users</p>
         </div>
-        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Departments</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{departments.length}</p>
-          <p className="mt-1 text-sm text-slate-500">Available for assignments</p>
+        <div className="stat-card accent-emerald min-h-[128px]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Departments</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">{departments.length}</p>
+          <p className="mt-1 text-sm text-slate-600">Available for assignments</p>
         </div>
-        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Project sites</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{projectSites.length}</p>
-          <p className="mt-1 text-sm text-slate-500">Attendance / payroll locations</p>
+        <div className="stat-card accent-cyan min-h-[128px]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Project sites</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">{projectSites.length}</p>
+          <p className="mt-1 text-sm text-slate-600">Attendance / payroll locations</p>
         </div>
-        <div className="rounded-[1rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Workers</p>
-          <p className="mt-2 text-2xl font-black text-slate-950">{employeeCount || employees.length}</p>
-          <p className="mt-1 text-sm text-slate-500">Loaded for workforce views</p>
+        <div className="stat-card accent-slate min-h-[128px]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Workers</p>
+          <p className="mt-2 text-3xl font-black text-slate-950">{employeeCount || employees.length}</p>
+          <p className="mt-1 text-sm text-slate-600">Loaded for workforce views</p>
         </div>
       </section>
 
