@@ -408,9 +408,11 @@ type AttendanceSummary = {
   absentDays: number;
   lateDays: number;
   paidDays: number;
+  restDayDays: number;
   basePaidDays?: number;
   regularHours: number;
   overtimeHours: number;
+  restDayOvertimeHours: number;
   baseOvertimeHours?: number;
   totalRecords: number;
   overrideApplied?: boolean;
@@ -570,7 +572,7 @@ router.get('/attendance-summary', async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: `No employee found for "${employeeName || employeeId}"` });
     }
-    let attendanceQuery = supabase
+    const baseAttendanceQuery = supabase
       .from('attendance_records')
       .select('id, attendance_date, status, check_in, check_out, worked_hours, overtime_hours, project_site')
       .eq('employee_id', employee.id)
@@ -578,13 +580,17 @@ router.get('/attendance-summary', async (req, res) => {
       .lte('attendance_date', endDate)
       .order('attendance_date', { ascending: true });
 
-    if (projectSite) {
-      attendanceQuery = attendanceQuery.ilike('project_site', projectSite);
-    }
-
-    const { data: records, error: attendanceError } = await attendanceQuery;
+    const { data: allRecords, error: attendanceError } = await baseAttendanceQuery;
 
     if (attendanceError) throw attendanceError;
+
+    const normalizedProjectSite = projectSite.trim().toLowerCase();
+    const records = projectSite
+      ? ((allRecords || []) as AttendanceRecord[]).filter((record) => {
+          const recordProjectSite = String(record.project_site || '').trim().toLowerCase();
+          return !recordProjectSite || recordProjectSite === normalizedProjectSite;
+        })
+      : ((allRecords || []) as AttendanceRecord[]);
 
     const attendanceRows = (records || []) as AttendanceRecord[];
     const summary = summarizeAttendance(
@@ -597,8 +603,9 @@ router.get('/attendance-summary', async (req, res) => {
     );
 
     // summarizeAttendance (via summarizeAttendanceDays) already handles:
-    //   • Sunday exclusion (Sundays never count as paid days)
-    //   • Fractional days: worked hours / 8  (e.g. 6 h = 0.75 days)
+    //   • Fractional weekdays: worked hours / 8  (e.g. 6 h = 0.75 days)
+    //   • Worked Sunday rest days included in paidDays and also tracked separately
+    //     through restDayDays/restDayOvertimeHours for premium payroll computation
     //   • Leave = 1.0 full day
     //   • Present/remote/late with no time entry = 1.0 full day
     //   • Absent = 0
@@ -1190,9 +1197,11 @@ function summarizeAttendance(
     absentDays: summary.absentDays,
     lateDays: summary.lateDays,
     paidDays: summary.paidDays,
+    restDayDays: summary.restDayDays,
     basePaidDays: summary.paidDays,
     regularHours: summary.regularHours,
     overtimeHours: summary.overtimeHours,
+    restDayOvertimeHours: summary.restDayOvertimeHours,
     baseOvertimeHours: summary.overtimeHours,
     totalRecords: summary.totalRecords,
   };
@@ -1210,11 +1219,21 @@ function applyAttendanceOverride(summary: AttendanceSummary, override: PayrollOv
     ? summary.overtimeHours
     : Number(override.overtime_hours_override);
 
+  const finalPaidDays = Number.isFinite(paidDays) ? roundDays(paidDays) : summary.paidDays;
+  const finalOvertimeHours = Number.isFinite(overtimeHours) ? roundCurrency(overtimeHours) : summary.overtimeHours;
+  const basePaidDays = summary.basePaidDays ?? summary.paidDays;
+  const baseOvertimeHours = summary.baseOvertimeHours ?? summary.overtimeHours;
+  const restDayDays = roundDays(Math.min(summary.restDayDays, Math.max(0, finalPaidDays)));
+  const overrideOvertimeDelta = Math.max(0, finalOvertimeHours - baseOvertimeHours);
+  const restDayOvertimeHours = roundCurrency(Math.min(finalOvertimeHours, summary.restDayOvertimeHours + overrideOvertimeDelta));
+
   return {
     ...summary,
-    paidDays: Number.isFinite(paidDays) ? roundDays(paidDays) : summary.paidDays,
-    overtimeHours: Number.isFinite(overtimeHours) ? roundCurrency(overtimeHours) : summary.overtimeHours,
-    regularHours: roundCurrency((Number.isFinite(paidDays) ? roundDays(paidDays) : summary.paidDays) * 8),
+    paidDays: finalPaidDays,
+    restDayDays,
+    overtimeHours: finalOvertimeHours,
+    restDayOvertimeHours,
+    regularHours: roundCurrency(finalPaidDays * 8),
     overrideApplied: true,
   };
 }
@@ -1224,7 +1243,7 @@ function buildAttendanceRemarks(summary: unknown) {
   const attendance = summary as Partial<AttendanceSummary>;
   const startDate = attendance.startDate || '';
   const endDate = attendance.endDate || '';
-  return `Attendance ${startDate} to ${endDate}: ${attendance.presentDays || 0} present, ${attendance.remoteDays || 0} remote, ${attendance.leaveDays || 0} leave, ${attendance.lateDays || 0} late, ${attendance.absentDays || 0} absent, ${attendance.regularHours || 0} regular hours.`;
+  return `Attendance ${startDate} to ${endDate}: ${attendance.presentDays || 0} present, ${attendance.remoteDays || 0} remote, ${attendance.leaveDays || 0} leave, ${attendance.lateDays || 0} late, ${attendance.absentDays || 0} absent, ${attendance.regularHours || 0} regular hours, ${attendance.restDayDays || 0} Sunday rest day(s), ${attendance.restDayOvertimeHours || 0} Sunday OT hour(s).`;
 }
 
 function buildPayrollNotes(

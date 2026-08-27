@@ -14,8 +14,10 @@ export type AttendanceDaySummary = {
   absentDays: number;
   lateDays: number;
   paidDays: number;
+  restDayDays: number;
   regularHours: number;
   overtimeHours: number;
+  restDayOvertimeHours: number;
   totalRecords: number;
 };
 
@@ -138,8 +140,10 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
     absentDays: 0,
     lateDays: 0,
     paidDays: 0,
+    restDayDays: 0,
     regularHours: 0,
     overtimeHours: 0,
+    restDayOvertimeHours: 0,
     totalRecords: records.length,
   };
 
@@ -156,7 +160,17 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
     const hasTimeEntry = !isAbsent && workedHours > 0;
 
     if (isSunday(record.attendance_date)) {
-      summary.overtimeHours += isAbsent ? 0 : overtimeHoursFromRecord(record);
+      if (!isAbsent && countsAsPaidWorkDay) {
+        const sundayRegularHours = status === 'leave'
+          ? 8
+          : hasTimeEntry
+            ? Math.min(workedHours, 8)
+            : 8;
+        const sundayOvertimeHours = overtimeHoursFromRecord(record);
+        summary.restDayDays += sundayRegularHours / 8;
+        summary.overtimeHours += sundayOvertimeHours;
+        summary.restDayOvertimeHours += sundayOvertimeHours;
+      }
       continue;
     }
 
@@ -181,9 +195,12 @@ export function summarizeAttendanceDays(records: AttendanceRecordLike[]) {
     }
   }
 
-  // paidDays = total regular hours / 8  (fractional, e.g. 6h = 0.75 days)
-  summary.paidDays = roundDays(summary.regularHours / 8);
+  // paidDays = weekday regular paid days + worked Sunday rest-day paid days
+  // (fractional, e.g. 6h = 0.75 days)
+  summary.restDayDays = roundDays(summary.restDayDays);
+  summary.paidDays = roundDays((summary.regularHours / 8) + summary.restDayDays);
   summary.regularHours = roundCurrency(summary.regularHours);
   summary.overtimeHours = roundCurrency(summary.overtimeHours);
+  summary.restDayOvertimeHours = roundCurrency(summary.restDayOvertimeHours);
   return summary;
 }

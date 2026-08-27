@@ -22,7 +22,9 @@ type WorkerRow = {
   position: string;
   dailyRate: number;
   days: number;
+  restDayDays: number;
   otHours: number;
+  restDayOtHours: number;
   holidayPay: number;
   sssManual: number | null;
   pagIbigManual: number | null;
@@ -86,7 +88,9 @@ type ProjectWorkerSync = {
   dailyRate: number;
   attendance: {
     paidDays: number;
+    restDayDays: number;
     overtimeHours: number;
+    restDayOvertimeHours: number;
     startDate: string;
     endDate: string;
     overrideApplied?: boolean;
@@ -163,7 +167,9 @@ function blankRow(): WorkerRow {
     position: "",
     dailyRate: 0,
     days: 0,
+    restDayDays: 0,
     otHours: 0,
+    restDayOtHours: 0,
     holidayPay: 0,
     sssManual: 0,
     pagIbigManual: 0,
@@ -191,7 +197,9 @@ function normalizeRow(row: Partial<WorkerRow>): WorkerRow {
     philHealthManual: row.philHealthManual ?? 0,
     dailyRate: Number(row.dailyRate) || 0,
     days: Number(row.days) || 0,
+    restDayDays: Number(row.restDayDays) || 0,
     otHours: Number(row.otHours) || 0,
+    restDayOtHours: Number(row.restDayOtHours) || 0,
     holidayPay: Number(row.holidayPay) || 0,
     sssLoan: Number(row.sssLoan) || 0,
     tax: Number(row.tax) || 0,
@@ -203,8 +211,22 @@ function normalizeRow(row: Partial<WorkerRow>): WorkerRow {
 
 
 function computeRow(row: WorkerRow, frequency: PayFrequency) {
-  const amount = row.dailyRate * row.days;
-  const otPay = (row.dailyRate / 8) * 1.25 * row.otHours;
+  const restDayDays = clamp(Number(row.restDayDays) || 0, 0, Math.max(0, Number(row.days) || 0));
+  const normalDays = Math.max(0, (Number(row.days) || 0) - restDayDays);
+  const restDayRate = row.dailyRate * 1.3;
+  const normalAmount = row.dailyRate * normalDays;
+  const restDayAmount = restDayRate * restDayDays;
+  const amount = normalAmount + restDayAmount;
+
+  const restDayOtHours = clamp(Number(row.restDayOtHours) || 0, 0, Math.max(0, Number(row.otHours) || 0));
+  const normalOtHours = Math.max(0, (Number(row.otHours) || 0) - restDayOtHours);
+  const normalOtRate = (row.dailyRate / 8) * 1.25;
+  const normalOtPay = normalOtRate * normalOtHours;
+  const restDayHourlyRate = restDayRate / 8;
+  const restDayOtRate = restDayHourlyRate * 1.3;
+  const restDayOtPay = restDayOtRate * restDayOtHours;
+  const otPay = normalOtPay + restDayOtPay;
+
   const holidayPay = row.holidayPay;
   const totalSalary = amount + otPay + holidayPay;
   const sss = row.hasSss ? (row.sssManual ?? 0) : 0;
@@ -216,7 +238,32 @@ function computeRow(row: WorkerRow, frequency: PayFrequency) {
   const totalDeduction = row.cashAdvance + tax + sssLoan + additionalDeduction + philHealth + pagIbig + sss;
   const netSalary = Math.max(0, totalSalary - totalDeduction);
 
-  return { amount, otPay, holidayPay, totalSalary, sss, pagIbig, philHealth, sssLoan, tax, additionalDeduction, totalDeduction, netSalary };
+  return {
+    amount,
+    otPay,
+    holidayPay,
+    totalSalary,
+    sss,
+    pagIbig,
+    philHealth,
+    sssLoan,
+    tax,
+    additionalDeduction,
+    totalDeduction,
+    netSalary,
+    normalDays,
+    restDayDays,
+    restDayRate,
+    normalAmount,
+    restDayAmount,
+    normalOtHours,
+    restDayOtHours,
+    normalOtRate,
+    normalOtPay,
+    restDayHourlyRate,
+    restDayOtRate,
+    restDayOtPay,
+  };
 }
 
 function formatDateDisplay(value: string) {
@@ -857,7 +904,9 @@ export default function NewPayrollPage() {
           const displayName = source?.fullName || formatEmployeeNameSurnameFirst(worker.employeeName);
 
           let paidDays = Number(worker.attendance?.paidDays || 0);
+          let restDayDays = Number(worker.attendance?.restDayDays || 0);
           let overtimeHours = Number(worker.attendance?.overtimeHours || 0);
+          let restDayOtHours = Number(worker.attendance?.restDayOvertimeHours || 0);
 
           const summaryQuery = new URLSearchParams({
             employeeId: worker.employeeId,
@@ -873,10 +922,12 @@ export default function NewPayrollPage() {
           const summaryData = await summaryResponse.json().catch(() => null);
           if (summaryResponse.ok && summaryData?.summary) {
             paidDays = Number(summaryData.summary.paidDays || 0);
+            restDayDays = Number(summaryData.summary.restDayDays || 0);
             overtimeHours = Number(summaryData.summary.overtimeHours || 0);
+            restDayOtHours = Number(summaryData.summary.restDayOvertimeHours || 0);
           }
 
-          if (attendanceRecords.length > 0 && (paidDays === 0 || overtimeHours === 0)) {
+          if (attendanceRecords.length > 0 && (paidDays === 0 || overtimeHours === 0 || restDayDays === 0 || restDayOtHours === 0)) {
             const targetNames = new Set([
               String(worker.employeeName || '').trim().toLowerCase(),
               String(displayName || '').trim().toLowerCase(),
@@ -886,13 +937,20 @@ export default function NewPayrollPage() {
             const recordsForWorker = attendanceRecords.filter((record: any) => {
               const recordName = String(record.employeeName || '').trim().toLowerCase();
               const recordEmployeeId = String(record.employeeId || '').trim();
-              const recordProject = String(record.projectSite || '').trim().toLowerCase();
+              const recordProject = String(record.projectSite || record.project_site || '').trim().toLowerCase();
               const recordDate = String(record.attendance_date || record.date || '').trim();
               const matchesName = targetNames.has(recordName);
               const matchesEmployee = worker.employeeId ? recordEmployeeId === worker.employeeId : false;
-              const matchesProject = !selectedProject || recordProject === selectedProject.toLowerCase();
+              const matchesProject = !selectedProject || !recordProject || recordProject === selectedProject.toLowerCase();
               const matchesDate = recordDate >= periodStart && recordDate <= periodEnd;
               return (matchesEmployee || matchesName) && matchesProject && matchesDate;
+            });
+
+            const sundayRecordsForWorker = recordsForWorker.filter((record: any) => {
+              const recordDate = String(record.attendance_date || record.date || '').trim();
+              if (!recordDate) return false;
+              const date = new Date(`${recordDate}T00:00:00`);
+              return Number.isFinite(date.getTime()) && date.getDay() === 0;
             });
 
             if (paidDays === 0) {
@@ -904,6 +962,16 @@ export default function NewPayrollPage() {
               const manualOvertimeHours = recordsForWorker.reduce((total: number, record: any) => total + getFallbackAttendanceOvertime(record), 0);
               overtimeHours = manualOvertimeHours;
             }
+
+            if (restDayDays === 0) {
+              const manualRestDayDays = sundayRecordsForWorker.reduce((total: number, record: any) => total + getFallbackAttendanceDays(record), 0);
+              restDayDays = manualRestDayDays;
+            }
+
+            if (restDayOtHours === 0) {
+              const manualRestDayOtHours = sundayRecordsForWorker.reduce((total: number, record: any) => total + getFallbackAttendanceOvertime(record), 0);
+              restDayOtHours = manualRestDayOtHours;
+            }
           }
 
           return {
@@ -914,7 +982,9 @@ export default function NewPayrollPage() {
             position: worker.position || "Labor",
             dailyRate: worker.payrollSnapshot?.salaryAmount != null ? Number(worker.payrollSnapshot.salaryAmount) || 600 : worker.dailyRate || 600,
             days: paidDays,
+            restDayDays,
             otHours: overtimeHours,
+            restDayOtHours: restDayOtHours,
             holidayPay: worker.payrollSnapshot?.holidayPayAmount != null ? Number(worker.payrollSnapshot.holidayPayAmount) || 0 : 0,
             sssManual: worker.payrollSnapshot?.sssAmount != null ? Number(worker.payrollSnapshot.sssAmount) || 0 : (source?.sssAmount ?? 0),
             pagIbigManual: worker.payrollSnapshot?.pagIbigAmount != null ? Number(worker.payrollSnapshot.pagIbigAmount) || 0 : (source?.pagIbigAmount ?? 0),
@@ -1068,7 +1138,9 @@ export default function NewPayrollPage() {
         position: String(getCell(row, ["Position", "POSITION", "Job Position", "JOB POSITION"], "Labor")).trim() || "Labor",
         dailyRate: getNumber(row, ["Salary", "SALARY", "Daily Rate", "DAILY RATE", "Rate", "RATE"], 0),
         days: getNumber(row, ["Days", "DAYS", "Days worked", "NO. OF DAYS", "Days Worked", "PAID DAYS"], 0),
+        restDayDays: getNumber(row, ["Rest day days", "REST DAY DAYS", "Sunday rest day days", "SUNDAY REST DAY DAYS"], 0),
         otHours: getNumber(row, ["OT hrs", "OT HRS", "OT hours", "OT HOURS", "Overtime Hours", "OVERTIME HOURS"], 0),
+        restDayOtHours: getNumber(row, ["Rest day OT hours", "REST DAY OT HOURS", "Sunday OT hours", "SUNDAY OT HOURS"], 0),
         holidayPay: getNumber(row, ["Holiday pay", "HOLIDAY PAY", "Holiday", "HOLIDAY"], 0),
         cashAdvance: getNumber(row, ["CA", "Cash advance", "CASH ADVANCE", "Cash Advance"], 0),
         tax: getNumber(row, ["Tax", "TAX"], 0),
@@ -1115,8 +1187,12 @@ export default function NewPayrollPage() {
       "POSITION",
       "SALARY",
       "DAYS",
+      "REST DAY DAYS",
+      "REST DAY RATE",
       "AMOUNT",
       "OT HRS",
+      "REST DAY OT HRS",
+      "REST DAY OT RATE",
       "OT PAY",
       "HOLIDAY PAY",
       "TOTAL SALARY",
@@ -1129,6 +1205,7 @@ export default function NewPayrollPage() {
       "ADDITIONAL DEDUCTION",
       "TOTAL DEDUCTION",
       "NET SALARY",
+      "SUNDAY PREMIUM APPLIED",
     ];
 
     const workerRows = rows
@@ -1141,8 +1218,12 @@ export default function NewPayrollPage() {
           row.position,
           row.dailyRate,
           row.days,
+          roundMoney(row.restDayDays),
+          roundMoney(computed.restDayRate),
           roundMoney(snapshot?.salaryAmount ?? computed.amount),
           row.otHours,
+          roundMoney(row.restDayOtHours),
+          roundMoney(computed.restDayOtRate),
           roundMoney(snapshot?.otPay ?? computed.otPay),
           roundMoney(snapshot?.holidayPayAmount ?? computed.holidayPay),
           roundMoney(snapshot?.totalSalary ?? computed.totalSalary),
@@ -1155,6 +1236,7 @@ export default function NewPayrollPage() {
           roundMoney(snapshot?.additionalDeduction ?? row.additionalDeduction),
           roundMoney(snapshot?.totalDeduction ?? computed.totalDeduction),
           Math.round(snapshot?.netSalary ?? computed.netSalary),
+          row.restDayDays > 0 || row.restDayOtHours > 0 ? "YES" : "NO",
         ];
 
         return `<tr>${cells.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`;
@@ -1167,7 +1249,11 @@ export default function NewPayrollPage() {
       "",
       "",
       "",
+      roundMoney(rows.reduce((sum, row) => sum + (Number(row.restDayDays) || 0), 0)),
+      "",
       roundMoney(totals.amount),
+      "",
+      roundMoney(rows.reduce((sum, row) => sum + (Number(row.restDayOtHours) || 0), 0)),
       "",
       roundMoney(totals.otPay),
       roundMoney(totals.holidayPay),
@@ -1181,6 +1267,7 @@ export default function NewPayrollPage() {
       roundMoney(totals.additionalDeduction),
       roundMoney(totals.totalDeduction),
       Math.round(totals.netSalary),
+      "",
     ];
 
     const worksheetHtml = `
@@ -1200,11 +1287,11 @@ export default function NewPayrollPage() {
         </head>
         <body>
           <table>
-            <tr><td class="title" colspan="19">${escapeCell(projectName)}</td></tr>
-            <tr><td class="meta" colspan="19">PAYROLL COVERED: ${escapeCell(coveredPeriod)}</td></tr>
-            <tr><td class="meta" colspan="19">PAYROLL DATE: ${escapeCell(payrollDate)}</td></tr>
-            <tr><td class="meta" colspan="19">DEDUCTION SCHEDULE: ${escapeCell(frequencyConfig[payFrequency].label)}</td></tr>
-            <tr><td class="meta" colspan="19">RUN TYPE: PR | CALCULATION V1</td></tr>
+            <tr><td class="title" colspan="24">${escapeCell(projectName)}</td></tr>
+            <tr><td class="meta" colspan="24">PAYROLL COVERED: ${escapeCell(coveredPeriod)}</td></tr>
+            <tr><td class="meta" colspan="24">PAYROLL DATE: ${escapeCell(payrollDate)}</td></tr>
+            <tr><td class="meta" colspan="24">DEDUCTION SCHEDULE: ${escapeCell(frequencyConfig[payFrequency].label)}</td></tr>
+            <tr><td class="meta" colspan="24">RUN TYPE: PR | CALCULATION V1</td></tr>
             <tr></tr>
             <tr>${headers.map((header, index) => `<th class="${index >= 10 && index <= 17 ? "deduction" : ""}">${escapeCell(header)}</th>`).join("")}</tr>
             ${workerRows}
@@ -1428,13 +1515,14 @@ export default function NewPayrollPage() {
               const computed = computeRow(row, payFrequency);
               return (
                 <article key={row.id} className={`rounded-[1.5rem] border p-4 shadow-sm ${row.syncedFromAttendance ? "border-cyan-100 bg-cyan-50/40" : "border-slate-100 bg-white"}`}>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
                         {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                        {(row.restDayDays > 0 || row.restDayOtHours > 0) && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Sunday premium applied</span>}
                       </div>
-                      <p className="mt-2 text-lg font-black text-slate-950">{row.name || "New worker row"}</p>
+                      <p className="mt-1 text-base font-black text-slate-950 xl:text-lg">{row.name || "New worker row"}</p>
                       <p className="mt-1 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1469,6 +1557,14 @@ export default function NewPayrollPage() {
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
                       <input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
                     </label>
+                    <label className="block rounded-2xl border border-cyan-100 bg-cyan-50/70 px-3 py-3">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day days</span>
+                      <input type="number" step="0.1" value={row.restDayDays} onChange={(event) => updateRow(row.id, { restDayDays: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
+                    <label className="block rounded-2xl border border-cyan-100 bg-cyan-50/70 px-3 py-3">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day OT hours</span>
+                      <input type="number" step="0.5" value={row.restDayOtHours} onChange={(event) => updateRow(row.id, { restDayOtHours: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
+                    </label>
                     <label className="block sm:col-span-2 xl:col-span-1 rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-3">
                       <span className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</span>
                       <input type="number" value={row.holidayPay} onChange={(event) => updateRow(row.id, { holidayPay: numberValue(event.target.value) })} className={`${numberInputClass} mt-1`} />
@@ -1497,17 +1593,30 @@ export default function NewPayrollPage() {
                       <p className="mt-1 text-sm font-black text-slate-950">{money(computed.amount)}</p>
                     </div>
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
-                <p className="mt-1 text-sm font-black text-slate-950">{money(computed.otPay)}</p>
-              </div>
-              <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p>
-                <p className="mt-1 text-sm font-black text-amber-700">{money(computed.holidayPay)}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
-                <p className="mt-1 text-sm font-black text-slate-950">{money(computed.totalSalary)}</p>
-              </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{money(computed.otPay)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-cyan-100 bg-cyan-50/80 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day rate</p>
+                      <p className="mt-1 text-sm font-black text-cyan-800">{money(computed.restDayRate)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-cyan-100 bg-cyan-50/80 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day OT rate</p>
+                      <p className="mt-1 text-sm font-black text-cyan-800">{money(computed.restDayOtRate)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p>
+                      <p className="mt-1 text-sm font-black text-amber-700">{money(computed.holidayPay)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 lg:col-span-2">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Sunday premium breakdown</p>
+                      <p className="mt-1 text-xs font-bold text-slate-700">{computed.restDayDays} rest day × {money(computed.restDayRate)} = {money(computed.restDayAmount)}</p>
+                      <p className="mt-1 text-xs font-bold text-slate-700">{computed.restDayOtHours} OT hr × {money(computed.restDayOtRate)} = {money(computed.restDayOtPay)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
+                      <p className="mt-1 text-sm font-black text-slate-950">{money(computed.totalSalary)}</p>
+                    </div>
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-600">Net salary</p>
                       <p className="mt-1 text-sm font-black text-emerald-700">{moneyWhole(computed.netSalary)}</p>
@@ -1533,6 +1642,7 @@ export default function NewPayrollPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
                         {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                        {(row.restDayDays > 0 || row.restDayOtHours > 0) && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Sunday premium applied</span>}
                       </div>
                       <p className="mt-1 text-base font-black text-slate-950 xl:text-lg">{row.name || "New worker row"}</p>
                       <p className="mt-0.5 text-sm font-semibold text-slate-500">{row.position || "Labor"}</p>
@@ -1571,6 +1681,14 @@ export default function NewPayrollPage() {
                         <label className="block">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT hours</span>
                           <input type="number" step="0.5" value={row.otHours} onChange={(event) => updateRow(row.id, { otHours: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block rounded-2xl border border-cyan-100 bg-cyan-50/70 px-3 py-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day days</span>
+                          <input type="number" step="0.1" value={row.restDayDays} onChange={(event) => updateRow(row.id, { restDayDays: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
+                        </label>
+                        <label className="block rounded-2xl border border-cyan-100 bg-cyan-50/70 px-3 py-3">
+                          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day OT hours</span>
+                          <input type="number" step="0.5" value={row.restDayOtHours} onChange={(event) => updateRow(row.id, { restDayOtHours: numberValue(event.target.value) })} className={`${tableNumberInputClass} mt-1`} />
                         </label>
                         <label className="block rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-3">
                           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</span>
@@ -1620,6 +1738,9 @@ export default function NewPayrollPage() {
                       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p><p className="mt-1 text-base font-black text-slate-950">{money(computed.amount)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">OT pay</p><p className="mt-1 text-base font-black text-slate-950">{money(computed.otPay)}</p></div>
+                        <div className="rounded-2xl border border-cyan-100 bg-cyan-50/80 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day rate</p><p className="mt-1 text-base font-black text-cyan-800">{money(computed.restDayRate)}</p></div>
+                        <div className="rounded-2xl border border-cyan-100 bg-cyan-50/80 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Rest day OT rate</p><p className="mt-1 text-base font-black text-cyan-800">{money(computed.restDayOtRate)}</p></div>
+                        <div className="rounded-2xl border border-cyan-100 bg-cyan-50/80 px-3 py-2.5 2xl:col-span-2"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Sunday premium breakdown</p><p className="mt-1 text-sm font-bold text-slate-700">{computed.restDayDays} rest day × {money(computed.restDayRate)} = {money(computed.restDayAmount)}</p><p className="mt-1 text-sm font-bold text-slate-700">{computed.restDayOtHours} OT hr × {money(computed.restDayOtRate)} = {money(computed.restDayOtPay)}</p></div>
                         <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Holiday pay</p><p className="mt-1 text-base font-black text-amber-700">{money(computed.holidayPay)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p><p className="mt-1 text-base font-black text-slate-950">{money(computed.totalSalary)}</p></div>
                         <div className="rounded-2xl border border-slate-100 bg-rose-50/70 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-500">PhilHealth</p><p className="mt-1 text-base font-black text-rose-700">{money(computed.philHealth)}</p></div>
