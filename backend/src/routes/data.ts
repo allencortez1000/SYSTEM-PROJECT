@@ -36,6 +36,13 @@ function monthKey(value: unknown) {
   return String(value).slice(0, 7);
 }
 
+function extractNumberFromNotes(notes: unknown, pattern: RegExp) {
+  const match = String(notes || '').match(pattern);
+  if (!match) return 0;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function currentMonthKey() {
   return new Date().toISOString().slice(0, 7);
 }
@@ -157,12 +164,34 @@ router.get('/reports/payroll-summary', async (_, res) => {
 
   const runs = runsResult.rows as Row[];
   const employees = employeesResult.rows as Row[];
-  const grossPayroll = runs.reduce((sum, run) => sum + numberValue(run.total_gross_pay), 0);
-  const netPayout = runs.reduce((sum, run) => sum + numberValue(run.total_net_pay), 0);
+  const payrollRuns = runs.map((run) => {
+    const notes = String(run.notes || '');
+    const sundayRestDayCount = extractNumberFromNotes(notes, /([\d.]+)\s+Sunday rest day\(s\)/i);
+    const sundayOvertimeHours = extractNumberFromNotes(notes, /([\d.]+)\s+Sunday OT hour\(s\)/i);
+    return {
+      id: String(run.id || ''),
+      runCode: String(run.run_code || ''),
+      runType: String(run.run_type || ''),
+      payPeriodLabel: String(run.pay_period_label || ''),
+      payoutDate: String(run.payout_date || ''),
+      status: String(run.status || 'Draft'),
+      grossPayroll: numberValue(run.total_gross_pay),
+      netPayout: numberValue(run.total_net_pay),
+      sundayRestDayCount,
+      sundayOvertimeHours,
+      hasSundayPremium: sundayRestDayCount > 0 || sundayOvertimeHours > 0,
+    };
+  });
+
+  const grossPayroll = payrollRuns.reduce((sum, run) => sum + run.grossPayroll, 0);
+  const netPayout = payrollRuns.reduce((sum, run) => sum + run.netPayout, 0);
   const sssTotal = runs.reduce((sum, run) => sum + numberValue(run.total_sss), 0);
   const pagIbigTotal = runs.reduce((sum, run) => sum + numberValue(run.total_pagibig), 0);
   const philHealthTotal = runs.reduce((sum, run) => sum + numberValue(run.total_philhealth), 0);
   const otherDeductions = runs.reduce((sum, run) => sum + numberValue(run.total_other_deductions), 0);
+  const totalSundayRestDays = payrollRuns.reduce((sum, run) => sum + run.sundayRestDayCount, 0);
+  const totalSundayOtHours = payrollRuns.reduce((sum, run) => sum + run.sundayOvertimeHours, 0);
+  const sundayPremiumRuns = payrollRuns.filter((run) => run.hasSundayPremium).length;
 
   const departments = Array.from(
     employees.reduce((map, employee) => {
@@ -184,8 +213,12 @@ router.get('/reports/payroll-summary', async (_, res) => {
       philHealthTotal,
       otherDeductions,
       payrollRuns: runs.length,
+      totalSundayRestDays,
+      totalSundayOtHours,
+      sundayPremiumRuns,
     },
     departments,
+    payrollRuns,
     error: runsResult.error || employeesResult.error || departmentsResult.error,
   });
 });
@@ -338,6 +371,150 @@ router.get('/reports/compliance-packet', async (_, res) => {
     },
     checklist,
     error: complianceResult.error || payrollResult.error,
+  });
+});
+
+router.get('/health', async (_, res) => {
+  const [employeesResult, departmentsResult, deploymentsResult, attendanceResult, overridesResult] = await Promise.all([
+    fetchTable('employees', 'created_at', 'id, employee_no, first_name, middle_name, last_name, full_name, status, salary, department_id'),
+    fetchDepartmentMap(),
+    fetchTable('employee_project_deployments', 'assigned_at', 'employee_id, is_active, assigned_at, project_sites(name)'),
+    fetchTable('attendance_records', 'attendance_date', 'id, employee_id, attendance_date, status, project_site, overtime_hours'),
+    fetchTable('payroll_attendance_overrides', 'period_start', 'employee_id, project_site, period_start, period_end, paid_days_override, overtime_hours_override, remarks'),
+  ]);
+
+  const employees = employeesResult.rows as Row[];
+  const attendance = attendanceResult.rows as Row[];
+  const overrides = overridesResult.rows as Row[];
+  const employeeIds = new Set(employees.map((employee) => String(employee.id || '')).filter(Boolean));
+
+  const activeDeploymentByEmployee = new Map<string, string>();
+  for (const deployment of deploymentsResult.rows as Row[]) {
+    if (deployment.is_active === false) continue;
+    const employeeId = String(deployment.employee_id || '').trim();
+    if (!employeeId || activeDeploymentByEmployee.has(employeeId)) continue;
+    const projectSiteName = String((deployment.project_sites as { name?: string } | null | undefined)?.name || '').trim();
+    activeDeploymentByEmployee.set(employeeId, projectSiteName || 'Unassigned');
+  }
+
+  const employeeDetails = employees.map((employee) => {
+    const id = String(employee.id || '').trim();
+    const firstName = String(employee.first_name || '').trim();
+    const middleName = String(employee.middle_name || '').trim();
+    const lastName = String(employee.last_name || '').trim();
+    const fullName = String(employee.full_name || '').trim() || [lastName, firstName, middleName].filter(Boolean).join(', ') || 'Unnamed employee';
+    const department = departmentNameFromMap(employee.department_id, departmentsResult.departmentMap);
+    const salary = numberValue(employee.salary);
+    const projectSite = activeDeploymentByEmployee.get(id) || 'Unassigned';
+    const status = String(employee.status || 'Active');
+    return {
+      id,
+      employeeNo: String(employee.employee_no || '').trim(),
+      name: fullName,
+      department,
+      status,
+      salary,
+      projectSite,
+    };
+  });
+
+  const missingSalaryEmployees = employeeDetails
+    .filter((employee) => String(employee.status || '').toLowerCase() === 'active' && employee.salary <= 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const missingProjectSiteEmployees = employeeDetails
+    .filter((employee) => String(employee.status || '').toLowerCase() === 'active' && (!employee.projectSite || employee.projectSite === 'Unassigned'))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const attendanceMissingProjectSite = attendance
+    .filter((record) => !String(record.project_site || '').trim())
+    .map((record) => ({
+      id: String(record.id || ''),
+      employeeId: String(record.employee_id || '').trim(),
+      date: String(record.attendance_date || ''),
+      status: String(record.status || ''),
+      overtimeHours: numberValue(record.overtime_hours),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const attendanceUnlinkedEmployees = attendance
+    .filter((record) => !String(record.employee_id || '').trim())
+    .map((record) => ({
+      id: String(record.id || ''),
+      date: String(record.attendance_date || ''),
+      status: String(record.status || ''),
+      projectSite: String(record.project_site || '').trim(),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const overrideIssues = overrides
+    .map((override) => {
+      const employeeId = String(override.employee_id || '').trim();
+      const projectSite = String(override.project_site || '').trim();
+      const periodStart = String(override.period_start || '').trim();
+      const periodEnd = String(override.period_end || '').trim();
+      const paidDaysOverride = numberValue(override.paid_days_override);
+      const overtimeHoursOverride = numberValue(override.overtime_hours_override);
+      const problems = [
+        !employeeId ? 'Missing employee' : '',
+        employeeId && !employeeIds.has(employeeId) ? 'Employee no longer exists' : '',
+        !projectSite ? 'Missing project site' : '',
+        !periodStart || !periodEnd ? 'Missing covered period' : '',
+        paidDaysOverride < 0 ? 'Negative paid days override' : '',
+        overtimeHoursOverride < 0 ? 'Negative overtime override' : '',
+      ].filter(Boolean);
+
+      return {
+        employeeId,
+        projectSite,
+        periodStart,
+        periodEnd,
+        remarks: String(override.remarks || '').trim(),
+        problems,
+      };
+    })
+    .filter((override) => override.problems.length > 0)
+    .sort((a, b) => `${b.periodStart}${b.periodEnd}`.localeCompare(`${a.periodStart}${a.periodEnd}`));
+
+  const issuesByDepartment = Array.from(
+    employeeDetails.reduce((map, employee) => {
+      const current = map.get(employee.department) || { department: employee.department, missingSalary: 0, missingProjectSite: 0, totalFlags: 0 };
+      if (String(employee.status || '').toLowerCase() === 'active' && employee.salary <= 0) {
+        current.missingSalary += 1;
+        current.totalFlags += 1;
+      }
+      if (String(employee.status || '').toLowerCase() === 'active' && (!employee.projectSite || employee.projectSite === 'Unassigned')) {
+        current.missingProjectSite += 1;
+        current.totalFlags += 1;
+      }
+      map.set(employee.department, current);
+      return map;
+    }, new Map<string, { department: string; missingSalary: number; missingProjectSite: number; totalFlags: number }>()).values(),
+  ).sort((a, b) => b.totalFlags - a.totalFlags || a.department.localeCompare(b.department));
+
+  res.json({
+    metrics: {
+      activeEmployees: employeeDetails.filter((employee) => String(employee.status || '').toLowerCase() === 'active').length,
+      employeesMissingSalary: missingSalaryEmployees.length,
+      employeesMissingProjectSite: missingProjectSiteEmployees.length,
+      attendanceMissingProjectSite: attendanceMissingProjectSite.length,
+      attendanceUnlinkedEmployees: attendanceUnlinkedEmployees.length,
+      overrideIssues: overrideIssues.length,
+      totalIssues: missingSalaryEmployees.length + missingProjectSiteEmployees.length + attendanceMissingProjectSite.length + attendanceUnlinkedEmployees.length + overrideIssues.length,
+    },
+    issuesByDepartment,
+    missingSalaryEmployees,
+    missingProjectSiteEmployees,
+    attendanceMissingProjectSite,
+    attendanceUnlinkedEmployees,
+    overrideIssues,
+    recommendations: [
+      'Complete missing salary values before the next payroll run.',
+      'Assign active employees to a valid project site so attendance and payroll stay aligned.',
+      'Require project site selection when encoding attendance for project-based teams.',
+      'Review payroll attendance overrides that are incomplete or reference removed employees.',
+    ],
+    error: employeesResult.error || departmentsResult.error || deploymentsResult.error || attendanceResult.error || overridesResult.error,
   });
 });
 

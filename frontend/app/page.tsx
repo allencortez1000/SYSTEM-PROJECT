@@ -1,7 +1,10 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import StatusBadge from "./components/status-badge";
+import SummaryMetricCard from "./components/summary-metric-card";
 import { filterInputClassName } from "./components/filter-config";
 
 import { canonicalDepartmentName, useSupabaseTableRefresh } from "../lib/supabaseRealtime";
@@ -26,6 +29,16 @@ type AttendanceRecord = {
   status: string;
 };
 
+type DataHealthMetrics = {
+  activeEmployees: number;
+  employeesMissingSalary: number;
+  employeesMissingProjectSite: number;
+  attendanceMissingProjectSite: number;
+  attendanceUnlinkedEmployees: number;
+  overrideIssues: number;
+  totalIssues: number;
+};
+
 const deptColors = [
   "from-blue-600 to-cyan-400",
   "from-cyan-500 to-blue-500",
@@ -46,9 +59,11 @@ function pesos(value: number) {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeeCount, setEmployeeCount] = useState(0);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [dataHealth, setDataHealth] = useState<DataHealthMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState("All");
@@ -62,9 +77,10 @@ export default function Home() {
         ? ({ headers: { Authorization: `Bearer ${token}` } } as const)
         : undefined;
 
-      const [empRes, attRes] = await Promise.all([
+      const [empRes, attRes, healthRes] = await Promise.all([
         fetch(`${API_BASE}/employees?limit=0`, fetchOptions),
         fetch(`${API_BASE}/attendance`, fetchOptions),
+        fetch(`${API_BASE}/data/health`, fetchOptions),
       ]);
 
       if (!empRes.ok) {
@@ -72,7 +88,7 @@ export default function Home() {
         if (empRes.status === 401) {
           localStorage.removeItem("hr_token");
           localStorage.removeItem("hr_user");
-          window.location.reload();
+          router.replace("/login");
           return;
         }
         throw new Error(details?.error || details?.message || "Failed to load employees from Supabase");
@@ -85,6 +101,13 @@ export default function Home() {
       if (attRes.ok) {
         const attData = await attRes.json();
         setAttendance(attData.attendance || []);
+      }
+
+      if (healthRes.ok) {
+        const healthData = await healthRes.json();
+        setDataHealth(healthData.metrics || null);
+      } else {
+        setDataHealth(null);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -140,7 +163,58 @@ export default function Home() {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }), [employees, attendance, employeeStatusFilter]);
+  }), [employees, attendance, employeeStatusFilter, dataHealth]);
+
+  const actionWidgets = useMemo(() => {
+    const health = dataHealth || {
+      activeEmployees: 0,
+      employeesMissingSalary: 0,
+      employeesMissingProjectSite: 0,
+      attendanceMissingProjectSite: 0,
+      attendanceUnlinkedEmployees: 0,
+      overrideIssues: 0,
+      totalIssues: 0,
+    };
+
+    return [
+      {
+        title: "Fix salary gaps",
+        value: health.employeesMissingSalary,
+        detail: health.employeesMissingSalary === 0 ? "All active employees have salary values saved." : "Active employees need salary values before payroll is finalized.",
+        href: "/data-health",
+        action: "Open Data Health",
+        tone: health.employeesMissingSalary > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50",
+        badge: health.employeesMissingSalary > 0 ? "Needs action" : "Clear",
+      },
+      {
+        title: "Assign project sites",
+        value: health.employeesMissingProjectSite + health.attendanceMissingProjectSite,
+        detail: health.employeesMissingProjectSite + health.attendanceMissingProjectSite === 0 ? "Project-site assignments and attendance locations look complete." : "Employee or attendance records are missing project-site data.",
+        href: "/data-health",
+        action: "Review site issues",
+        tone: health.employeesMissingProjectSite + health.attendanceMissingProjectSite > 0 ? "border-cyan-200 bg-cyan-50" : "border-emerald-200 bg-emerald-50",
+        badge: health.employeesMissingProjectSite + health.attendanceMissingProjectSite > 0 ? "Review" : "Clear",
+      },
+      {
+        title: "Resolve override issues",
+        value: health.overrideIssues,
+        detail: health.overrideIssues === 0 ? "Saved payroll overrides look complete." : "Incomplete or stale override rows should be checked before reuse.",
+        href: "/data-health",
+        action: "Review overrides",
+        tone: health.overrideIssues > 0 ? "border-violet-200 bg-violet-50" : "border-emerald-200 bg-emerald-50",
+        badge: health.overrideIssues > 0 ? "Attention" : "Clear",
+      },
+      {
+        title: "Clean attendance links",
+        value: health.attendanceUnlinkedEmployees,
+        detail: health.attendanceUnlinkedEmployees === 0 ? "Attendance records are linked to employee records." : "Some attendance entries are not linked to any employee.",
+        href: "/attendance",
+        action: "Open attendance",
+        tone: health.attendanceUnlinkedEmployees > 0 ? "border-slate-300 bg-slate-50" : "border-emerald-200 bg-emerald-50",
+        badge: health.attendanceUnlinkedEmployees > 0 ? "Fix now" : "Clear",
+      },
+    ];
+  }, [dataHealth]);
 
   return (
     <div className="page-shell">
@@ -175,6 +249,10 @@ export default function Home() {
               <Link href="/payroll/new" className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                 Create Payroll
+              </Link>
+              <Link href="/data-health" className="inline-flex h-11 items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-400/15">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m6 2.25a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Open Data Health
               </Link>
             </div>
           </div>
@@ -218,79 +296,71 @@ export default function Home() {
           <div className="rounded-[0.875rem] border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         )}
 
+        <section className="section-card">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="eyebrow">Action center</p>
+              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">Items needing action today</h2>
+              <p className="mt-1 text-sm text-slate-500">Focus first on the records most likely to block payroll accuracy and attendance reporting.</p>
+            </div>
+            <Link href="/data-health" className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              Open Data Health
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {actionWidgets.map((widget) => (
+              <Link
+                key={widget.title}
+                href={widget.href}
+                className={`rounded-[1.25rem] border p-4 transition hover:-translate-y-0.5 hover:shadow-sm ${widget.tone}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Action widget</p>
+                    <h3 className="mt-1 text-base font-black text-slate-950">{widget.title}</h3>
+                  </div>
+                  <StatusBadge tone="white" size="md">{widget.badge}</StatusBadge>
+                </div>
+                <p className="mt-4 text-3xl font-black text-slate-950">{widget.value}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{widget.detail}</p>
+                <div className="mt-4 inline-flex items-center gap-1 text-sm font-black text-blue-700">
+                  {widget.action}
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* Metric Cards */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-          <div className="stat-card accent-blue min-h-[128px]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Total Employees</p>
-                <p className="mt-2 text-3xl font-black text-slate-950">{stats.totalEmployees}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-emerald-600">{stats.activeEmployees} active team members</p>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                    Workforce stable
-                  </span>
-                </div>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="stat-card accent-emerald min-h-[128px]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Monthly Payroll</p>
-                <p className="mt-2 text-3xl font-black text-slate-950">{pesos(stats.payrollCost)}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-600">Estimated active payroll cost</p>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                    Budget view
-                  </span>
-                </div>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="stat-card accent-cyan min-h-[128px]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Present Today</p>
-                <p className="mt-2 text-3xl font-black text-slate-950">{stats.presentToday}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-600">{stats.presentToday === 0 ? "No attendance records logged yet today" : "Employees logged as present today"}</p>
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${stats.presentToday === 0 ? "bg-slate-100 text-slate-600" : "bg-cyan-50 text-cyan-700"}`}>
-                    {stats.presentToday === 0 ? "Awaiting logs" : "Live today"}
-                  </span>
-                </div>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="stat-card accent-slate min-h-[128px]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">On Leave</p>
-                <p className="mt-2 text-3xl font-black text-slate-950">{stats.onLeave}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-600">{stats.onLeave === 0 ? "No employees currently recorded on leave" : "Employees currently marked on leave"}</p>
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${stats.onLeave === 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                    {stats.onLeave === 0 ? "Clear" : "Monitor"}
-                  </span>
-                </div>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              </div>
-            </div>
-          </div>
+          <SummaryMetricCard
+            label="Total Employees"
+            value={stats.totalEmployees}
+            detail={<div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-emerald-600">{stats.activeEmployees} active team members</p><StatusBadge tone="emerald" size="md">Workforce stable</StatusBadge></div>}
+            accentClassName="accent-blue"
+          />
+          <SummaryMetricCard
+            label="Monthly Payroll"
+            value={pesos(stats.payrollCost)}
+            detail={<div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-slate-600">Estimated active payroll cost</p><StatusBadge tone="emerald" size="md">Budget view</StatusBadge></div>}
+            accentClassName="accent-emerald"
+          />
+          <SummaryMetricCard
+            label="Present Today"
+            value={stats.presentToday}
+            detail={<div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-slate-600">{stats.presentToday === 0 ? "No attendance records logged yet today" : "Employees logged as present today"}</p><StatusBadge tone={stats.presentToday === 0 ? "slate" : "cyan"} size="md">{stats.presentToday === 0 ? "Awaiting logs" : "Live today"}</StatusBadge></div>}
+            accentClassName="accent-cyan"
+          />
+          <SummaryMetricCard
+            label="On Leave"
+            value={stats.onLeave}
+            detail={<div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-slate-600">{stats.onLeave === 0 ? "No employees currently recorded on leave" : "Employees currently marked on leave"}</p><StatusBadge tone={stats.onLeave === 0 ? "emerald" : "slate"} size="md">{stats.onLeave === 0 ? "Clear" : "Monitor"}</StatusBadge></div>}
+            accentClassName="accent-slate"
+          />
         </div>
 
         {/* Department Analytics & Latest Employees */}

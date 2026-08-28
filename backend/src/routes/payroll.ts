@@ -2,30 +2,13 @@ import { Router } from 'express';
 import { calculatePayroll, computeGovernmentContributions } from '../controllers/payroll';
 import { summarizeAttendanceDays } from '../lib/attendanceSummary';
 import { supabase } from '../lib/supabase';
-import { requireSuperAdmin, verifyToken, type AuthRequest } from '../middleware/auth';
+import { assertCondition, isRequestValidationError, optionalNullableTrimmedString, requireFiniteNumber, requireTrimmedString } from '../lib/validation';
+import { requireModuleAccess, requireSuperAdmin, verifyToken, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
 router.use(verifyToken);
-
-function requireTrimmedString(value: unknown, fieldName: string) {
-  const text = String(value || '').trim();
-  if (!text) {
-    throw new Error(`${fieldName} is required`);
-  }
-  return text;
-}
-
-function requireFiniteNumber(value: unknown, fieldName: string, options?: { min?: number }) {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) {
-    throw new Error(`${fieldName} must be a valid number`);
-  }
-  if (options?.min !== undefined && numberValue < options.min) {
-    throw new Error(`${fieldName} must be greater than or equal to ${options.min}`);
-  }
-  return numberValue;
-}
+router.use(requireModuleAccess('payroll'));
 
 function resolvePeriodField(row: Record<string, unknown> | null | undefined, preferred: string, fallbacks: string[]) {
   const source = row || {};
@@ -826,9 +809,7 @@ router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
       remarks,
     } = req.body;
 
-    if (!employeeId || !projectSite || !startDate || !endDate) {
-      return res.status(400).json({ message: 'employeeId, projectSite, startDate, and endDate are required' });
-    }
+    assertCondition(employeeId && projectSite && startDate && endDate, 'employeeId, projectSite, startDate, and endDate are required');
 
     const { data, error } = await supabase
       .from('payroll_attendance_overrides')
@@ -850,7 +831,7 @@ router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
 
         tax_amount: taxAmount ?? null,
         additional_deduction: additionalDeduction ?? null,
-        remarks: remarks || null,
+        remarks: optionalNullableTrimmedString(remarks),
       }, {
         onConflict: 'employee_id,project_site,period_start,period_end',
       })
@@ -869,6 +850,9 @@ router.post('/attendance-overrides', requireSuperAdmin, async (req, res) => {
 
     res.status(201).json({ override: data });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to save payroll attendance override',
       error: (error as Error).message,
@@ -1080,6 +1064,9 @@ router.post('/save', requireSuperAdmin, async (req: AuthRequest, res) => {
       calculationVersion: 1,
     });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to save payroll run',
       error: (error as Error).message,

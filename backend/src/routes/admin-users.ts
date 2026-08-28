@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { hasAdminAccess, readPermissions } from '../lib/appUser';
 import { supabase } from '../lib/supabase';
 import { canonicalDepartmentName } from '../lib/departmentNames';
+import { isRequestValidationError, normalizeBoolean, requireStringArray, requireTrimmedString } from '../lib/validation';
 import { verifyToken, requireSuperAdmin } from '../middleware/auth';
 
 const router = Router();
@@ -119,9 +120,12 @@ async function findOrCreateDepartment(name: string) {
 
 router.post('/departments', requireSuperAdmin, async (req, res) => {
   try {
-    const department = await findOrCreateDepartment(String(req.body?.name || ''));
+    const department = await findOrCreateDepartment(requireTrimmedString(req.body?.name, 'name'));
     res.status(201).json({ department });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to save department in Supabase',
       error: (error as Error).message,
@@ -205,20 +209,14 @@ router.post('/department-head', requireSuperAdmin, async (req, res) => {
   try {
     const { fullName, username, email, password, departmentId, departmentIds } = req.body;
 
-    const cleanedFullName = String(fullName || '').trim();
-    const cleanedUsername = String(username || '').trim();
-    const cleanedEmail = String(email || '').trim().toLowerCase();
-    const cleanedPassword = String(password || '');
+    const cleanedFullName = requireTrimmedString(fullName, 'fullName');
+    const cleanedUsername = requireTrimmedString(username, 'username');
+    const cleanedEmail = requireTrimmedString(email, 'email').toLowerCase();
+    const cleanedPassword = requireTrimmedString(password, 'password');
 
     const cleanedDepartmentIds = Array.isArray(departmentIds)
-      ? departmentIds.map((value: unknown) => String(value).trim()).filter(Boolean)
-      : [String(departmentId || '').trim()].filter(Boolean);
-
-    if (!cleanedFullName || !cleanedUsername || !cleanedEmail || !cleanedPassword || cleanedDepartmentIds.length === 0) {
-      return res.status(400).json({
-        message: 'fullName, username, email, password, and at least one department are required',
-      });
-    }
+      ? requireStringArray(departmentIds, 'departmentIds', { minLength: 1 })
+      : requireStringArray([departmentId], 'departmentId', { minLength: 1 });
 
     if (cleanedPassword.length < 4) {
       return res.status(400).json({ message: 'Password must be at least 4 characters' });
@@ -293,6 +291,9 @@ router.post('/department-head', requireSuperAdmin, async (req, res) => {
       },
     });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to create department head admin',
       error: (error as Error).message,
@@ -304,20 +305,11 @@ router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
   try {
     const { fullName, username, email, password, permissions } = req.body;
 
-    const cleanedFullName = String(fullName || '').trim();
-    const cleanedUsername = String(username || '').trim();
-    const cleanedEmail = String(email || '').trim().toLowerCase();
-    const cleanedPassword = String(password || '');
-
-    const cleanedPermissions = Array.isArray(permissions)
-      ? permissions.map((value: unknown) => String(value).trim()).filter(Boolean)
-      : [];
-
-    if (!cleanedFullName || !cleanedUsername || !cleanedEmail || !cleanedPassword || cleanedPermissions.length === 0) {
-      return res.status(400).json({
-        message: 'fullName, username, email, password, and at least one permission are required',
-      });
-    }
+    const cleanedFullName = requireTrimmedString(fullName, 'fullName');
+    const cleanedUsername = requireTrimmedString(username, 'username');
+    const cleanedEmail = requireTrimmedString(email, 'email').toLowerCase();
+    const cleanedPassword = requireTrimmedString(password, 'password');
+    const cleanedPermissions = requireStringArray(permissions, 'permissions', { minLength: 1 });
 
     if (cleanedPassword.length < 4) {
       return res.status(400).json({ message: 'Password must be at least 4 characters' });
@@ -391,6 +383,9 @@ router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
       },
     });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to create sub-admin',
       error: (error as Error).message,
@@ -400,14 +395,8 @@ router.post('/sub-admin', requireSuperAdmin, async (req, res) => {
 
 router.patch('/:id/departments', requireSuperAdmin, async (req, res) => {
   try {
-    const userId = req.params.id;
-    const departmentIds = Array.isArray(req.body?.departmentIds)
-      ? req.body.departmentIds.map((value: unknown) => String(value).trim()).filter(Boolean)
-      : [];
-
-    if (departmentIds.length === 0) {
-      return res.status(400).json({ message: 'departmentIds is required' });
-    }
+    const userId = requireTrimmedString(req.params.id, 'id');
+    const departmentIds = requireStringArray(req.body?.departmentIds, 'departmentIds', { minLength: 1 });
 
     const { data: userRows, error: userError } = await supabase
       .from('app_users')
@@ -448,6 +437,9 @@ router.patch('/:id/departments', requireSuperAdmin, async (req, res) => {
 
     res.json({ message: 'Department assignments updated' });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to update department assignments',
       error: (error as Error).message,
@@ -457,8 +449,8 @@ router.patch('/:id/departments', requireSuperAdmin, async (req, res) => {
 
 router.patch('/:id/active', requireSuperAdmin, async (req, res) => {
   try {
-    const userId = req.params.id;
-    const isActive = req.body?.isActive === true || req.body?.isActive === "true";
+    const userId = requireTrimmedString(req.params.id, 'id');
+    const isActive = normalizeBoolean(req.body?.isActive);
 
     const { error } = await supabase
       .from('app_users')
@@ -469,6 +461,9 @@ router.patch('/:id/active', requireSuperAdmin, async (req, res) => {
 
     res.json({ message: 'User status updated' });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to update user status',
       error: (error as Error).message,

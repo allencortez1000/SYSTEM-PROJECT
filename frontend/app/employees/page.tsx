@@ -5,7 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { filterInputClassName } from "../components/filter-config";
 import { useNotification } from "../components/notification";
+import { useSupabaseTableRefresh } from "../../lib/supabaseRealtime";
 
+
+const API_BASE = "/api";
 
 type Employee = {
   id: string;
@@ -19,6 +22,23 @@ type Employee = {
   salary: number;
   salaryBasis?: string | null;
 };
+
+const currency = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  maximumFractionDigits: 2,
+});
+
+function formatEmployeeCompensation(employee: Employee) {
+  if (!Number.isFinite(employee.salary) || employee.salary <= 0) {
+    return "Not set";
+  }
+
+  const amount = currency.format(employee.salary);
+  return (employee.salaryBasis || "monthly").toLowerCase() === "daily"
+    ? `${amount} / day`
+    : `${amount} / month`;
+}
 
 type FieldView = "both" | "department" | "projectSite";
 type SortMode = "name-asc" | "name-desc" | "department" | "projectSite" | "status-active" | "status-inactive";
@@ -55,6 +75,15 @@ export default function EmployeesPage() {
         .filter((site): site is string => Boolean(site))
     );
     return ["All", ...Array.from(sites).sort()];
+  }, [employeeList]);
+
+  const statusOptions = useMemo(() => {
+    const statuses = new Set(
+      employeeList
+        .map((emp) => String(emp.status || "").trim())
+        .filter(Boolean)
+    );
+    return ["All", ...Array.from(statuses).sort((a, b) => a.localeCompare(b))];
   }, [employeeList]);
 
   const filteredEmployees = useMemo(() => {
@@ -127,9 +156,10 @@ export default function EmployeesPage() {
   }, [employeeList, filteredEmployees.length]);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem("hr_token");
-      const res = await fetch("/api/employees?limit=0", {
+      const res = await fetch(`${API_BASE}/employees?limit=0`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json().catch(() => ({}));
@@ -154,6 +184,18 @@ export default function EmployeesPage() {
     void load();
   }, [load]);
 
+  useSupabaseTableRefresh(
+    [
+      { table: "employees" },
+      { table: "employee_project_deployments" },
+      { table: "project_sites" },
+      { table: "departments" },
+    ],
+    () => {
+      void load();
+    },
+  );
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedDepartment, selectedProjectSite, selectedStatus, sortMode]);
@@ -169,6 +211,20 @@ export default function EmployeesPage() {
             <h1 className="page-title mt-1">Employee Directory</h1>
             <p className="page-subtitle">Manage and view all employee records</p>
           </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                void load();
+              }}
+              disabled={loading}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m14.836 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-14.357-2m14.357 2H15" />
+              </svg>
+              Refresh
+            </button>
           <Link
             href="/employees/new"
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
@@ -178,6 +234,7 @@ export default function EmployeesPage() {
             </svg>
             Add Employee
           </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -289,9 +346,11 @@ export default function EmployeesPage() {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className={filterInputClassName}
             >
-              <option value="All">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -404,9 +463,7 @@ export default function EmployeesPage() {
                 .join("");
               const status = String(employee.status || "");
               const isActive = status.toLowerCase() === "active";
-              const salaryLabel = Number.isFinite(employee.salary) && employee.salary > 0
-                ? `₱${employee.salary.toLocaleString()}`
-                : "Not set";
+              const salaryLabel = formatEmployeeCompensation(employee);
 
               return (
                 <Link
@@ -477,7 +534,7 @@ export default function EmployeesPage() {
                       <span className="truncate font-medium text-slate-700">{employee.email || "N/A"}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-500">Salary</span>
+                      <span className="font-medium text-slate-500">Compensation</span>
                       <span className="font-bold text-blue-600">{salaryLabel}</span>
                     </div>
                   </div>

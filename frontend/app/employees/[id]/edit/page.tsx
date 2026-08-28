@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useNotification } from "../../../components/notification";
 import { triggerAppDataRefresh } from "../../../../lib/supabaseRealtime";
+import { EmployeeSelectField, EmployeeTextField } from "../../employeeFormFields";
+import { EMPLOYEE_SALARY_BASIS_OPTIONS, EMPLOYEE_STATUS_OPTIONS } from "../../employeeFormOptions";
+
+const API_BASE = "/api";
 
 type EmployeeFormState = {
   fullName: string;
@@ -14,7 +18,6 @@ type EmployeeFormState = {
   position: string;
   salary: number;
   salaryBasis: string;
-  manager: string;
   status: string;
   employeeId: string;
   hasSss: boolean;
@@ -46,7 +49,6 @@ export default function EditEmployeePage() {
     position: "Employee",
     salary: 0,
     salaryBasis: "monthly",
-    manager: "",
     status: "Active",
     employeeId: "",
     hasSss: true,
@@ -66,6 +68,7 @@ export default function EditEmployeePage() {
   const [projectSiteOptions, setProjectSiteOptions] = useState<string[]>([]);
   const [newProjectSite, setNewProjectSite] = useState("");
   const [creatingProjectSite, setCreatingProjectSite] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,14 +76,16 @@ export default function EditEmployeePage() {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+      setOptionsLoading(true);
       try {
         const token = localStorage.getItem("hr_token");
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
         const [employeeRes, deptRes, projectRes] = await Promise.all([
-          fetch(`/api/employees/${id}`, { headers }),
-          fetch("/api/admin-users/departments", { headers }),
-          fetch("/api/attendance/projects", { headers }),
+          fetch(`${API_BASE}/employees/${id}`, { headers }),
+          fetch(`${API_BASE}/admin-users/departments`, { headers }),
+          fetch(`${API_BASE}/attendance/projects`, { headers }),
         ]);
 
         const [employeeData, deptData, projectData] = await Promise.all([
@@ -100,7 +105,6 @@ export default function EditEmployeePage() {
           position: employee?.position || "Employee",
           salary: Number(employee?.salary || 0),
           salaryBasis: employee?.salaryBasis || "monthly",
-          manager: employee?.manager || "",
           status: employee?.status || "Active",
           employeeId: employee?.employeeId || "",
           hasSss: employee?.hasSss ?? true,
@@ -117,7 +121,7 @@ export default function EditEmployeePage() {
           additionalDeductionAmount: Number(employee?.additionalDeductionAmount || 0),
         });
 
-        if (Array.isArray(deptData?.departments)) {
+        if (deptRes.ok && Array.isArray(deptData?.departments)) {
           const nextDepartments: string[] = Array.from(
             new Set(
               deptData.departments
@@ -127,7 +131,7 @@ export default function EditEmployeePage() {
           ) as string[];
           setDepartmentOptions(nextDepartments);
         }
-        if (Array.isArray(projectData?.projects)) {
+        if (projectRes.ok && Array.isArray(projectData?.projects)) {
           const nextProjects: string[] = Array.from(
             new Set(
               projectData.projects
@@ -143,6 +147,7 @@ export default function EditEmployeePage() {
       } catch (err) {
         setError((err as Error).message);
       } finally {
+        setOptionsLoading(false);
         setLoading(false);
       }
     };
@@ -150,17 +155,24 @@ export default function EditEmployeePage() {
     if (id) void load();
   }, [id]);
 
-  const statusOptions = useMemo(() => ["Active", "Onboarding", "On Leave", "Inactive", "Terminated"], []);
+  const statusOptions = useMemo(() => [...EMPLOYEE_STATUS_OPTIONS], []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setFieldErrors(null);
+
+    if (!form.fullName.trim()) {
+      setFieldErrors({ fullName: "Full name is required" });
+      setError("Please fix the highlighted fields");
+      return;
+    }
+
     setSaving(true);
 
     try {
       const token = localStorage.getItem("hr_token");
-      const res = await fetch(`/api/employees/${id}`, {
+      const res = await fetch(`${API_BASE}/employees/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -202,7 +214,7 @@ export default function EditEmployeePage() {
 
     try {
       const token = localStorage.getItem("hr_token");
-      const res = await fetch("/api/attendance/projects", {
+      const res = await fetch(`${API_BASE}/attendance/projects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -216,7 +228,7 @@ export default function EditEmployeePage() {
       }
 
       const createdName = data?.project?.name || trimmed;
-      setProjectSiteOptions((current) => [...current, createdName]);
+      setProjectSiteOptions((current) => Array.from(new Set([...current, createdName])));
       setForm((prev) => ({ ...prev, projectSite: createdName }));
       setNewProjectSite("");
       notify("Project site added");
@@ -262,19 +274,68 @@ export default function EditEmployeePage() {
         </div>
         <div className="px-4 py-5 sm:px-6 sm:py-6">
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField id="fullName" label="Full name" value={form.fullName} onChange={(value) => setForm((prev) => ({ ...prev, fullName: value }))} error={fieldErrors?.fullName} required />
-          <TextField id="employeeId" label="Employee ID" value={form.employeeId} onChange={(value) => setForm((prev) => ({ ...prev, employeeId: value }))} />
-          <TextField id="email" label="Email" type="email" value={form.email} onChange={(value) => setForm((prev) => ({ ...prev, email: value }))} error={fieldErrors?.email} />
-          <SelectField id="department" label="Department" value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value }))} options={departmentOptions} />
-          <TextField id="position" label="Position" value={form.position} onChange={(value) => setForm((prev) => ({ ...prev, position: value }))} />
+          <EmployeeTextField id="fullName" label="Full name" value={form.fullName} onChange={(value) => {
+            setForm((prev) => ({ ...prev, fullName: value }));
+            if (fieldErrors?.fullName) {
+              setFieldErrors((current) => {
+                if (!current?.fullName) return current;
+                const next = { ...current };
+                delete next.fullName;
+                return Object.keys(next).length > 0 ? next : null;
+              });
+            }
+            if (error === "Please fix the highlighted fields") {
+              setError(null);
+            }
+          }} error={fieldErrors?.fullName} required />
+          <EmployeeTextField id="employeeId" label="Employee ID" value={form.employeeId} onChange={(value) => {
+            setForm((prev) => ({ ...prev, employeeId: value }));
+            if (fieldErrors?.employeeId) {
+              setFieldErrors((current) => {
+                if (!current?.employeeId) return current;
+                const next = { ...current };
+                delete next.employeeId;
+                return Object.keys(next).length > 0 ? next : null;
+              });
+            }
+            if (error === "Please fix the highlighted fields") {
+              setError(null);
+            }
+          }} error={fieldErrors?.employeeId} />
+          <EmployeeTextField id="email" label="Email" type="email" value={form.email} onChange={(value) => {
+            setForm((prev) => ({ ...prev, email: value }));
+            if (fieldErrors?.email) {
+              setFieldErrors((current) => {
+                if (!current?.email) return current;
+                const next = { ...current };
+                delete next.email;
+                return Object.keys(next).length > 0 ? next : null;
+              });
+            }
+            if (error === "Please fix the highlighted fields") {
+              setError(null);
+            }
+          }} error={fieldErrors?.email} />
+          <EmployeeSelectField id="department" label="Department" value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value }))} options={departmentOptions} disabled={optionsLoading} />
+          <EmployeeTextField id="position" label="Position" value={form.position} onChange={(value) => setForm((prev) => ({ ...prev, position: value }))} />
           <div className="space-y-2 min-w-0">
-            <SelectField id="projectSite" label="Change project site" value={form.projectSite} onChange={(value) => setForm((prev) => ({ ...prev, projectSite: value }))} options={projectSiteOptions} />
+            <EmployeeSelectField id="projectSite" label="Change project site" value={form.projectSite} onChange={(value) => {
+              setForm((prev) => ({ ...prev, projectSite: value }));
+              if (error === "Project site already exists") {
+                setError(null);
+              }
+            }} options={projectSiteOptions} disabled={optionsLoading} />
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <label className="block min-w-0">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Or create a new site</span>
                 <input
                   value={newProjectSite}
-                  onChange={(event) => setNewProjectSite(event.target.value)}
+                  onChange={(event) => {
+                    setNewProjectSite(event.target.value);
+                    if (error === "Project site already exists") {
+                      setError(null);
+                    }
+                  }}
                   placeholder="e.g. Hermosa Site"
                   className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
@@ -282,20 +343,58 @@ export default function EditEmployeePage() {
               <button
                 type="button"
                 onClick={createProjectSite}
-                disabled={creatingProjectSite}
-                className="mt-auto inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                disabled={optionsLoading || creatingProjectSite || !newProjectSite.trim()}
+                className="mt-auto inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {creatingProjectSite ? "Adding..." : "Add site"}
               </button>
             </div>
           </div>
-          <SelectField id="status" label="Status" value={form.status} onChange={(value) => setForm((prev) => ({ ...prev, status: value }))} options={statusOptions} />
-          <SelectField id="salaryBasis" label="Salary basis" value={form.salaryBasis} onChange={(value) => setForm((prev) => ({ ...prev, salaryBasis: value }))} options={["monthly", "daily"]} />
-          <TextField id="manager" label="Manager" value={form.manager} onChange={(value) => setForm((prev) => ({ ...prev, manager: value }))} />
+          <EmployeeSelectField id="status" label="Status" value={form.status} onChange={(value) => {
+            setForm((prev) => ({ ...prev, status: value }));
+            if (fieldErrors?.status) {
+              setFieldErrors((current) => {
+                if (!current?.status) return current;
+                const next = { ...current };
+                delete next.status;
+                return Object.keys(next).length > 0 ? next : null;
+              });
+            }
+            if (error === "Please fix the highlighted fields") {
+              setError(null);
+            }
+          }} options={statusOptions} error={fieldErrors?.status} />
+          <EmployeeSelectField id="salaryBasis" label="Salary basis" value={form.salaryBasis} onChange={(value) => {
+            setForm((prev) => ({ ...prev, salaryBasis: value }));
+            if (fieldErrors?.salaryBasis) {
+              setFieldErrors((current) => {
+                if (!current?.salaryBasis) return current;
+                const next = { ...current };
+                delete next.salaryBasis;
+                return Object.keys(next).length > 0 ? next : null;
+              });
+            }
+            if (error === "Please fix the highlighted fields") {
+              setError(null);
+            }
+          }} options={[...EMPLOYEE_SALARY_BASIS_OPTIONS]} error={fieldErrors?.salaryBasis} />
           <label className="block min-w-0">
-            <span className="block text-sm font-semibold text-slate-700 mb-1.5">Salary / monthly rate</span>
-            <input id="salary" type="number" min="0" step="0.01" value={form.salary} onChange={(e) => setForm((prev) => ({ ...prev, salary: Math.max(0, Number(e.target.value)) }))} className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" />
-            {fieldErrors?.salary && <p className="mt-2 text-sm font-semibold text-red-600">{fieldErrors.salary}</p>}
+            <span className="block text-sm font-semibold text-slate-700 mb-1.5">{form.salaryBasis === "daily" ? "Daily rate" : "Monthly salary"}</span>
+            <input id="salary" type="number" min="0" step="0.01" value={form.salary} onChange={(e) => {
+              setForm((prev) => ({ ...prev, salary: Math.max(0, Number(e.target.value)) }));
+              if (fieldErrors?.salary) {
+                setFieldErrors((current) => {
+                  if (!current?.salary) return current;
+                  const next = { ...current };
+                  delete next.salary;
+                  return Object.keys(next).length > 0 ? next : null;
+                });
+              }
+              if (error === "Please fix the highlighted fields") {
+                setError(null);
+              }
+            }} className={"w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 " + (fieldErrors?.salary ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")} aria-invalid={fieldErrors?.salary ? "true" : "false"} aria-describedby={fieldErrors?.salary ? "salary-error" : undefined} />
+            {fieldErrors?.salary && <p id="salary-error" className="mt-2 text-sm font-semibold text-red-600">{fieldErrors.salary}</p>}
           </label>
 
           <div className="sm:col-span-2 rounded-[0.875rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
@@ -346,46 +445,4 @@ export default function EditEmployeePage() {
   );
 }
 
-type TextFieldProps = {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  type?: string;
-  required?: boolean;
-};
 
-function TextField({ id, label, value, onChange, error, type = "text", required = false }: TextFieldProps) {
-  return (
-    <label className="block min-w-0">
-      <span className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</span>
-      <input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} className={"w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 " + (error ? "border-red-500" : "border-slate-200")} />
-      {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
-    </label>
-  );
-}
-
-type SelectFieldProps = {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-};
-
-function SelectField({ id, label, value, onChange, options }: SelectFieldProps) {
-  return (
-    <label className="block min-w-0">
-      <span className="block text-sm font-semibold text-slate-700 mb-1.5">{label}</span>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100">
-        <option value="">Select...</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}

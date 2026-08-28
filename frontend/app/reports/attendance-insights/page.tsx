@@ -38,40 +38,29 @@ export default function AttendanceInsightsReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
+  async function loadReport() {
+    setLoading(true);
+    setError(null);
 
-      try {
-        const token = localStorage.getItem("hr_token");
-        const res = await fetch(`${API_BASE}/data/reports/attendance-insights`, {
-          cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.message || "Failed to load attendance report from Supabase");
-        setData(payload);
-        if (payload?.error) setError(payload.error);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem("hr_token");
-    void fetch(`${API_BASE}/data/reports/attendance-insights`, {
-      cache: "no-store",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }).then(async (res) => {
+    try {
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch(`${API_BASE}/data/reports/attendance-insights`, {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const payload = await res.json();
-      if (res.ok) setData(payload);
-    });
+      if (!res.ok) throw new Error(payload?.message || "Failed to load attendance report from Supabase");
+      setData(payload);
+      if (payload?.error) setError(payload.error);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadReport();
   }, []);
 
   const metrics = useMemo(() => {
@@ -142,9 +131,16 @@ export default function AttendanceInsightsReportPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void loadReport()}
+              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+            >
+              Refresh report
+            </button>
             <Link
               href="/attendance"
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+              className="group inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
             >
               Open attendance
             </Link>

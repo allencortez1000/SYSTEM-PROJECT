@@ -1,10 +1,12 @@
 ﻿import { Router } from 'express';
 import { supabase } from '../lib/supabase';
-import { verifyToken } from '../middleware/auth';
+import { isRequestValidationError, optionalNullableTrimmedString, optionalTrimmedString, requireTrimmedString } from '../lib/validation';
+import { requireModuleAccess, verifyToken } from '../middleware/auth';
 
 const router = Router();
 
 router.use(verifyToken);
+router.use(requireModuleAccess('attendance'));
 
 type AttendanceRow = {
   id: string;
@@ -293,9 +295,12 @@ router.get('/projects', async (_, res) => {
 router.post('/projects', async (req, res) => {
   try {
     const { name } = req.body;
-    const project = await findOrCreateProjectSite(String(name || ''));
+    const project = await findOrCreateProjectSite(requireTrimmedString(name, 'name'));
     res.status(201).json({ project });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to save project site in Supabase',
       error: (error as Error).message,
@@ -335,17 +340,15 @@ router.get('/assignments', async (_, res) => {
 router.post('/assignments', async (req, res) => {
   try {
     const { employeeId, projectName } = req.body;
+    const cleanedEmployeeId = requireTrimmedString(employeeId, 'employeeId');
+    const cleanedProjectName = requireTrimmedString(projectName, 'projectName');
 
-    if (!employeeId || !projectName) {
-      return res.status(400).json({ message: 'employeeId and projectName are required' });
-    }
-
-    const project = await findOrCreateProjectSite(String(projectName));
+    const project = await findOrCreateProjectSite(cleanedProjectName);
 
     const { data: currentAssignments, error: currentAssignmentsError } = await supabase
       .from('employee_project_deployments')
       .select('id, project_site_id')
-      .eq('employee_id', employeeId)
+      .eq('employee_id', cleanedEmployeeId)
       .eq('is_active', true)
       .order('assigned_at', { ascending: false });
 
@@ -375,7 +378,7 @@ router.post('/assignments', async (req, res) => {
       const { error: insertError } = await supabase
         .from('employee_project_deployments')
         .insert({
-          employee_id: employeeId,
+          employee_id: cleanedEmployeeId,
           project_site_id: project.id,
           assigned_at: new Date().toISOString(),
           is_active: true,
@@ -388,11 +391,14 @@ router.post('/assignments', async (req, res) => {
 
     res.status(201).json({
       assignment: {
-        employeeId,
+        employeeId: cleanedEmployeeId,
         projectName: project.name,
       },
     });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to save project assignment in Supabase',
       error: (error as Error).message,
@@ -443,18 +449,16 @@ router.post('/', async (req, res) => {
       overtimeMode,
     } = req.body;
 
-    const normalizedStatus = String(status || '').trim();
+    const cleanedEmployeeName = requireTrimmedString(employeeName, 'employeeName');
+    const cleanedDate = requireTrimmedString(date, 'date');
+    const normalizedStatus = requireTrimmedString(status, 'status');
     const statusForSave = normalizedStatus === 'Canceled Work' ? 'Absent' : normalizedStatus;
-    const noteText = String(notes || '').trim();
+    const noteText = optionalTrimmedString(notes);
     const noteForSave = normalizedStatus === 'Canceled Work'
       ? `${noteText ? `${noteText}\n` : ''}[canceled-work]`
       : noteText;
 
-    if (!employeeName || !date || !status) {
-      return res.status(400).json({ message: 'employeeName, date and status are required' });
-    }
-
-    let employeeId = String(employeeIdFromBody || '').trim();
+    let employeeId = optionalTrimmedString(employeeIdFromBody);
     if (employeeId) {
       const { data: existingEmployee, error: employeeLookupError } = await supabase
         .from('employees')
@@ -467,13 +471,13 @@ router.post('/', async (req, res) => {
       }
 
       if (!existingEmployee?.id) {
-        employeeId = await findOrCreateEmployeeByName(employeeName, {
+        employeeId = await findOrCreateEmployeeByName(cleanedEmployeeName, {
           salary: Number(req.body?.salaryAmount ?? 0) || 0,
           projectSite: projectSite || null,
         });
       }
     } else {
-      employeeId = await findOrCreateEmployeeByName(employeeName, {
+      employeeId = await findOrCreateEmployeeByName(cleanedEmployeeName, {
         salary: Number(req.body?.salaryAmount ?? 0) || 0,
         projectSite: projectSite || null,
       });
@@ -484,16 +488,16 @@ router.post('/', async (req, res) => {
       .upsert(
         {
           employee_id: employeeId,
-          attendance_date: date,
+          attendance_date: cleanedDate,
           status: statusForSave,
-          check_in: checkIn || null,
-          check_out: checkOut || null,
-          notes: noteForSave || null,
-          project_site: projectSite || null,
-          period_mode: periodMode || null,
+          check_in: optionalNullableTrimmedString(checkIn),
+          check_out: optionalNullableTrimmedString(checkOut),
+          notes: optionalNullableTrimmedString(noteForSave),
+          project_site: optionalNullableTrimmedString(projectSite),
+          period_mode: optionalNullableTrimmedString(periodMode),
           worked_hours: workedHours ?? null,
           overtime_hours: overtimeHours ?? null,
-          overtime_mode: overtimeMode || null,
+          overtime_mode: optionalNullableTrimmedString(overtimeMode),
         },
         {
           onConflict: 'employee_id,attendance_date',
@@ -514,7 +518,7 @@ router.post('/', async (req, res) => {
     }
 
     if (!employeeIdFromBody) {
-      await findOrCreateEmployeeByName(employeeName, {
+      await findOrCreateEmployeeByName(cleanedEmployeeName, {
         salary: Number(req.body?.salaryAmount ?? 0) || 0,
         projectSite: projectSite || null,
       });
@@ -524,6 +528,9 @@ router.post('/', async (req, res) => {
       record: toAttendanceApi(data as AttendanceRow),
     });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({
       message: 'Failed to save attendance in Supabase',
       error: (error as Error).message,

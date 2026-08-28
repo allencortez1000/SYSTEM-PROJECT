@@ -2,11 +2,15 @@
 import { hasEmployeeAccess } from '../lib/appUser';
 import { supabase } from '../lib/supabase';
 import { canonicalDepartmentName } from '../lib/departmentNames';
-import { AuthRequest, requireSuperAdmin, verifyToken } from '../middleware/auth';
+import { RequestValidationError, isRequestValidationError, normalizeBoolean, optionalNullableTrimmedString, optionalTrimmedString, requireTrimmedString } from '../lib/validation';
+import { AuthRequest, requireModuleAccess, requireSuperAdmin, verifyToken } from '../middleware/auth';
 
 const router = Router();
 
 router.use(verifyToken);
+router.use(requireModuleAccess('employees'));
+
+const EMPLOYEE_STATUS_OPTIONS = ['Active', 'Onboarding', 'On Leave', 'Inactive', 'Terminated'] as const;
 
 const EMPLOYEE_SELECT = `
   id,
@@ -109,6 +113,59 @@ function normalizeAmount(value: unknown) {
   if (value === undefined || value === null || value === '') return 0;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function validateEmployeePayload(payload: Record<string, unknown>, options?: { partial?: boolean }) {
+  const errors: Record<string, string> = {};
+  const partial = Boolean(options?.partial);
+
+  const fullName = String(payload.fullName || '').trim();
+  const email = String(payload.email || '').trim();
+  const employeeId = String(payload.employeeId || '').trim();
+  const salary = payload.salary;
+  const salaryBasis = String(payload.salaryBasis || '').trim().toLowerCase();
+  const status = String(payload.status || '').trim();
+
+  if (!partial || payload.fullName !== undefined) {
+    if (!fullName) {
+      errors.fullName = 'Full name is required';
+    }
+  }
+
+  if (!partial || payload.email !== undefined) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Email must be a valid email address';
+    }
+  }
+
+  if (!partial || payload.employeeId !== undefined) {
+    if (employeeId.length > 0 && employeeId.length < 3) {
+      errors.employeeId = 'Employee ID must be at least 3 characters';
+    }
+  }
+
+  if (!partial || payload.salary !== undefined) {
+    const parsedSalary = Number(salary);
+    if (!Number.isFinite(parsedSalary) || parsedSalary < 0) {
+      errors.salary = 'Salary must be a valid non-negative number';
+    }
+  }
+
+  if (!partial || payload.salaryBasis !== undefined) {
+    if (salaryBasis && !['monthly', 'daily'].includes(salaryBasis)) {
+      errors.salaryBasis = 'Salary basis must be monthly or daily';
+    }
+  }
+
+  if (!partial || payload.status !== undefined) {
+    if (status && !EMPLOYEE_STATUS_OPTIONS.includes(status as (typeof EMPLOYEE_STATUS_OPTIONS)[number])) {
+      errors.status = 'Status must be one of the supported employee statuses';
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw new RequestValidationError('Please fix the highlighted fields', 422, errors);
+  }
 }
 
 function formatDisplayName(row: EmployeeRow) {
@@ -514,17 +571,16 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { fullName, firstName, lastName, email, department, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
+    validateEmployeePayload(req.body || {});
 
-    const cleanedFirstName = String(firstName || '').trim();
-    const cleanedLastName = String(lastName || '').trim();
-    const cleanedMiddleName = '';
-    const cleanedFullName = String(fullName || '').trim();
-    const canonicalFullName = [cleanedLastName, cleanedFirstName, cleanedMiddleName].filter(Boolean).join(', ');
+    const { fullName, firstName, lastName, email, department, projectSite, position, status, salary, salaryBasis, employeeId, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
 
-    if (!cleanedFirstName || !cleanedLastName) {
-      return res.status(400).json({ message: 'firstName and lastName are required' });
-    }
+    const cleanedFullName = optionalTrimmedString(fullName);
+    const derivedName = cleanedFullName ? splitFullName(cleanedFullName) : null;
+    const cleanedFirstName = optionalTrimmedString(firstName) || derivedName?.firstName || 'Employee';
+    const cleanedLastName = optionalTrimmedString(lastName) || derivedName?.lastName || 'Record';
+    const cleanedMiddleName = derivedName?.middleName || '';
+    const canonicalFullName = cleanedFullName || [cleanedLastName, cleanedFirstName, cleanedMiddleName].filter(Boolean).join(', ');
 
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
@@ -540,26 +596,28 @@ router.post('/', async (req, res) => {
     }
 
     const positionId = await getOrCreatePosition(organizationId, departmentId, position || 'Employee');
-    const employeeNo = `EMP-${Date.now()}`;
+    const employeeNo = optionalTrimmedString(employeeId) || `EMP-${Date.now()}`;
     const { data, error } = await supabase
       .from('employees')
       .insert({
         organization_id: organizationId,
         employee_no: employeeNo,
         first_name: cleanedFirstName,
+        middle_name: cleanedMiddleName || null,
         last_name: cleanedLastName,
-        email,
+        full_name: canonicalFullName,
+        email: optionalNullableTrimmedString(email),
         department_id: departmentId,
         position_id: positionId,
-        status: status || 'Active',
+        status: optionalTrimmedString(status, 'Active'),
         salary: Number(salary) || 0,
-        salary_basis: salaryBasis || 'monthly',
-        has_sss: hasSss ?? true,
-        has_pagibig: hasPagIbig ?? true,
-        has_philhealth: hasPhilHealth ?? true,
-        has_sss_loan: hasSssLoan ?? true,
-        has_tax: hasTax ?? true,
-        has_additional_deduction: hasAdditionalDeduction ?? true,
+        salary_basis: optionalTrimmedString(salaryBasis, 'monthly'),
+        has_sss: normalizeBoolean(hasSss, true),
+        has_pagibig: normalizeBoolean(hasPagIbig, true),
+        has_philhealth: normalizeBoolean(hasPhilHealth, true),
+        has_sss_loan: normalizeBoolean(hasSssLoan, true),
+        has_tax: normalizeBoolean(hasTax, true),
+        has_additional_deduction: normalizeBoolean(hasAdditionalDeduction, true),
         sss_amount: normalizeAmount(sssAmount),
         pagibig_amount: normalizeAmount(pagIbigAmount),
         philhealth_amount: normalizeAmount(philHealthAmount),
@@ -574,12 +632,20 @@ router.post('/', async (req, res) => {
       throw error;
     }
 
+    if (projectSite !== undefined) {
+      await setEmployeeProjectSite((data as EmployeeRow).id, String(projectSite || ''));
+    }
+
     const lookups = await getLookupMaps();
+    const resolvedProjectSite = await getEmployeeProjectSite((data as EmployeeRow).id);
 
     res.status(201).json({
-      employee: toEmployeeApi(data as EmployeeRow, lookups),
+      employee: toEmployeeApi(data as EmployeeRow, lookups, resolvedProjectSite),
     });
   } catch (error) {
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message, ...(error.errors ? { errors: error.errors } : {}) });
+    }
     const message = (error as Error).message;
     if (message === 'Insufficient permissions') {
       return res.status(403).json({ message });
@@ -594,7 +660,9 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   try {
-    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, projectSite, position, status, salary, salaryBasis, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
+    validateEmployeePayload(req.body || {}, { partial: true });
+
+    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, projectSite, position, status, salary, salaryBasis, employeeId, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
     let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
@@ -669,18 +737,19 @@ router.patch('/:id', async (req, res) => {
         first_name: firstName,
         middle_name: middleName || existing.middle_name || null,
         last_name: lastName,
-        email: email === undefined ? existing.email : (String(email || '').trim() || null),
+        employee_no: employeeId === undefined ? existing.employee_no : optionalTrimmedString(employeeId, existing.employee_no),
+        email: email === undefined ? existing.email : optionalNullableTrimmedString(email),
         department_id: nextDepartmentId,
         position_id: nextPositionId,
-        status: status || existing.status || 'Active',
+        status: status === undefined ? existing.status || 'Active' : optionalTrimmedString(status, 'Active'),
         salary: salary === undefined ? Number(existing.salary || 0) : Number(salary) || 0,
-        salary_basis: salaryBasis === undefined ? existing.salary_basis || 'monthly' : String(salaryBasis || 'monthly'),
-        has_sss: hasSss === undefined ? existing.has_sss ?? true : Boolean(hasSss),
-        has_pagibig: hasPagIbig === undefined ? existing.has_pagibig ?? true : Boolean(hasPagIbig),
-        has_philhealth: hasPhilHealth === undefined ? existing.has_philhealth ?? true : Boolean(hasPhilHealth),
-        has_sss_loan: hasSssLoan === undefined ? existing.has_sss_loan ?? true : Boolean(hasSssLoan),
-        has_tax: hasTax === undefined ? existing.has_tax ?? true : Boolean(hasTax),
-        has_additional_deduction: hasAdditionalDeduction === undefined ? existing.has_additional_deduction ?? true : Boolean(hasAdditionalDeduction),
+        salary_basis: salaryBasis === undefined ? existing.salary_basis || 'monthly' : optionalTrimmedString(salaryBasis, 'monthly'),
+        has_sss: hasSss === undefined ? existing.has_sss ?? true : normalizeBoolean(hasSss, true),
+        has_pagibig: hasPagIbig === undefined ? existing.has_pagibig ?? true : normalizeBoolean(hasPagIbig, true),
+        has_philhealth: hasPhilHealth === undefined ? existing.has_philhealth ?? true : normalizeBoolean(hasPhilHealth, true),
+        has_sss_loan: hasSssLoan === undefined ? existing.has_sss_loan ?? true : normalizeBoolean(hasSssLoan, true),
+        has_tax: hasTax === undefined ? existing.has_tax ?? true : normalizeBoolean(hasTax, true),
+        has_additional_deduction: hasAdditionalDeduction === undefined ? existing.has_additional_deduction ?? true : normalizeBoolean(hasAdditionalDeduction, true),
         sss_amount: normalizeAmount(sssAmount === undefined ? existing.sss_amount : sssAmount),
         pagibig_amount: normalizeAmount(pagIbigAmount === undefined ? existing.pagibig_amount : pagIbigAmount),
         philhealth_amount: normalizeAmount(philHealthAmount === undefined ? existing.philhealth_amount : philHealthAmount),
@@ -703,16 +772,19 @@ router.patch('/:id', async (req, res) => {
       employee: toEmployeeApi(data as EmployeeRow, refreshedLookups, refreshedProjectSite),
     });
   } catch (error) {
-  const message = (error as Error).message;
-  if (message === 'Insufficient permissions') {
-    return res.status(403).json({ message });
-  }
+    if (isRequestValidationError(error)) {
+      return res.status(error.statusCode).json({ message: error.message, ...(error.errors ? { errors: error.errors } : {}) });
+    }
+    const message = (error as Error).message;
+    if (message === 'Insufficient permissions') {
+      return res.status(403).json({ message });
+    }
 
-  res.status(500).json({
-    message: message || 'Failed to update employee in Supabase',
-    error: message,
-  });
-}
+    res.status(500).json({
+      message: message || 'Failed to update employee in Supabase',
+      error: message,
+    });
+  }
 });
 
 router.patch('/:id/deactivate', async (req, res) => {

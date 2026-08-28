@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import DashboardShell from "./dashboard-shell";
 import { NotificationProvider } from "./notification";
@@ -10,6 +11,8 @@ type AuthGateProps = {
 };
 
 export default function AuthGate({ children }: AuthGateProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const mode: "signin" = "signin";
@@ -90,6 +93,12 @@ export default function AuthGate({ children }: AuthGateProps) {
     setUsername("");
     setPassword("");
   }
+
+  useEffect(() => {
+    if (!checkingAuth && isAuthenticated && pathname === "/login") {
+      router.replace("/");
+    }
+  }, [checkingAuth, isAuthenticated, pathname, router]);
 
   if (checkingAuth) {
     return (
@@ -213,6 +222,17 @@ export default function AuthGate({ children }: AuthGateProps) {
             </div>
           </div>
         </section>
+      </main>
+    );
+  }
+
+  if (isAuthenticated && pathname === "/login") {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <div className="section-card max-w-md text-center">
+          <p className="eyebrow">Redirecting</p>
+          <h1 className="mt-3 text-2xl font-black text-slate-950">Opening dashboard...</h1>
+        </div>
       </main>
     );
   }

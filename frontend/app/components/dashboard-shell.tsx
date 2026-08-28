@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type DashboardShellProps = { children: ReactNode };
@@ -56,11 +56,13 @@ const financeNavigation: NavItem[] = [
 
 const managementNavigation: NavItem[] = [
   { href: "/reports", label: "Reports", icon: <NavIcon path={NAV_ICONS["/reports"]} /> },
+  { href: "/data-health", label: "Data Health", icon: <NavIcon path={NAV_ICONS["/compliance"]} /> },
   { href: "/compliance", label: "Compliance", icon: <NavIcon path={NAV_ICONS["/compliance"]} /> },
 ];
 
 export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -107,7 +109,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   function handleLogout() {
     localStorage.removeItem("hr_token");
     localStorage.removeItem("hr_user");
-    window.location.href = "/login";
+    router.replace("/login");
   }
 
   const initials = (sessionUser?.name || "?")

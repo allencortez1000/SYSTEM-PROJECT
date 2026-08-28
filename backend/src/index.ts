@@ -245,8 +245,46 @@ if (hasSupabaseConfig) {
     res.json({ notifications: [], error: null });
   });
 
+  app.get('/api/data/health', requireAuth, (_req, res) => {
+    res.json({
+      metrics: {
+        activeEmployees: 0,
+        employeesMissingSalary: 0,
+        employeesMissingProjectSite: 0,
+        attendanceMissingProjectSite: 0,
+        attendanceUnlinkedEmployees: 0,
+        overrideIssues: 0,
+        totalIssues: 0,
+      },
+      issuesByDepartment: [],
+      missingSalaryEmployees: [],
+      missingProjectSiteEmployees: [],
+      attendanceMissingProjectSite: [],
+      attendanceUnlinkedEmployees: [],
+      overrideIssues: [],
+      recommendations: [],
+      error: null,
+    });
+  });
+
   app.get('/api/data/reports/payroll-summary', requireAuth, (_req, res) => {
-    res.json({ metrics: { grossPayroll: 0, netPayout: 0, sssTotal: 0, pagIbigTotal: 0, philHealthTotal: 0, otherDeductions: 0, payrollRuns: 0 }, departments: [], error: null });
+    res.json({
+      metrics: {
+        grossPayroll: 0,
+        netPayout: 0,
+        sssTotal: 0,
+        pagIbigTotal: 0,
+        philHealthTotal: 0,
+        otherDeductions: 0,
+        payrollRuns: 0,
+        totalSundayRestDays: 0,
+        totalSundayOtHours: 0,
+        sundayPremiumRuns: 0,
+      },
+      departments: [],
+      payrollRuns: [],
+      error: null,
+    });
   });
 
   app.get('/api/data/reports/headcount-movement', requireAuth, (_req, res) => {

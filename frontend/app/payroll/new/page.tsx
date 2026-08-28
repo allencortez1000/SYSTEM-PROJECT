@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import * as XLSX from "xlsx";
 import { filterInputClassName } from "../../components/filter-config";
+import StatusBadge from "../../components/status-badge";
 import { useNotification } from "../../components/notification";
 import { uniqueCanonicalDepartments } from "../../../lib/supabaseRealtime";
 import { buildPayrollExportName, sanitizeExportFileName } from "../../../lib/payrollExport";
@@ -118,10 +119,26 @@ type SavedPayrollAudit = {
   runType?: string;
   calculationVersion?: number | null;
   savedAt?: string;
+  audit?: {
+    source?: string;
+    createdAt?: string;
+    createdBy?: {
+      userId?: string;
+      role?: string;
+      name?: string;
+    } | null;
+  } | null;
+};
+
+type PayrollCacheMeta = {
+  lastAttendanceSyncAt?: string;
+  lastLocalSaveAt?: string;
+  lastAttendanceSyncKey?: string;
 };
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "").replace(/\/api$/, "") + "/api";
 const PAYROLL_ROWS_STORAGE_KEY = "payroll_worker_rows_v1";
+const PAYROLL_CACHE_META_STORAGE_KEY = "payroll_worker_cache_meta_v1";
 
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -246,6 +263,20 @@ function parseDisplayDate(value: string) {
 
 function todayLabel() {
   return formatDateDisplay(new Date().toISOString().slice(0, 10));
+}
+
+function formatDateTimeDisplay(value?: string | null) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return date.toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function currentWeekDates() {
@@ -427,13 +458,25 @@ export default function NewPayrollPage() {
 
   const payrollStorageKey = useMemo(() => {
     const projectKey = selectedProject.trim() || "unselected-project";
+    const departmentKey = selectedDepartment.trim() || "unselected-department";
     const periodKey = `${periodStart || "no-start"}_${periodEnd || "no-end"}`;
-    return `${PAYROLL_ROWS_STORAGE_KEY}_${projectKey}_${periodKey}`;
-  }, [selectedProject, periodStart, periodEnd]);
+    return `${PAYROLL_ROWS_STORAGE_KEY}_${projectKey}_${departmentKey}_${periodKey}`;
+  }, [selectedProject, selectedDepartment, periodStart, periodEnd]);
+
+  const payrollCacheMetaKey = useMemo(() => {
+    const projectKey = selectedProject.trim() || "unselected-project";
+    const departmentKey = selectedDepartment.trim() || "unselected-department";
+    const periodKey = `${periodStart || "no-start"}_${periodEnd || "no-end"}`;
+    return `${PAYROLL_CACHE_META_STORAGE_KEY}_${projectKey}_${departmentKey}_${periodKey}`;
+  }, [selectedProject, selectedDepartment, periodStart, periodEnd]);
+
+  const [cacheMeta, setCacheMeta] = useState<PayrollCacheMeta | null>(null);
 
   useEffect(() => {
     try {
       const storedRows = JSON.parse(localStorage.getItem(payrollStorageKey) || "null");
+      const storedMeta = JSON.parse(localStorage.getItem(payrollCacheMetaKey) || "null");
+      setCacheMeta(storedMeta && typeof storedMeta === "object" ? storedMeta as PayrollCacheMeta : null);
       if (Array.isArray(storedRows) && storedRows.length > 0) {
         setRows(storedRows.map((row: Partial<WorkerRow>) => normalizeRow(row)));
       } else {
@@ -442,10 +485,11 @@ export default function NewPayrollPage() {
     } catch {
       // ignore invalid browser cache
       setRows([]);
+      setCacheMeta(null);
     }
 
     void loadEmployees();
-  }, [loadEmployees, payrollStorageKey]);
+  }, [loadEmployees, payrollStorageKey, payrollCacheMetaKey]);
 
   useEffect(() => {
     if (employees.length === 0 || rows.length === 0) return;
@@ -474,10 +518,18 @@ export default function NewPayrollPage() {
   useEffect(() => {
     try {
       localStorage.setItem(payrollStorageKey, JSON.stringify(rows));
+      setCacheMeta((current) => {
+        const next = {
+          ...(current || {}),
+          lastLocalSaveAt: new Date().toISOString(),
+        };
+        localStorage.setItem(payrollCacheMetaKey, JSON.stringify(next));
+        return next;
+      });
     } catch {
       // ignore storage failures
     }
-  }, [rows, payrollStorageKey]);
+  }, [rows, payrollStorageKey, payrollCacheMetaKey]);
 
   useEffect(() => {
     return () => {
@@ -516,6 +568,15 @@ export default function NewPayrollPage() {
   const syncedRows = rows.filter((row) => row.syncedFromAttendance).length;
   const previewRows = rows.filter((row) => row.name.trim()).slice(0, 3);
   const activeRow = rows.find((row) => row.id === activeRowId) || null;
+  const overrideRows = rows.filter((row) => row.payrollSnapshot);
+  const remarkedRows = rows.filter((row) => row.remarks.trim());
+  const currentSyncKey = `${selectedProject.trim().toLowerCase()}|${selectedDepartment.trim().toLowerCase()}|${periodStart}|${periodEnd}`;
+  const hasCachedRows = rows.length > 0;
+  const cacheIsStale = Boolean(
+    cacheMeta?.lastAttendanceSyncKey
+    && cacheMeta.lastAttendanceSyncKey !== currentSyncKey
+    && hasCachedRows,
+  );
 
 
 
@@ -749,6 +810,7 @@ export default function NewPayrollPage() {
         runType: data?.runType ? String(data.runType) : "PR",
         calculationVersion: data?.calculationVersion ?? 1,
         savedAt: new Date().toISOString(),
+        audit: data?.audit && typeof data.audit === "object" ? data.audit : null,
       });
       notify("Saved — opening payroll records...");
       router.push("/payroll");
@@ -812,6 +874,19 @@ export default function NewPayrollPage() {
   }, [loadEmployees, selectedProject, periodStart, periodEnd]);
 
   const canSyncAttendance = Boolean(selectedProject.trim() && periodStart && periodEnd && !loadingEmployees && !syncingAttendance);
+
+  function clearPayrollCache() {
+    try {
+      localStorage.removeItem(payrollStorageKey);
+      localStorage.removeItem(payrollCacheMetaKey);
+    } catch {
+      // ignore storage failures
+    }
+    setRows([]);
+    setCacheMeta(null);
+    lastSyncKeyRef.current = null;
+    notify("Payroll cache cleared");
+  }
 
   async function syncPayrollFromAttendance() {
     if (!canSyncAttendance) {
@@ -967,6 +1042,20 @@ export default function NewPayrollPage() {
 
       setRows(rowsWithFallbacks.sort((a, b) => a.name.localeCompare(b.name)));
       setProjectName(`${selectedProject} Payroll`);
+      const syncedAt = new Date().toISOString();
+      lastSyncKeyRef.current = currentSyncKey;
+      const nextMeta: PayrollCacheMeta = {
+        ...(cacheMeta || {}),
+        lastAttendanceSyncAt: syncedAt,
+        lastLocalSaveAt: syncedAt,
+        lastAttendanceSyncKey: currentSyncKey,
+      };
+      setCacheMeta(nextMeta);
+      try {
+        localStorage.setItem(payrollCacheMetaKey, JSON.stringify(nextMeta));
+      } catch {
+        // ignore storage failures
+      }
       notify("Payroll rows synced from attendance");
     } catch (err) {
       setError((err as Error).message);
@@ -1422,13 +1511,23 @@ export default function NewPayrollPage() {
               </div>
               <p className="mt-1 text-[10px] font-semibold text-slate-500">{formatDateDisplay(periodEnd)}</p>
             </label>
-            <div className="flex items-end sm:col-span-2 2xl:col-span-4">
-              <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canSyncAttendance}>
+            <div className="flex flex-col gap-2 sm:col-span-2 2xl:col-span-4 sm:flex-row sm:items-end">
+              <button onClick={syncPayrollFromAttendance} type="button" className="mt-1 w-full rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black text-white shadow-lg shadow-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-1" disabled={!canSyncAttendance}>
                 {syncingAttendance ? "Syncing..." : "Sync from attendance"}
+              </button>
+              <button onClick={clearPayrollCache} type="button" className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black text-slate-700 transition hover:border-red-200 hover:text-red-700 sm:w-auto">
+                Clear cached payroll rows
               </button>
             </div>
           </div>
         </div>
+
+        {cacheIsStale ? (
+          <div className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 print:hidden">
+            <p className="font-black">Cached payroll rows do not match the current filter.</p>
+            <p className="mt-1 font-semibold">These rows were saved for another project, department, or covered period. Sync again or clear the cached payroll rows before continuing.</p>
+          </div>
+        ) : null}
 
         <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 print:hidden">
           <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
@@ -1442,6 +1541,11 @@ export default function NewPayrollPage() {
             <p className="mt-1 text-sm font-black text-slate-950">{filledRows || rows.length}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">Editable payroll rows</p>
           </div>
+          <div className={`rounded-2xl border px-3 py-2 shadow-sm ${cacheIsStale ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-white"}`}>
+            <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${cacheIsStale ? "text-amber-700" : "text-slate-400"}`}>Attendance sync</p>
+            <p className={`mt-1 text-sm font-black ${cacheIsStale ? "text-amber-800" : "text-slate-950"}`}>{formatDateTimeDisplay(cacheMeta?.lastAttendanceSyncAt)}</p>
+            <p className={`mt-1 text-xs font-semibold ${cacheIsStale ? "text-amber-700" : "text-slate-500"}`}>{cacheIsStale ? "Cached rows are from a different filter or period" : "Latest attendance fetch for this payroll view"}</p>
+          </div>
           <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Gov deductions</p>
             <p className="mt-1 text-sm font-black text-slate-950">{money(totals.sss + totals.pagIbig + totals.philHealth)}</p>
@@ -1452,6 +1556,68 @@ export default function NewPayrollPage() {
             <p className="mt-1 text-sm font-black text-emerald-700">{moneyWhole(totals.netSalary)}</p>
             <p className="mt-1 text-xs font-semibold text-emerald-600">Ready for payroll release</p>
           </div>
+          <div className="rounded-2xl border border-slate-100 bg-white px-3 py-2 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cache updated</p>
+                <p className="mt-1 text-sm font-black text-slate-950">{formatDateTimeDisplay(cacheMeta?.lastLocalSaveAt)}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Browser cache for the current payroll worksheet</p>
+              </div>
+              <button onClick={clearPayrollCache} type="button" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 transition hover:border-red-200 hover:text-red-700">
+                Clear cache
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-[1.5rem] border border-violet-100 bg-violet-50/70 p-4 shadow-sm print:hidden">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600">Payroll audit trail</p>
+              <h3 className="mt-1 text-lg font-black tracking-tight text-slate-950">Save, sync, and override history</h3>
+              <p className="mt-1 text-sm text-slate-600">This panel shows the latest saved payroll run metadata plus which worker rows came from attendance, contain overrides, or include manual remarks.</p>
+            </div>
+            {savedPayrollAudit ? (
+              <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+                {savedPayrollAudit.runId ? <StatusBadge tone="white" size="md" className="ring-1 ring-violet-100">Run ID: {savedPayrollAudit.runId}</StatusBadge> : null}
+                {savedPayrollAudit.runType ? <StatusBadge tone="violet" size="md">Type: {savedPayrollAudit.runType}</StatusBadge> : null}
+                {savedPayrollAudit.calculationVersion !== null ? <StatusBadge tone="white" size="md" className="ring-1 ring-violet-100">Calculation v{savedPayrollAudit.calculationVersion}</StatusBadge> : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white bg-white/90 px-3 py-3 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Attendance-synced rows</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{syncedRows}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Rows sourced from attendance records</p>
+            </div>
+            <div className="rounded-2xl border border-white bg-white/90 px-3 py-3 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Rows with overrides</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{overrideRows.length}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Rows carrying saved payroll snapshot values</p>
+            </div>
+            <div className="rounded-2xl border border-white bg-white/90 px-3 py-3 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Rows with remarks</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{remarkedRows.length}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Manual notes useful for payroll review</p>
+            </div>
+            <div className="rounded-2xl border border-white bg-white/90 px-3 py-3 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Last saved</p>
+              <p className="mt-1 text-sm font-black text-slate-950">{formatDateTimeDisplay(savedPayrollAudit?.audit?.createdAt || savedPayrollAudit?.savedAt)}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{savedPayrollAudit?.audit?.createdBy?.name ? `By ${savedPayrollAudit.audit.createdBy.name}` : "No saved payroll run yet"}</p>
+            </div>
+          </div>
+          {savedPayrollAudit && (
+            <div className="mt-4 rounded-2xl border border-violet-100 bg-white/90 px-4 py-3 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-600">Latest run event</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 text-xs text-slate-600">
+                <div><span className="font-black text-slate-700">Run ID:</span> {savedPayrollAudit.runId || "—"}</div>
+                <div><span className="font-black text-slate-700">Saved at:</span> {formatDateTimeDisplay(savedPayrollAudit.audit?.createdAt || savedPayrollAudit.savedAt)}</div>
+                <div><span className="font-black text-slate-700">Saved by:</span> {savedPayrollAudit.audit?.createdBy?.name || "System"}</div>
+                <div><span className="font-black text-slate-700">Source:</span> {savedPayrollAudit.audit?.source || "payroll"}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1479,6 +1645,8 @@ export default function NewPayrollPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
                         {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                        {row.payrollSnapshot && <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700">Override values saved</span>}
+                        {row.remarks.trim() && <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700">Remarks attached</span>}
                         {(row.restDayDays > 0 || row.restDayOtHours > 0) && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Sunday premium applied</span>}
                       </div>
                       <p className="mt-1 text-base font-black text-slate-950 xl:text-lg">{row.name || "New worker row"}</p>
@@ -1546,6 +1714,16 @@ export default function NewPayrollPage() {
                     </label>
                   </div>
 
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Audit details</p>
+                    <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+                      <div><span className="font-black text-slate-700">Sync source:</span> {row.syncedFromAttendance ? "Attendance" : "Manual"}</div>
+                      <div><span className="font-black text-slate-700">Override:</span> {row.payrollSnapshot ? "Saved values detected" : "None"}</div>
+                      <div><span className="font-black text-slate-700">Sunday premium:</span> {row.restDayDays > 0 || row.restDayOtHours > 0 ? "Applied" : "Not applied"}</div>
+                      <div><span className="font-black text-slate-700">Notes:</span> {row.remarks.trim() || "No row remarks"}</div>
+                    </div>
+                  </div>
+
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Amount</p>
@@ -1601,6 +1779,8 @@ export default function NewPayrollPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">Row {index + 1}</span>
                         {row.syncedFromAttendance && <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-700">Attendance synced</span>}
+                        {row.payrollSnapshot && <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700">Override values saved</span>}
+                        {row.remarks.trim() && <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700">Remarks attached</span>}
                         {(row.restDayDays > 0 || row.restDayOtHours > 0) && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Sunday premium applied</span>}
                       </div>
                       <p className="mt-1 text-base font-black text-slate-950 xl:text-lg">{row.name || "New worker row"}</p>
@@ -1610,6 +1790,16 @@ export default function NewPayrollPage() {
                       <button type="button" onClick={() => setActiveRowId(row.id)} className={`${toolButtonClass} bg-slate-900 text-white hover:bg-blue-700 hover:text-white`}>Edit full details</button>
                       <button type="button" onClick={() => duplicateRow(row)} className={toolButtonClass}>Copy</button>
                       <button type="button" onClick={() => removeRow(row.id)} className="inline-flex items-center justify-center rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-black text-red-700 transition hover:-translate-y-0.5 hover:bg-red-100">Remove</button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white/80 px-3 py-3 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Audit details</p>
+                    <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+                      <div><span className="font-black text-slate-700">Sync source:</span> {row.syncedFromAttendance ? "Attendance" : "Manual"}</div>
+                      <div><span className="font-black text-slate-700">Override:</span> {row.payrollSnapshot ? "Saved values detected" : "None"}</div>
+                      <div><span className="font-black text-slate-700">Sunday premium:</span> {row.restDayDays > 0 || row.restDayOtHours > 0 ? "Applied" : "Not applied"}</div>
+                      <div><span className="font-black text-slate-700">Notes:</span> {row.remarks.trim() || "No row remarks"}</div>
                     </div>
                   </div>
 
@@ -1848,6 +2038,7 @@ export default function NewPayrollPage() {
               <button onClick={triggerExcelImport} type="button" className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15">Insert Excel</button>
               <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
               <button onClick={applyPayrollEditsToAttendance} className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15" type="button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
+              <button onClick={clearPayrollCache} className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15" type="button">Clear cache</button>
               <button onClick={addRow} className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15" type="button">Add worker row</button>
               <Link href="/payroll" className="secondary-button border-white/15 bg-white/10 text-white hover:bg-white/15">Back to payroll center</Link>
             </div>
@@ -1909,6 +2100,7 @@ export default function NewPayrollPage() {
             <button onClick={triggerExcelImport} type="button" className="secondary-button">Insert Excel</button>
             <input ref={importInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} className="hidden" />
             <button onClick={applyPayrollEditsToAttendance} type="button" className="secondary-button">{savingOverrides ? "Applying..." : "Apply edits to attendance"}</button>
+            <button onClick={clearPayrollCache} type="button" className="secondary-button">Clear cache</button>
             <label className="flex w-full flex-col gap-1.5 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 shadow-sm sm:min-w-[240px] sm:w-auto">
               <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Export file name</span>
               <input
@@ -1976,6 +2168,7 @@ export default function NewPayrollPage() {
             <div className="mt-4 grid gap-3">
               <button onClick={() => setIsWorksheetOpen(true)} type="button" className="primary-button w-full">Open full-detail editor</button>
               <button onClick={addRow} type="button" className="secondary-button w-full">Add worker row</button>
+              <button onClick={clearPayrollCache} type="button" className="secondary-button w-full">Clear cached payroll rows</button>
               <button onClick={handlePrint} type="button" className="secondary-button w-full">Print payroll</button>
             </div>
           </div>

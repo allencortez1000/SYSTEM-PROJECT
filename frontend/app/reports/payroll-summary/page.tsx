@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import StatusBadge from "../../components/status-badge";
+import SummaryMetricCard from "../../components/summary-metric-card";
 
 import {
   CreditCardIcon,
@@ -26,11 +28,27 @@ type PayrollSummaryResponse = {
     philHealthTotal?: number;
     otherDeductions?: number;
     payrollRuns?: number;
+    totalSundayRestDays?: number;
+    totalSundayOtHours?: number;
+    sundayPremiumRuns?: number;
   };
   departments?: Array<{
     name: string;
     employees: number;
     amount: number;
+  }>;
+  payrollRuns?: Array<{
+    id: string;
+    runCode: string;
+    runType: string;
+    payPeriodLabel: string;
+    payoutDate: string;
+    status: string;
+    grossPayroll: number;
+    netPayout: number;
+    sundayRestDayCount: number;
+    sundayOvertimeHours: number;
+    hasSundayPremium: boolean;
   }>;
   error?: string | null;
 };
@@ -47,41 +65,32 @@ export default function PayrollSummaryReportPage() {
   const [data, setData] = useState<PayrollSummaryResponse>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [runTypeFilter, setRunTypeFilter] = useState<"all" | "PR" | "OFFICE">("all");
+  const [showSundayOnly, setShowSundayOnly] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
+  async function loadReport() {
+    setLoading(true);
+    setError(null);
 
-      try {
-        const token = localStorage.getItem("hr_token");
-        const res = await fetch(`${API_BASE}/data/reports/payroll-summary`, {
-          cache: "no-store",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.message || "Failed to load payroll summary from Supabase");
-        setData(payload);
-        if (payload?.error) setError(payload.error);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem("hr_token");
-    void fetch(`${API_BASE}/data/reports/payroll-summary`, {
-      cache: "no-store",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }).then(async (res) => {
+    try {
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch(`${API_BASE}/data/reports/payroll-summary`, {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const payload = await res.json();
-      if (res.ok) setData(payload);
-    });
+      if (!res.ok) throw new Error(payload?.message || "Failed to load payroll summary from Supabase");
+      setData(payload);
+      if (payload?.error) setError(payload.error);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadReport();
   }, []);
 
   const metrics = useMemo(() => {
@@ -141,10 +150,43 @@ export default function PayrollSummaryReportPage() {
         iconBg: "bg-gradient-to-br from-slate-50 to-slate-100",
         iconColor: "text-slate-600",
       },
+      {
+        label: "Sunday rest days",
+        value: String(values.totalSundayRestDays || 0),
+        detail: "Total Sunday/rest-day workdays across saved payroll runs",
+        icon: CheckBadgeIcon,
+        gradient: "from-amber-500 to-orange-500",
+        iconBg: "bg-gradient-to-br from-amber-50 to-orange-50",
+        iconColor: "text-amber-600",
+      },
+      {
+        label: "Sunday OT hours",
+        value: String(values.totalSundayOtHours || 0),
+        detail: "Total Sunday overtime hours captured in payroll history",
+        icon: CheckBadgeIcon,
+        gradient: "from-violet-500 to-fuchsia-500",
+        iconBg: "bg-gradient-to-br from-violet-50 to-fuchsia-50",
+        iconColor: "text-violet-600",
+      },
+      {
+        label: "Runs with Sunday premium",
+        value: String(values.sundayPremiumRuns || 0),
+        detail: "Saved payroll runs that include Sunday/rest-day premium activity",
+        icon: CheckBadgeIcon,
+        gradient: "from-cyan-500 to-blue-600",
+        iconBg: "bg-gradient-to-br from-cyan-50 to-blue-50",
+        iconColor: "text-cyan-600",
+      },
     ];
   }, [data.metrics]);
 
   const departments = data.departments || [];
+  const payrollRuns = data.payrollRuns || [];
+  const filteredRuns = payrollRuns.filter((run) => {
+    if (runTypeFilter !== "all" && run.runType !== runTypeFilter) return false;
+    if (showSundayOnly && !run.hasSundayPremium) return false;
+    return true;
+  });
 
   return (
     <div className="page-shell">
@@ -170,9 +212,16 @@ export default function PayrollSummaryReportPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void loadReport()}
+              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+            >
+              Refresh report
+            </button>
             <Link
               href="/payroll"
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-3 font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+              className="group inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 font-bold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md active:translate-y-0"
             >
               Open payroll center
             </Link>
@@ -206,25 +255,88 @@ export default function PayrollSummaryReportPage() {
         {metrics.map((row) => {
           const IconComponent = row.icon;
           return (
-            <article
+            <SummaryMetricCard
               key={row.label}
+              label={row.label}
+              value={row.value}
+              detail={row.detail}
               className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
-            >
-              {/* Gradient border effect on hover */}
-              <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${row.gradient} opacity-0 transition-opacity group-hover:opacity-5`} />
-
-              <div className="relative flex items-start justify-between">
+              badge={
                 <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${row.iconBg} shadow-sm transition-all group-hover:scale-110`}>
                   <IconComponent className={`h-6 w-6 ${row.iconColor}`} />
                 </div>
-              </div>
-
-              <p className="relative mt-4 text-sm font-bold text-slate-500">{row.label}</p>
-              <p className="relative mt-2 break-words text-3xl font-black text-slate-950">{row.value}</p>
-              <p className="relative mt-2 text-sm font-semibold text-slate-500">{row.detail}</p>
-            </article>
+              }
+            />
           );
         })}
+      </section>
+
+      <section className="section-card relative overflow-hidden">
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="eyebrow">Sunday premium visibility</p>
+            <h3 className="mt-1 text-2xl font-black text-slate-950">Payroll runs with Sunday/rest-day activity</h3>
+            <p className="mt-2 text-sm text-slate-600">Filter the saved payroll history to focus on runs that include Sunday rest-day work or Sunday overtime.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-bold text-slate-500">Run type</span>
+              <select value={runTypeFilter} onChange={(event) => setRunTypeFilter(event.target.value as "all" | "PR" | "OFFICE")} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                <option value="all">All runs</option>
+                <option value="PR">Worker payroll</option>
+                <option value="OFFICE">Office payroll</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={showSundayOnly} onChange={(event) => setShowSundayOnly(event.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+              Show only Sunday-premium runs
+            </label>
+          </div>
+        </div>
+
+        {!loading && filteredRuns.length === 0 ? (
+          <p className="mt-6 text-sm text-slate-500">No payroll runs match the current Sunday/rest-day filters.</p>
+        ) : null}
+
+        {filteredRuns.length > 0 ? (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="soft-table">
+                <thead>
+                  <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                    <th>Run</th>
+                    <th>Type</th>
+                    <th>Pay period</th>
+                    <th>Sunday rest days</th>
+                    <th>Sunday OT hours</th>
+                    <th>Gross</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  {filteredRuns.map((run) => (
+                    <tr key={run.id || run.runCode} className="transition-colors hover:bg-gradient-to-r hover:from-slate-50 hover:to-white">
+                      <td>
+                        <div>
+                          <p className="font-black text-slate-950">{run.runCode || "Saved payroll run"}</p>
+                          <p className="text-xs text-slate-500">Payout: {run.payoutDate || "—"}</p>
+                        </div>
+                      </td>
+                      <td><StatusBadge tone={run.runType === "PR" ? "blue" : "slate"} size="md">{run.runType || "Unknown"}</StatusBadge></td>
+                      <td className="font-semibold text-slate-600">{run.payPeriodLabel || "—"}</td>
+                      <td className="font-black text-amber-700">{run.sundayRestDayCount}</td>
+                      <td className="font-black text-violet-700">{run.sundayOvertimeHours}</td>
+                      <td className="font-bold text-slate-700">{pesos(run.grossPayroll || 0)}</td>
+                      <td>
+                        {run.hasSundayPremium ? <StatusBadge tone="amber" size="md">Sunday premium</StatusBadge> : <StatusBadge tone="emerald" size="md">No Sunday premium</StatusBadge>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="section-card relative overflow-hidden">

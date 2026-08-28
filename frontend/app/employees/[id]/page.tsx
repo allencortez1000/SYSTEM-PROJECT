@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 type SessionUser = {
@@ -21,7 +21,6 @@ type Employee = {
   salary?: number;
   salaryBasis?: string;
   status?: string;
-  manager?: string | null;
   hasSss?: boolean;
   hasPagIbig?: boolean;
   hasPhilHealth?: boolean;
@@ -46,8 +45,22 @@ function formatCurrency(value?: number) {
   return currency.format(Number.isFinite(value) ? Number(value) : 0);
 }
 
+function getEnabledBenefitAmounts(employee: Employee) {
+  return [
+    employee.hasSss ? ["SSS", employee.sssAmount] : null,
+    employee.hasPagIbig ? ["Pag-IBIG", employee.pagIbigAmount] : null,
+    employee.hasPhilHealth ? ["PhilHealth", employee.philHealthAmount] : null,
+    employee.hasTax ? ["Tax", employee.taxAmount] : null,
+    employee.hasSssLoan ? ["SSS Loan", employee.sssLoanAmount] : null,
+    employee.hasAdditionalDeduction ? ["Additional Deduction", employee.additionalDeductionAmount] : null,
+  ].filter(Boolean) as Array<[string, number | undefined]>;
+}
+
+const API_BASE = "/api";
+
 export default function EmployeeDetail() {
   const params = useParams();
+  const router = useRouter();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : (rawId ?? "");
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -58,6 +71,25 @@ export default function EmployeeDetail() {
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
 
   const canDeleteEmployee = useMemo(() => sessionUser?.role === "super-admin", [sessionUser]);
+
+  const load = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch(`${API_BASE}/employees/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || data?.message || "Employee not found");
+      setEmployee(data.employee || null);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     const rawUser = localStorage.getItem("hr_user");
@@ -71,25 +103,22 @@ export default function EmployeeDetail() {
         })()
       : null;
     setSessionUser(user);
+  }, []);
 
-    async function load() {
-      try {
-        const token = localStorage.getItem("hr_token");
-        const res = await fetch(`/api/employees/${id}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.error || data?.message || "Employee not found");
-        setEmployee(data.employee || null);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-    if (id) load();
-  }, [id]);
+  useSupabaseTableRefresh(
+    [
+      { table: "employees" },
+      { table: "employee_project_deployments" },
+      { table: "project_sites" },
+    ],
+    () => {
+      void load();
+    },
+  );
 
 
 
@@ -107,6 +136,20 @@ export default function EmployeeDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              void load();
+            }}
+            disabled={loading || deleting}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m14.836 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-14.357-2m14.357 2H15" />
+            </svg>
+            Refresh
+          </button>
           <Link href="/employees" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -177,7 +220,7 @@ export default function EmployeeDetail() {
                   try {
                     setDeleting(true);
                     const token = localStorage.getItem("hr_token");
-                    const res = await fetch(`/api/employees/${id}`, {
+                    const res = await fetch(`${API_BASE}/employees/${id}`, {
                       method: "DELETE",
                       headers: token ? { Authorization: `Bearer ${token}` } : {},
                     });
@@ -186,7 +229,7 @@ export default function EmployeeDetail() {
                       throw new Error(data?.message || data?.error || "Failed to delete employee");
                     }
                     setDeleteModalOpen(false);
-                    window.location.href = "/employees";
+                    router.replace("/employees");
                   } catch (err) {
                     setError((err as Error).message);
                   } finally {
@@ -279,18 +322,9 @@ export default function EmployeeDetail() {
                 }
                 gradient="from-emerald-500 to-green-500"
               />
+
               <InfoCard
-                label="Manager"
-                value={employee.manager || "Not assigned"}
-                icon={
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                }
-                gradient="from-teal-500 to-emerald-500"
-              />
-              <InfoCard
-                label="Monthly Salary"
+                label={(employee.salaryBasis || "monthly").toLowerCase() === "daily" ? "Daily Rate" : "Monthly Salary"}
                 value={formatCurrency(employee.salary)}
                 icon={
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -316,6 +350,17 @@ export default function EmployeeDetail() {
                   </svg>
                 }
                 gradient="from-cyan-500 to-blue-500"
+              />
+              <InfoCard
+                label="Enabled deduction amounts"
+                value={getEnabledBenefitAmounts(employee).map(([label, amount]) => `${label}: ${formatCurrency(Number(amount || 0))}`).join(" • ") || "No deduction amounts configured"}
+                icon={
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+                gradient="from-violet-500 to-indigo-500"
+                highlight
               />
             </div>
           </div>

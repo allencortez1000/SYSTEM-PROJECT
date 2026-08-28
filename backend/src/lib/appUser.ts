@@ -42,3 +42,13 @@ export function hasEmployeeAccess(user: AppUserRow | null | undefined): boolean 
   const permissions = readPermissions(user);
   return permissions.includes('employees') || permissions.includes('payroll') || permissions.includes('attendance') || permissions.includes('admin_access');
 }
+
+export function hasAttendanceAccess(user: AppUserRow | null | undefined): boolean {
+  const permissions = readPermissions(user);
+  return permissions.includes('attendance') || permissions.includes('payroll') || permissions.includes('admin_access');
+}
+
+export function hasPayrollAccess(user: AppUserRow | null | undefined): boolean {
+  const permissions = readPermissions(user);
+  return permissions.includes('payroll') || permissions.includes('admin_access');
+}
