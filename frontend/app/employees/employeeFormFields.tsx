@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-serialize */
 
 import type { ReactNode } from "react";
 
@@ -10,10 +11,11 @@ type TextFieldProps = {
   error?: string;
   type?: string;
   required?: boolean;
+  disabled?: boolean;
   icon?: ReactNode;
 };
 
-export function EmployeeTextField({ id, label, value, onChange, error, type = "text", required = false, icon }: TextFieldProps) {
+export function EmployeeTextField({ id, label, value, onChange, error, type = "text", required = false, disabled = false, icon }: TextFieldProps) {
   return (
     <label className="block min-w-0">
       <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
@@ -29,6 +31,7 @@ export function EmployeeTextField({ id, label, value, onChange, error, type = "t
         aria-invalid={error ? "true" : "false"}
         aria-describedby={error ? `${id}-error` : undefined}
         required={required}
+        disabled={disabled}
       />
       {error && (
         <p id={`${id}-error`} role="alert" className="mt-2 flex items-center gap-1 text-sm font-semibold text-red-600">

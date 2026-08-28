@@ -6,9 +6,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useNotification } from "../../../components/notification";
 import { triggerAppDataRefresh } from "../../../../lib/supabaseRealtime";
 import { EmployeeSelectField, EmployeeTextField } from "../../employeeFormFields";
+import { EMPLOYEE_BENEFITS_OPTIONS } from "../../employeeBenefitsOptions";
 import { EMPLOYEE_SALARY_BASIS_OPTIONS, EMPLOYEE_STATUS_OPTIONS } from "../../employeeFormOptions";
 
 const API_BASE = "/api";
+const TextField = EmployeeTextField;
+const SelectField = EmployeeSelectField;
 
 type EmployeeFormState = {
   fullName: string;
@@ -287,7 +290,7 @@ export default function EditEmployeePage() {
             if (error === "Please fix the highlighted fields") {
               setError(null);
             }
-          }} error={fieldErrors?.fullName} required />
+          }} error={fieldErrors?.fullName} required disabled={saving || loading} />
           <EmployeeTextField id="employeeId" label="Employee ID" value={form.employeeId} onChange={(value) => {
             setForm((prev) => ({ ...prev, employeeId: value }));
             if (fieldErrors?.employeeId) {
@@ -301,7 +304,7 @@ export default function EditEmployeePage() {
             if (error === "Please fix the highlighted fields") {
               setError(null);
             }
-          }} error={fieldErrors?.employeeId} />
+          }} error={fieldErrors?.employeeId} disabled={saving || loading} />
           <EmployeeTextField id="email" label="Email" type="email" value={form.email} onChange={(value) => {
             setForm((prev) => ({ ...prev, email: value }));
             if (fieldErrors?.email) {
@@ -315,7 +318,7 @@ export default function EditEmployeePage() {
             if (error === "Please fix the highlighted fields") {
               setError(null);
             }
-          }} error={fieldErrors?.email} />
+          }} error={fieldErrors?.email} disabled={saving || loading} />
           <EmployeeSelectField id="department" label="Department" value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value }))} options={departmentOptions} disabled={optionsLoading} />
           <EmployeeTextField id="position" label="Position" value={form.position} onChange={(value) => setForm((prev) => ({ ...prev, position: value }))} />
           <div className="space-y-2 min-w-0">
@@ -400,19 +403,30 @@ export default function EditEmployeePage() {
           <div className="sm:col-span-2 rounded-[0.875rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Benefits & deductions</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                ["hasSss", "SSS", form.hasSss],
-                ["hasPagIbig", "Pag-IBIG", form.hasPagIbig],
-                ["hasPhilHealth", "PhilHealth", form.hasPhilHealth],
-                ["hasSssLoan", "SSS Loan", form.hasSssLoan],
-                ["hasTax", "Tax", form.hasTax],
-                ["hasAdditionalDeduction", "Additional Deduction", form.hasAdditionalDeduction],
-              ].map(([key, label, checked]) => (
-                <label key={String(key)} className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
+              {EMPLOYEE_BENEFITS_OPTIONS.map(({ key, label }) => (
+                <label key={key} className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
                   <input
                     type="checkbox"
-                    checked={Boolean(checked)}
-                    onChange={(event) => setForm((prev) => ({ ...prev, [key as keyof EmployeeFormState]: event.target.checked } as EmployeeFormState))}
+                    checked={
+                      key === "hasSss"
+                        ? form.hasSss
+                        : key === "hasPagIbig"
+                          ? form.hasPagIbig
+                          : key === "hasPhilHealth"
+                            ? form.hasPhilHealth
+                            : key === "hasSssLoan"
+                              ? form.hasSssLoan
+                              : key === "hasTax"
+                                ? form.hasTax
+                                : form.hasAdditionalDeduction
+                    }
+                    onChange={(event) => {
+                      const nextChecked = event.target.checked;
+                      setForm((prev) => ({
+                        ...prev,
+                        [key]: nextChecked,
+                      } as EmployeeFormState));
+                    }}
                   />
                   {label}
                 </label>
@@ -432,8 +446,8 @@ export default function EditEmployeePage() {
         {error && <div className="mt-6 rounded-[0.875rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
 
         <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
-          <button type="submit" disabled={saving} className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50">
-            {saving ? "Saving..." : "Save changes"}
+          <button type="submit" disabled={saving || optionsLoading} className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50">
+            {saving ? "Saving..." : optionsLoading ? "Loading options..." : "Save changes"}
           </button>
           <Link href={`/employees/${id}`} className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             Cancel

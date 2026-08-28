@@ -6,9 +6,13 @@ import { useRouter } from "next/navigation";
 import { useNotification } from "../../components/notification";
 import { triggerAppDataRefresh } from "../../../lib/supabaseRealtime";
 import { EmployeeSelectField, EmployeeTextField } from "../employeeFormFields";
+import { EMPLOYEE_BENEFITS_OPTIONS } from "../employeeBenefitsOptions";
 import { EMPLOYEE_SALARY_BASIS_OPTIONS, EMPLOYEE_STATUS_OPTIONS } from "../employeeFormOptions";
 
 const API_BASE = "/api";
+
+const TextField = EmployeeTextField;
+const SelectField = EmployeeSelectField;
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -518,21 +522,34 @@ export default function NewEmployeePage() {
           <div className="rounded-[0.875rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Benefits & deductions</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { key: "hasSss", label: "SSS", checked: hasSss, setChecked: setHasSss },
-                { key: "hasPagIbig", label: "Pag-IBIG", checked: hasPagIbig, setChecked: setHasPagIbig },
-                { key: "hasPhilHealth", label: "PhilHealth", checked: hasPhilHealth, setChecked: setHasPhilHealth },
-                { key: "hasSssLoan", label: "SSS Loan", checked: hasSssLoan, setChecked: setHasSssLoan },
-                { key: "hasTax", label: "Tax", checked: hasTax, setChecked: setHasTax },
-                { key: "hasAdditionalDeduction", label: "Additional Deduction", checked: hasAdditionalDeduction, setChecked: setHasAdditionalDeduction },
-              ].map((item) => (
-                <label key={item.key} className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
+              {EMPLOYEE_BENEFITS_OPTIONS.map(({ key, label }) => (
+                <label key={key} className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
                   <input
                     type="checkbox"
-                    checked={item.checked}
-                    onChange={(event) => item.setChecked(event.target.checked)}
+                    checked={
+                      key === "hasSss"
+                        ? hasSss
+                        : key === "hasPagIbig"
+                          ? hasPagIbig
+                          : key === "hasPhilHealth"
+                            ? hasPhilHealth
+                            : key === "hasSssLoan"
+                              ? hasSssLoan
+                              : key === "hasTax"
+                                ? hasTax
+                                : hasAdditionalDeduction
+                    }
+                    onChange={(event) => {
+                      const nextChecked = event.target.checked;
+                      if (key === "hasSss") setHasSss(nextChecked);
+                      else if (key === "hasPagIbig") setHasPagIbig(nextChecked);
+                      else if (key === "hasPhilHealth") setHasPhilHealth(nextChecked);
+                      else if (key === "hasSssLoan") setHasSssLoan(nextChecked);
+                      else if (key === "hasTax") setHasTax(nextChecked);
+                      else setHasAdditionalDeduction(nextChecked);
+                    }}
                   />
-                  {item.label}
+                  {label}
                 </label>
               ))}
             </div>
@@ -559,7 +576,7 @@ export default function NewEmployeePage() {
         <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 px-6 pt-5 pb-6 sm:flex-row">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || optionsLoading}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? (
@@ -569,6 +586,13 @@ export default function NewEmployeePage() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Creating...
+              </>
+            ) : optionsLoading ? (
+              <>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Loading options...
               </>
             ) : (
               <>
@@ -591,90 +615,4 @@ export default function NewEmployeePage() {
   );
 }
 
-type TextFieldProps = {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  type?: string;
-  required?: boolean;
-  icon?: React.ReactNode;
-};
 
-function TextField({ id, label, value, onChange, error, type = "text", required = false, icon }: TextFieldProps) {
-  return (
-    <label className="block min-w-0">
-      <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
-        {icon && <span className="text-slate-500">{icon}</span>}
-        {label}
-      </span>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={
-          "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 " +
-          (error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")
-        }
-        aria-invalid={error ? "true" : "false"}
-        aria-describedby={error ? `${id}-error` : undefined}
-        required={required}
-      />
-      {error && (
-        <p id={`${id}-error`} role="alert" className="mt-2 flex items-center gap-1 text-sm font-semibold text-red-600">
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </p>
-      )}
-    </label>
-  );
-}
-
-type SelectFieldProps = {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  icon?: React.ReactNode;
-  disabled?: boolean;
-  error?: string;
-};
-
-function SelectField({ id, label, value, onChange, options, icon, disabled, error }: SelectFieldProps) {
-  return (
-    <label className="block min-w-0">
-      <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
-        {icon && <span className="text-slate-500">{icon}</span>}
-        {label}
-      </span>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={disabled}
-        className={"w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60 disabled:cursor-not-allowed " + (error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")}
-        aria-invalid={error ? "true" : "false"}
-        aria-describedby={error ? `${id}-error` : undefined}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p id={`${id}-error`} role="alert" className="mt-2 flex items-center gap-1 text-sm font-semibold text-red-600">
-          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-          {error}
-        </p>
-      )}
-    </label>
-  );
-}
