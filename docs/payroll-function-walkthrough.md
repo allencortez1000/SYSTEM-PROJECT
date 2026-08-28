@@ -6,8 +6,18 @@ Main files:
 
 ```text
 frontend/app/payroll/new/page.tsx
+frontend/app/office-payroll/page.tsx
+frontend/lib/payrollRules.ts
 backend/src/controllers/payroll.ts
+backend/src/lib/payrollRules.ts
 backend/src/routes/payroll.ts
+```
+
+Shared payroll formulas are now centralized in:
+
+```text
+frontend/lib/payrollRules.ts
+backend/src/lib/payrollRules.ts
 ```
 
 ---

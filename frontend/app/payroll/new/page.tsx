@@ -11,6 +11,7 @@ import { buildPayrollExportName, sanitizeExportFileName } from "../../../lib/pay
 import { appendDateToExportName } from "../../../lib/fileName";
 import { getFallbackAttendanceDays, getFallbackAttendanceOvertime } from "../../../lib/attendanceRules";
 import { formatSurnameFirst as formatEmployeeNameSurnameFirst } from "../../../lib/employeeName";
+import { computeWorkerPayroll } from "../../../lib/payrollRules";
 
 type PayFrequency = "weekly" | "semi-monthly" | "monthly";
 
@@ -155,10 +156,6 @@ function numberValue(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
 function blankRow(): WorkerRow {
   return {
     id: crypto.randomUUID(),
@@ -211,59 +208,21 @@ function normalizeRow(row: Partial<WorkerRow>): WorkerRow {
 
 
 function computeRow(row: WorkerRow, frequency: PayFrequency) {
-  const restDayDays = clamp(Number(row.restDayDays) || 0, 0, Math.max(0, Number(row.days) || 0));
-  const normalDays = Math.max(0, (Number(row.days) || 0) - restDayDays);
-  const restDayRate = row.dailyRate * 1.3;
-  const normalAmount = row.dailyRate * normalDays;
-  const restDayAmount = restDayRate * restDayDays;
-  const amount = normalAmount + restDayAmount;
-
-  const restDayOtHours = clamp(Number(row.restDayOtHours) || 0, 0, Math.max(0, Number(row.otHours) || 0));
-  const normalOtHours = Math.max(0, (Number(row.otHours) || 0) - restDayOtHours);
-  const normalOtRate = (row.dailyRate / 8) * 1.25;
-  const normalOtPay = normalOtRate * normalOtHours;
-  const restDayHourlyRate = restDayRate / 8;
-  const restDayOtRate = restDayHourlyRate * 1.3;
-  const restDayOtPay = restDayOtRate * restDayOtHours;
-  const otPay = normalOtPay + restDayOtPay;
-
-  const holidayPay = row.holidayPay;
-  const totalSalary = amount + otPay + holidayPay;
-  const sss = row.hasSss ? (row.sssManual ?? 0) : 0;
-  const pagIbig = row.hasPagIbig ? (row.pagIbigManual ?? 0) : 0;
-  const philHealth = row.hasPhilHealth ? (row.philHealthManual ?? 0) : 0;
-  const sssLoan = row.hasSssLoan ? row.sssLoan : 0;
-  const tax = row.hasTax ? row.tax : 0;
-  const additionalDeduction = row.hasAdditionalDeduction ? (Number(row.additionalDeduction) || 0) : 0;
-  const totalDeduction = row.cashAdvance + tax + sssLoan + additionalDeduction + philHealth + pagIbig + sss;
-  const netSalary = Math.max(0, totalSalary - totalDeduction);
-
-  return {
-    amount,
-    otPay,
-    holidayPay,
-    totalSalary,
-    sss,
-    pagIbig,
-    philHealth,
-    sssLoan,
-    tax,
-    additionalDeduction,
-    totalDeduction,
-    netSalary,
-    normalDays,
-    restDayDays,
-    restDayRate,
-    normalAmount,
-    restDayAmount,
-    normalOtHours,
-    restDayOtHours,
-    normalOtRate,
-    normalOtPay,
-    restDayHourlyRate,
-    restDayOtRate,
-    restDayOtPay,
-  };
+  return computeWorkerPayroll({
+    dailyRate: row.dailyRate,
+    days: row.days,
+    restDayDays: row.restDayDays,
+    overtimeHours: row.otHours,
+    restDayOvertimeHours: row.restDayOtHours,
+    holidayPay: row.holidayPay,
+    sss: row.hasSss ? (row.sssManual ?? 0) : 0,
+    pagIbig: row.hasPagIbig ? (row.pagIbigManual ?? 0) : 0,
+    philHealth: row.hasPhilHealth ? (row.philHealthManual ?? 0) : 0,
+    sssLoan: row.hasSssLoan ? row.sssLoan : 0,
+    tax: row.hasTax ? row.tax : 0,
+    additionalDeduction: row.hasAdditionalDeduction ? (Number(row.additionalDeduction) || 0) : 0,
+    cashAdvance: row.cashAdvance,
+  });
 }
 
 function formatDateDisplay(value: string) {

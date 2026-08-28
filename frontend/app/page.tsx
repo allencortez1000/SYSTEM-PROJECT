@@ -149,7 +149,7 @@ export default function Home() {
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Live Dashboard</p>
-              <h1 className="mt-1 text-2xl font-black tracking-tight text-white">Rabino Home Builders HR</h1>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-white">Rabino Home Builders Corporation</h1>
               <p className="mt-1 text-sm text-slate-200">Real-time workforce data · {stats.totalEmployees} employees</p>
               <p className="mt-2 text-sm text-slate-300">Workforce, payroll, and compliance visibility in one dashboard.</p>
               <div className="mt-4 flex flex-wrap gap-2">

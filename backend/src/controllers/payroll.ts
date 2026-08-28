@@ -1,3 +1,5 @@
+import { computeOvertimePay } from '../lib/payrollRules';
+
 export interface PayrollComponents {
   basicSalary: number;
   overtimeHours: number;
@@ -120,7 +122,7 @@ export function computeGovernmentContributions(monthlyCompensation: number): Gov
 }
 
 export function calculatePayroll(components: PayrollComponents): PayrollResult {
-  const overtimePay = components.overtimeHours * components.overtimeRate;
+  const overtimePay = computeOvertimePay(components.overtimeHours, components.overtimeRate);
   const grossEarnings = roundCurrency(
     components.basicSalary + overtimePay + components.bonus + components.allowances,
   );

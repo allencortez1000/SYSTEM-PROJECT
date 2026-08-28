@@ -10,6 +10,7 @@ import { filterInputClassName, filterSelectCompactClassName } from "../component
 import { buildOfficeExportName, buildOfficePayslipName } from "../../lib/payrollExport";
 import { appendDateToExportName } from "../../lib/fileName";
 import { getPayrollStatusTone, normalizePayrollStatus } from "../../lib/payrollStatus";
+import { computeOfficePayroll } from "../../lib/payrollRules";
 
 type SessionUser = {
   id?: string;
@@ -121,32 +122,26 @@ function round2(value: number) {
 
 
 function computeRow(row: OfficePayrollRow) {
-  const dailyRate = row.monthlySalary / 26;
-  const holidayDays = Number(row.holiday) || 0;
-  const silDays = Number(row.sil) || 0;
-  const lateDays = (Number(row.lateMinutes) || 0) / 480;
-  const effectiveDays = Math.max(0, (Number(row.days) || 0) + holidayDays + silDays - lateDays);
-  const proratedAmount = dailyRate * effectiveDays;
-  const otPay = (dailyRate / 8) * 1.25 * row.otHours;
-  const gross = proratedAmount + otPay + row.bonus + row.allowances;
-  const sss = Number(row.sssAmount) || 0;
-  const pagIbig = Number(row.pagIbigAmount) || 0;
-  const philHealth = Number(row.philHealthAmount) || 0;
-  const cashAdvance = Number(row.cashAdvance) || 0;
-  const cashAdvanceDeduction = Number(row.cashAdvanceDeduction) || 0;
-  const cashBalance = Math.max(0, cashAdvance - cashAdvanceDeduction);
-  const totalDeduction =
-    sss +
-    pagIbig +
-    philHealth +
-    row.tax +
-    row.sssLoan +
-    row.pagIbigLoan +
-    row.amicaCredits +
-    row.additionalDeduction +
-    cashAdvanceDeduction;
-  const netSalary = gross - totalDeduction;
-  return { dailyRate, effectiveDays, proratedAmount, otPay, gross, sss, pagIbig, philHealth, cashAdvance, cashAdvanceDeduction, cashBalance, totalDeduction, netSalary };
+  return computeOfficePayroll({
+    monthlySalary: row.monthlySalary,
+    days: row.days,
+    holidayDays: row.holiday,
+    silDays: row.sil,
+    lateMinutes: row.lateMinutes,
+    overtimeHours: row.otHours,
+    bonus: row.bonus,
+    allowances: row.allowances,
+    sss: row.sssAmount,
+    pagIbig: row.pagIbigAmount,
+    philHealth: row.philHealthAmount,
+    tax: row.tax,
+    sssLoan: row.sssLoan,
+    pagIbigLoan: row.pagIbigLoan,
+    amicaCredits: row.amicaCredits,
+    additionalDeduction: row.additionalDeduction,
+    cashAdvance: row.cashAdvance,
+    cashAdvanceDeduction: row.cashAdvanceDeduction,
+  });
 }
 
 export default function OfficePayrollPage() {
