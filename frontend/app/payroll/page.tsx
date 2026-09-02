@@ -501,7 +501,7 @@ export default function PayrollIndex() {
                                     onClick={() => {
                                       const params = new URLSearchParams();
                                       const runCode = String(pick(run, ["run_code"]) || "").trim();
-                                      const runType = normalizePayrollRunType(pick(run, ["run_type"])) || inferPayrollRunType(pick(run, ["run_code"]), pick(run, ["run_type"]));
+                                      const runType = normalizePayrollRunType(pick(run, ["run_type"]));
                                       const department = String(pick(run, ["department_name", "department"]) || "").trim();
                                       const projectSite = String(pick(run, ["project_site_name", "project_site"]) || "").trim();
                                       const startDate = String(pick(run, ["pay_period_start", "period_start", "start_date"]) || "").trim();
@@ -516,7 +516,12 @@ export default function PayrollIndex() {
                                       if (payoutDate) params.set("payoutDate", payoutDate);
                                       if (runId) params.set("runId", runId);
 
-                                      if (runType === "PR" || (!runType && runCode.toUpperCase().startsWith("PR"))) {
+                                      if (runCode.toUpperCase().startsWith("OFFICE-")) {
+                                        router.push(`/office-payroll?${params.toString()}`);
+                                        return;
+                                      }
+
+                                      if (runCode.toUpperCase().startsWith("PR-")) {
                                         router.push(`/payroll/new?${params.toString()}`);
                                         return;
                                       }

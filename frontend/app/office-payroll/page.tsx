@@ -219,7 +219,7 @@ export default function OfficePayrollPage() {
             employeeId: String(employee.employeeId || employee.employee_no || ""),
             fullName: String(employee.fullName || employee.full_name || "").trim(),
             department: String(employee.department || "").trim(),
-            projectSite: employee.projectSite || employee.project_site || null,
+            projectSite: employee.projectSite || null,
             position: String(employee.position || "").trim(),
             status: String(employee.status || "Active").trim(),
             salary: Number(employee.salary || 0) || 0,
@@ -295,7 +295,12 @@ export default function OfficePayrollPage() {
   }, [employees]);
 
   useEffect(() => {
-    if (activeRunId || !payoutDate || employees.length === 0 || rows.length === 0) return;
+    if (employees.length === 0 || rows.length === 0) return;
+    if (activeRunId) {
+      void loadOfficePayrollRun();
+      return;
+    }
+    if (!payoutDate) return;
     if (autoLoadedPayoutDateRef.current === payoutDate) return;
 
     autoLoadedPayoutDateRef.current = payoutDate;
@@ -427,7 +432,16 @@ export default function OfficePayrollPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data?.message || "No payroll run found");
+        if (response.status === 404) {
+          setError(null);
+          setAuditNotes(null);
+          setActiveRunId("");
+          setActiveRunType("");
+          setActiveRunStatus("");
+          setCalculationVersion(null);
+          return;
+        }
+        throw new Error(data?.error || data?.message || "No payroll run found");
       }
 
       const savedRows = getSavedRowsSnapshot(Array.isArray(data?.rows) ? data.rows : [], data?.notes);
@@ -798,7 +812,7 @@ export default function OfficePayrollPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.message || "Failed to save office payroll");
+        throw new Error(data?.error || data?.message || "Failed to save office payroll");
       }
 
       notify("Office payroll saved to database");

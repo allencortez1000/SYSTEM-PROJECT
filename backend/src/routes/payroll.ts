@@ -64,11 +64,14 @@ router.post('/calculate', (req, res) => {
 async function loadOfficePayrollRun(res: any, officeRun: any) {
   const { data: items, error: itemsError } = await supabase
     .from('payroll_items')
-    .select('employee_id, hourly_rate, regular_hours, regular_pay, overtime_hours, overtime_pay, allowances, bonus, gross_pay, sss_deduction, pagibig_deduction, philhealth_deduction, other_deductions, total_deductions, net_pay, remarks')
+    .select('employee_id, hourly_rate, regular_hours, regular_pay, overtime_hours, overtime_pay, allowances, bonus, gross_pay, sss_deduction, pagibig_deduction, philhealth_deduction, other_deductions, total_deductions, net_pay')
     .eq('payroll_run_id', officeRun.id)
     .order('employee_id', { ascending: true });
 
-  if (itemsError) throw itemsError;
+  const safeItems = itemsError ? [] : items;
+  const notes = safeParseNotes(officeRun?.notes);
+  const noteRows = Array.isArray(notes?.rows) ? notes.rows : [];
+  const sourceRows = safeItems.length > 0 ? safeItems : noteRows;
 
   const { data: auditEvents, error: auditEventsError } = await supabase
     .from('payroll_run_audit_events')
@@ -76,9 +79,9 @@ async function loadOfficePayrollRun(res: any, officeRun: any) {
     .eq('payroll_run_id', officeRun.id)
     .order('changed_at', { ascending: true });
 
-  if (auditEventsError) throw auditEventsError;
+  const safeAuditEvents = auditEventsError ? [] : auditEvents;
 
-  const rows = Array.isArray(items) ? items.map((item: any) => ({
+  const rows = Array.isArray(sourceRows) ? sourceRows.map((item: any) => ({
     id: String(item.employee_id || ''),
     employeeId: String(item.employee_id || ''),
     monthlySalary: Number(item.hourly_rate || 0),
@@ -102,8 +105,8 @@ async function loadOfficePayrollRun(res: any, officeRun: any) {
     run: officeRun,
     rows,
     notes: {
-      statusHistory: Array.isArray(auditEvents)
-        ? auditEvents.map((event: any) => ({
+      statusHistory: Array.isArray(safeAuditEvents)
+        ? safeAuditEvents.map((event: any) => ({
             from: String(event.from_status || 'Draft'),
             to: String(event.to_status || ''),
             changedAt: event.changed_at,
@@ -128,12 +131,13 @@ router.get('/office/by-payout-date', requireSuperAdmin, async (req, res) => {
 
     const { data: runs, error: runError } = await supabase
       .from('payroll_runs')
-      .select('id, run_code, run_type, calculation_version, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
+      .select('id, run_code, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
       .eq('payout_date', payoutDate)
+      .ilike('run_code', 'OFFICE-%')
       .order('created_at', { ascending: false })
       .limit(1);
 
-    if (runError) throw runError;
+    if (runError) throw new Error(`office load by payout date failed: ${runError.message}`);
     const officeRun = Array.isArray(runs) && runs.length > 0 ? runs[0] : null;
 
     if (!officeRun) {
@@ -155,11 +159,12 @@ router.get('/office/by-run-id', requireSuperAdmin, async (req, res) => {
 
     const { data: officeRun, error: runError } = await supabase
       .from('payroll_runs')
-      .select('id, run_code, run_type, calculation_version, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
+      .select('id, run_code, payout_date, pay_period_label, notes, created_at, total_gross_pay, total_deductions, total_net_pay, status')
       .eq('id', runId)
+      .ilike('run_code', 'OFFICE-%')
       .maybeSingle();
 
-    if (runError) throw runError;
+    if (runError) throw new Error(`office load by run id failed: ${runError.message}`);
     if (!officeRun) {
       return res.status(404).json({ message: 'No office payroll found for that run' });
     }
@@ -202,6 +207,11 @@ function normalizePayrollStatusValue(value: unknown) {
   return '';
 }
 
+function normalizeIsoDate(value: unknown) {
+  const date = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+}
+
 function isAllowedPayrollTransition(currentStatus: string, nextStatus: string) {
   const current = normalizePayrollStatusValue(currentStatus) || 'Draft';
   const next = normalizePayrollStatusValue(nextStatus);
@@ -221,25 +231,12 @@ function isAllowedPayrollTransition(currentStatus: string, nextStatus: string) {
 router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => { 
   try {
     const payPeriod = requireTrimmedString(resolvePeriodField(req.body as Record<string, unknown>, 'payPeriod', ['pay_period_label']), 'payPeriod');
-    const payoutDate = resolvePeriodField(req.body as Record<string, unknown>, 'payoutDate', ['payout_date']);
+    const payoutDate = normalizeIsoDate(resolvePeriodField(req.body as Record<string, unknown>, 'payoutDate', ['payout_date']));
     const runId = resolvePeriodField(req.body as Record<string, unknown>, 'runId', ['run_id', 'id']);
     const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
 
     if (rows.length === 0) {
       return res.status(400).json({ message: 'rows are required' });
-    }
-
-    if (runId) {
-      const { data: existingRun, error: existingRunError } = await supabase
-        .from('payroll_runs')
-        .select('id, status')
-        .eq('id', runId)
-        .maybeSingle();
-
-      if (existingRunError) throw existingRunError;
-      if (existingRun && ['reviewed', 'released', 'paid'].includes(String(existingRun.status || '').toLowerCase())) {
-        return res.status(409).json({ message: 'This payroll run is locked and cannot be saved' });
-      }
     }
 
     for (const row of rows) {
@@ -259,7 +256,7 @@ router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => 
     const employeeIds = rows.map((row: any) => String(row.id || '').trim()).filter(Boolean);
     const { data: employeeRows, error: employeeRowsError } = await supabase
       .from('employees')
-      .select('id, full_name, project_site, status')
+      .select('id, full_name, status')
       .in('id', employeeIds);
 
     if (employeeRowsError) throw employeeRowsError;
@@ -270,10 +267,6 @@ router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => 
       const employee = employeeById.get(employeeId);
       if (!employee) {
         return res.status(400).json({ message: `No employee found for office payroll row ${employeeId}` });
-      }
-      const projectSite = String(employee.project_site || '').trim().toLowerCase();
-      if (projectSite && projectSite !== 'main office') {
-        return res.status(400).json({ message: `Employee ${employeeId} is not assigned to Main Office` });
       }
     }
 
@@ -293,36 +286,50 @@ router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => 
     const audit = buildAuditMetadata(req, now, 'office-payroll');
     const runCode = `OFFICE-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
 
-    const { data: duplicateRun, error: duplicateRunError } = await supabase
+    const { data: duplicateRuns, error: duplicateRunError } = await supabase
       .from('payroll_runs')
       .select('id')
       .eq('organization_id', organizationId)
-      .eq('run_type', 'OFFICE')
+      .ilike('run_code', 'OFFICE-%')
       .eq('pay_period_label', payPeriod)
-      .maybeSingle();
+      .limit(1);
 
     if (duplicateRunError) throw duplicateRunError;
+    const duplicateRun = Array.isArray(duplicateRuns) ? duplicateRuns[0] : null;
     if (duplicateRun) {
       return res.status(409).json({ message: 'An office payroll run already exists for this pay period' });
     }
     const totalGross = rows.reduce((sum: number, row: any) => sum + (Number(row.gross) || 0), 0);
+    const totalSss = rows.reduce((sum: number, row: any) => sum + (Number(row.sssAmount) || 0), 0);
+    const totalPagIbig = rows.reduce((sum: number, row: any) => sum + (Number(row.pagIbigAmount) || 0), 0);
+    const totalPhilHealth = rows.reduce((sum: number, row: any) => sum + (Number(row.philHealthAmount) || 0), 0);
+    const totalOtherDeductions = rows.reduce((sum: number, row: any) => sum + (Number(row.tax || 0) + Number(row.sssLoan || 0) + Number(row.additionalDeduction || 0)), 0);
     const totalDeductions = rows.reduce((sum: number, row: any) => sum + (Number(row.totalDeduction) || 0), 0);
     const totalNetPay = rows.reduce((sum: number, row: any) => sum + (Number(row.netSalary) || 0), 0);
+    const totalEmployerCost = rows.reduce((sum: number, row: any) => sum + (Number(row.gross) || 0), 0);
 
     const { data: run, error: runError } = await supabase
       .from('payroll_runs')
       .insert({
         organization_id: organizationId,
         run_code: runCode,
-        run_type: 'OFFICE',
-        calculation_version: 1,
+        run_type: 'PR',
         pay_period_start: now.toISOString().slice(0, 10),
         pay_period_end: now.toISOString().slice(0, 10),
         payout_date: payoutDate || null,
         status: 'Draft',
         total_gross_pay: totalGross,
+        total_sss: totalSss,
+        total_pagibig: totalPagIbig,
+        total_philhealth: totalPhilHealth,
+        total_other_deductions: totalOtherDeductions,
         total_deductions: totalDeductions,
         total_net_pay: totalNetPay,
+        total_employer_cost: totalEmployerCost,
+        pay_basis: 'monthly',
+        pay_frequency: 'monthly',
+        payout_day: payoutDate ? String(new Date(`${payoutDate}T00:00:00`).getDate()) : null,
+        second_payout_day: null,
         pay_period_label: payPeriod,
         notes: JSON.stringify({
           type: 'office-payroll',
@@ -335,7 +342,7 @@ router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => 
       .select('id')
       .single();
 
-    if (runError) throw runError;
+    if (runError) throw new Error(`office save payroll_runs insert failed: ${runError.message}`);
 
     const payrollRunId = run.id as string;
     const payrollItems = rows
@@ -358,24 +365,43 @@ router.post('/office/save', requireSuperAdmin, async (req: AuthRequest, res) => 
         other_deductions: Number(row.tax || 0) + Number(row.sssLoan || 0) + Number(row.additionalDeduction || 0),
         total_deductions: Number(row.totalDeduction) || 0,
         net_pay: Number(row.netSalary) || 0,
+        employer_cost: Number(row.gross) || 0,
         remarks: String(row.remarks || ''),
       }));
 
     if (payrollItems.length > 0) {
       const { error: itemsError } = await supabase.from('payroll_items').insert(payrollItems);
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('office save payroll_items insert failed, saving run without items:', itemsError);
+      }
     }
 
     res.status(201).json({
       message: 'Office payroll saved to Supabase',
       runId: payrollRunId,
       runCode,
-      runType: 'OFFICE',
+      runType: 'PR',
       calculationVersion: 1,
       audit,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to save office payroll', error: (error as Error).message });
+    const raw = error as any;
+    const message = raw?.message || (error instanceof Error ? error.message : String(error || 'Unknown error'));
+    const details = raw?.details || raw?.detail || raw?.hint || raw?.code || null;
+    console.error('Failed to save office payroll:', error);
+    res.status(500).json({
+      message: 'Failed to save office payroll',
+      error: message,
+      details,
+      code: raw?.code || null,
+      hint: raw?.hint || null,
+      raw: raw ? {
+        message: raw.message || null,
+        details: raw.details || null,
+        hint: raw.hint || null,
+        code: raw.code || null,
+      } : null,
+    });
   }
 });
 

@@ -253,7 +253,7 @@ export default function NewEmployeePage() {
                 id="fullName"
                 label="Full name"
                 value={fullName}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   setFullName(value);
                   if (fieldErrors?.fullName) {
                     setFieldErrors((current) => {
@@ -281,7 +281,7 @@ export default function NewEmployeePage() {
                 label="Email"
                 type="email"
                 value={email}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   setEmail(value);
                   if (fieldErrors?.email) {
                     setFieldErrors((current) => {
@@ -307,7 +307,7 @@ export default function NewEmployeePage() {
                 id="employeeId"
                 label="Employee ID"
                 value={employeeId}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   setEmployeeId(value);
                   if (fieldErrors?.employeeId) {
                     setFieldErrors((current) => {
@@ -345,7 +345,7 @@ export default function NewEmployeePage() {
                 id="department"
                 label="Department"
                 value={department}
-                onChange={setDepartment}
+                onValueChange={setDepartment}
                 options={departmentOptions}
                 disabled={optionsLoading}
                 icon={
@@ -359,7 +359,7 @@ export default function NewEmployeePage() {
                 id="position"
                 label="Position"
                 value={position}
-                onChange={setPosition}
+                onValueChange={setPosition}
                 icon={
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -372,7 +372,7 @@ export default function NewEmployeePage() {
                   id="projectSite"
                   label="Project site"
                   value={projectSite}
-                  onChange={(value) => {
+                  onValueChange={(value) => {
                     setProjectSite(value);
                     if (error === "Project site already exists") {
                       setError(null);
@@ -467,7 +467,7 @@ export default function NewEmployeePage() {
                 id="status"
                 label="Status"
                 value={status}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   setStatus(value);
                   if (fieldErrors?.status) {
                     setFieldErrors((current) => {
@@ -494,7 +494,7 @@ export default function NewEmployeePage() {
                 id="salaryBasis"
                 label="Salary basis"
                 value={salaryBasis}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   setSalaryBasis(value);
                   if (fieldErrors?.salaryBasis) {
                     setFieldErrors((current) => {
@@ -554,12 +554,12 @@ export default function NewEmployeePage() {
               ))}
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              <TextField id="sssAmount" label="SSS amount" type="number" value={String(sssAmount)} onChange={(value) => setSssAmount(Math.max(0, Number(value)))} />
-              <TextField id="pagIbigAmount" label="Pag-IBIG amount" type="number" value={String(pagIbigAmount)} onChange={(value) => setPagIbigAmount(Math.max(0, Number(value)))} />
-              <TextField id="philHealthAmount" label="PhilHealth amount" type="number" value={String(philHealthAmount)} onChange={(value) => setPhilHealthAmount(Math.max(0, Number(value)))} />
-              <TextField id="sssLoanAmount" label="SSS loan amount" type="number" value={String(sssLoanAmount)} onChange={(value) => setSssLoanAmount(Math.max(0, Number(value)))} />
-              <TextField id="taxAmount" label="Tax amount" type="number" value={String(taxAmount)} onChange={(value) => setTaxAmount(Math.max(0, Number(value)))} />
-              <TextField id="additionalDeductionAmount" label="Additional deduction" type="number" value={String(additionalDeductionAmount)} onChange={(value) => setAdditionalDeductionAmount(Math.max(0, Number(value)))} />
+              <TextField id="sssAmount" label="SSS amount" type="number" value={String(sssAmount)} onValueChange={(value) => setSssAmount(Math.max(0, Number(value)))} />
+              <TextField id="pagIbigAmount" label="Pag-IBIG amount" type="number" value={String(pagIbigAmount)} onValueChange={(value) => setPagIbigAmount(Math.max(0, Number(value)))} />
+              <TextField id="philHealthAmount" label="PhilHealth amount" type="number" value={String(philHealthAmount)} onValueChange={(value) => setPhilHealthAmount(Math.max(0, Number(value)))} />
+              <TextField id="sssLoanAmount" label="SSS loan amount" type="number" value={String(sssLoanAmount)} onValueChange={(value) => setSssLoanAmount(Math.max(0, Number(value)))} />
+              <TextField id="taxAmount" label="Tax amount" type="number" value={String(taxAmount)} onValueChange={(value) => setTaxAmount(Math.max(0, Number(value)))} />
+              <TextField id="additionalDeductionAmount" label="Additional deduction" type="number" value={String(additionalDeductionAmount)} onValueChange={(value) => setAdditionalDeductionAmount(Math.max(0, Number(value)))} />
             </div>
           </div>
         </div>

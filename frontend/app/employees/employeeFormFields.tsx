@@ -7,7 +7,7 @@ type TextFieldProps = {
   id: string;
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onValueChange: (value: string) => void;
   error?: string;
   type?: string;
   required?: boolean;
@@ -15,7 +15,7 @@ type TextFieldProps = {
   icon?: ReactNode;
 };
 
-export function EmployeeTextField({ id, label, value, onChange, error, type = "text", required = false, disabled = false, icon }: TextFieldProps) {
+export function EmployeeTextField({ id, label, value, onValueChange, error, type = "text", required = false, disabled = false, icon }: TextFieldProps) {
   return (
     <label className="block min-w-0">
       <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
@@ -26,7 +26,7 @@ export function EmployeeTextField({ id, label, value, onChange, error, type = "t
         id={id}
         type={type}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onValueChange(event.target.value)}
         className={"w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 " + (error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")}
         aria-invalid={error ? "true" : "false"}
         aria-describedby={error ? `${id}-error` : undefined}
@@ -49,14 +49,14 @@ type SelectFieldProps = {
   id: string;
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onValueChange: (value: string) => void;
   options: string[];
   icon?: ReactNode;
   disabled?: boolean;
   error?: string;
 };
 
-export function EmployeeSelectField({ id, label, value, onChange, options, icon, disabled, error }: SelectFieldProps) {
+export function EmployeeSelectField({ id, label, value, onValueChange, options, icon, disabled, error }: SelectFieldProps) {
   return (
     <label className="block min-w-0">
       <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1.5">
@@ -66,7 +66,7 @@ export function EmployeeSelectField({ id, label, value, onChange, options, icon,
       <select
         id={id}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onValueChange(event.target.value)}
         disabled={disabled}
         className={"w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60 disabled:cursor-not-allowed " + (error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-slate-200")}
         aria-invalid={error ? "true" : "false"}

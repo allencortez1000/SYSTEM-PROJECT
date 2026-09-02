@@ -5,12 +5,13 @@ export function normalizePayrollRunType(value: unknown) {
 }
 
 export function inferPayrollRunType(runCode: unknown, explicitRunType?: unknown) {
-  const normalized = normalizePayrollRunType(explicitRunType);
-  if (normalized) return normalized;
-
   const code = String(runCode || "").trim().toUpperCase();
   if (code.startsWith("PR")) return "PR";
   if (code.startsWith("OFFICE")) return "OFFICE";
+
+  const normalized = normalizePayrollRunType(explicitRunType);
+  if (normalized) return normalized;
+
   return "";
 }
 

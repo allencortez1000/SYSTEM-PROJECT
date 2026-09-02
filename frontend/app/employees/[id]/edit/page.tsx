@@ -277,7 +277,7 @@ export default function EditEmployeePage() {
         </div>
         <div className="px-4 py-5 sm:px-6 sm:py-6">
         <div className="grid gap-5 sm:grid-cols-2">
-          <EmployeeTextField id="fullName" label="Full name" value={form.fullName} onChange={(value) => {
+          <EmployeeTextField id="fullName" label="Full name" value={form.fullName} onValueChange={(value) => {
             setForm((prev) => ({ ...prev, fullName: value }));
             if (fieldErrors?.fullName) {
               setFieldErrors((current) => {
@@ -291,7 +291,7 @@ export default function EditEmployeePage() {
               setError(null);
             }
           }} error={fieldErrors?.fullName} required disabled={saving || loading} />
-          <EmployeeTextField id="employeeId" label="Employee ID" value={form.employeeId} onChange={(value) => {
+          <EmployeeTextField id="employeeId" label="Employee ID" value={form.employeeId} onValueChange={(value) => {
             setForm((prev) => ({ ...prev, employeeId: value }));
             if (fieldErrors?.employeeId) {
               setFieldErrors((current) => {
@@ -305,7 +305,7 @@ export default function EditEmployeePage() {
               setError(null);
             }
           }} error={fieldErrors?.employeeId} disabled={saving || loading} />
-          <EmployeeTextField id="email" label="Email" type="email" value={form.email} onChange={(value) => {
+          <EmployeeTextField id="email" label="Email" type="email" value={form.email} onValueChange={(value) => {
             setForm((prev) => ({ ...prev, email: value }));
             if (fieldErrors?.email) {
               setFieldErrors((current) => {
@@ -319,10 +319,10 @@ export default function EditEmployeePage() {
               setError(null);
             }
           }} error={fieldErrors?.email} disabled={saving || loading} />
-          <EmployeeSelectField id="department" label="Department" value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value }))} options={departmentOptions} disabled={optionsLoading} />
-          <EmployeeTextField id="position" label="Position" value={form.position} onChange={(value) => setForm((prev) => ({ ...prev, position: value }))} />
+          <EmployeeSelectField id="department" label="Department" value={form.department} onValueChange={(value) => setForm((prev) => ({ ...prev, department: value }))} options={departmentOptions} disabled={optionsLoading} />
+          <EmployeeTextField id="position" label="Position" value={form.position} onValueChange={(value) => setForm((prev) => ({ ...prev, position: value }))} />
           <div className="space-y-2 min-w-0">
-            <EmployeeSelectField id="projectSite" label="Change project site" value={form.projectSite} onChange={(value) => {
+            <EmployeeSelectField id="projectSite" label="Change project site" value={form.projectSite} onValueChange={(value) => {
               setForm((prev) => ({ ...prev, projectSite: value }));
               if (error === "Project site already exists") {
                 setError(null);
@@ -353,7 +353,7 @@ export default function EditEmployeePage() {
               </button>
             </div>
           </div>
-          <EmployeeSelectField id="status" label="Status" value={form.status} onChange={(value) => {
+          <EmployeeSelectField id="status" label="Status" value={form.status} onValueChange={(value) => {
             setForm((prev) => ({ ...prev, status: value }));
             if (fieldErrors?.status) {
               setFieldErrors((current) => {
@@ -367,7 +367,7 @@ export default function EditEmployeePage() {
               setError(null);
             }
           }} options={statusOptions} error={fieldErrors?.status} />
-          <EmployeeSelectField id="salaryBasis" label="Salary basis" value={form.salaryBasis} onChange={(value) => {
+          <EmployeeSelectField id="salaryBasis" label="Salary basis" value={form.salaryBasis} onValueChange={(value) => {
             setForm((prev) => ({ ...prev, salaryBasis: value }));
             if (fieldErrors?.salaryBasis) {
               setFieldErrors((current) => {
@@ -433,12 +433,12 @@ export default function EditEmployeePage() {
               ))}
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-              <TextField id="sssAmount" label="SSS amount" type="number" value={String(form.sssAmount)} onChange={(value) => setForm((prev) => ({ ...prev, sssAmount: Math.max(0, Number(value)) }))} />
-              <TextField id="pagIbigAmount" label="Pag-IBIG amount" type="number" value={String(form.pagIbigAmount)} onChange={(value) => setForm((prev) => ({ ...prev, pagIbigAmount: Math.max(0, Number(value)) }))} />
-              <TextField id="philHealthAmount" label="PhilHealth amount" type="number" value={String(form.philHealthAmount)} onChange={(value) => setForm((prev) => ({ ...prev, philHealthAmount: Math.max(0, Number(value)) }))} />
-              <TextField id="sssLoanAmount" label="SSS loan amount" type="number" value={String(form.sssLoanAmount)} onChange={(value) => setForm((prev) => ({ ...prev, sssLoanAmount: Math.max(0, Number(value)) }))} />
-              <TextField id="taxAmount" label="Tax amount" type="number" value={String(form.taxAmount)} onChange={(value) => setForm((prev) => ({ ...prev, taxAmount: Math.max(0, Number(value)) }))} />
-              <TextField id="additionalDeductionAmount" label="Additional deduction" type="number" value={String(form.additionalDeductionAmount)} onChange={(value) => setForm((prev) => ({ ...prev, additionalDeductionAmount: Math.max(0, Number(value)) }))} />
+              <TextField id="sssAmount" label="SSS amount" type="number" value={String(form.sssAmount)} onValueChange={(value) => setForm((prev) => ({ ...prev, sssAmount: Math.max(0, Number(value)) }))} />
+              <TextField id="pagIbigAmount" label="Pag-IBIG amount" type="number" value={String(form.pagIbigAmount)} onValueChange={(value) => setForm((prev) => ({ ...prev, pagIbigAmount: Math.max(0, Number(value)) }))} />
+              <TextField id="philHealthAmount" label="PhilHealth amount" type="number" value={String(form.philHealthAmount)} onValueChange={(value) => setForm((prev) => ({ ...prev, philHealthAmount: Math.max(0, Number(value)) }))} />
+              <TextField id="sssLoanAmount" label="SSS loan amount" type="number" value={String(form.sssLoanAmount)} onValueChange={(value) => setForm((prev) => ({ ...prev, sssLoanAmount: Math.max(0, Number(value)) }))} />
+              <TextField id="taxAmount" label="Tax amount" type="number" value={String(form.taxAmount)} onValueChange={(value) => setForm((prev) => ({ ...prev, taxAmount: Math.max(0, Number(value)) }))} />
+              <TextField id="additionalDeductionAmount" label="Additional deduction" type="number" value={String(form.additionalDeductionAmount)} onValueChange={(value) => setForm((prev) => ({ ...prev, additionalDeductionAmount: Math.max(0, Number(value)) }))} />
             </div>
           </div>
         </div>
