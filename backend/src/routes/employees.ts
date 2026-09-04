@@ -30,6 +30,10 @@ const EMPLOYEE_SELECT = `
   has_sss_loan,
   has_tax,
   has_additional_deduction,
+  sss_no,
+  tin_no,
+  philhealth_no,
+  pagibig_no,
   sss_amount,
   pagibig_amount,
   philhealth_amount,
@@ -58,6 +62,10 @@ type EmployeeRow = {
   has_sss_loan?: boolean | null;
   has_tax?: boolean | null;
   has_additional_deduction?: boolean | null;
+  sss_no?: string | null;
+  tin_no?: string | null;
+  philhealth_no?: string | null;
+  pagibig_no?: string | null;
   sss_amount?: number | string | null;
   pagibig_amount?: number | string | null;
   philhealth_amount?: number | string | null;
@@ -205,6 +213,10 @@ function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Una
     hasSssLoan: row.has_sss_loan ?? true,
     hasTax: row.has_tax ?? true,
     hasAdditionalDeduction: row.has_additional_deduction ?? true,
+    sssNo: row.sss_no || '',
+    tinNo: row.tin_no || '',
+    philHealthNo: row.philhealth_no || '',
+    pagIbigNo: row.pagibig_no || '',
     sssAmount: row.sss_amount == null ? 0 : Number(row.sss_amount),
     pagIbigAmount: row.pagibig_amount == null ? 0 : Number(row.pagibig_amount),
     philHealthAmount: row.philhealth_amount == null ? 0 : Number(row.philhealth_amount),
@@ -573,7 +585,7 @@ router.post('/', async (req, res) => {
   try {
     validateEmployeePayload(req.body || {});
 
-    const { fullName, firstName, lastName, email, department, projectSite, position, status, salary, salaryBasis, employeeId, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
+    const { fullName, firstName, lastName, email, department, projectSite, position, status, salary, salaryBasis, employeeId, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssNo, tinNo, philHealthNo, pagIbigNo, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body;
 
     const cleanedFullName = optionalTrimmedString(fullName);
     const derivedName = cleanedFullName ? splitFullName(cleanedFullName) : null;
@@ -618,6 +630,10 @@ router.post('/', async (req, res) => {
         has_sss_loan: normalizeBoolean(hasSssLoan, true),
         has_tax: normalizeBoolean(hasTax, true),
         has_additional_deduction: normalizeBoolean(hasAdditionalDeduction, true),
+        sss_no: optionalNullableTrimmedString(sssNo),
+        tin_no: optionalNullableTrimmedString(tinNo),
+        philhealth_no: optionalNullableTrimmedString(philHealthNo),
+        pagibig_no: optionalNullableTrimmedString(pagIbigNo),
         sss_amount: normalizeAmount(sssAmount),
         pagibig_amount: normalizeAmount(pagIbigAmount),
         philhealth_amount: normalizeAmount(philHealthAmount),
@@ -662,7 +678,7 @@ router.patch('/:id', async (req, res) => {
   try {
     validateEmployeePayload(req.body || {}, { partial: true });
 
-    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, projectSite, position, status, salary, salaryBasis, employeeId, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
+    const { fullName, firstName: incomingFirstName, lastName: incomingLastName, email, department, projectSite, position, status, salary, salaryBasis, employeeId, hasSss, hasPagIbig, hasPhilHealth, hasSssLoan, hasTax, hasAdditionalDeduction, sssNo, tinNo, philHealthNo, pagIbigNo, sssAmount, pagIbigAmount, philHealthAmount, sssLoanAmount, taxAmount, additionalDeductionAmount } = req.body || {};
     const departmentIds = await getAllowedDepartmentIds(req as AuthRequest);
 
     let employeeQuery = supabase.from('employees').select(EMPLOYEE_SELECT).eq('id', req.params.id) as any;
@@ -750,6 +766,10 @@ router.patch('/:id', async (req, res) => {
         has_sss_loan: hasSssLoan === undefined ? existing.has_sss_loan ?? true : normalizeBoolean(hasSssLoan, true),
         has_tax: hasTax === undefined ? existing.has_tax ?? true : normalizeBoolean(hasTax, true),
         has_additional_deduction: hasAdditionalDeduction === undefined ? existing.has_additional_deduction ?? true : normalizeBoolean(hasAdditionalDeduction, true),
+        sss_no: sssNo === undefined ? existing.sss_no || null : optionalNullableTrimmedString(sssNo),
+        tin_no: tinNo === undefined ? existing.tin_no || null : optionalNullableTrimmedString(tinNo),
+        philhealth_no: philHealthNo === undefined ? existing.philhealth_no || null : optionalNullableTrimmedString(philHealthNo),
+        pagibig_no: pagIbigNo === undefined ? existing.pagibig_no || null : optionalNullableTrimmedString(pagIbigNo),
         sss_amount: normalizeAmount(sssAmount === undefined ? existing.sss_amount : sssAmount),
         pagibig_amount: normalizeAmount(pagIbigAmount === undefined ? existing.pagibig_amount : pagIbigAmount),
         philhealth_amount: normalizeAmount(philHealthAmount === undefined ? existing.philhealth_amount : philHealthAmount),

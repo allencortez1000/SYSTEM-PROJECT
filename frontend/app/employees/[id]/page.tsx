@@ -27,6 +27,10 @@ type Employee = {
   hasSssLoan?: boolean;
   hasTax?: boolean;
   hasAdditionalDeduction?: boolean;
+  sssNo?: string;
+  tinNo?: string;
+  philHealthNo?: string;
+  pagIbigNo?: string;
   sssAmount?: number;
   pagIbigAmount?: number;
   philHealthAmount?: number;
@@ -362,6 +366,28 @@ export default function EmployeeDetail() {
                 gradient="from-violet-500 to-indigo-500"
                 highlight
               />
+
+              <div className="rounded-[0.875rem] border border-slate-200 bg-slate-50 p-4 sm:p-5 xl:col-span-2">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Government IDs</h4>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">SSS number</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-950">{employee.sssNo || "Not provided"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">TIN number</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-950">{employee.tinNo || "Not provided"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">PhilHealth number</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-950">{employee.philHealthNo || "Not provided"}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Pag-IBIG number</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-950">{employee.pagIbigNo || "Not provided"}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

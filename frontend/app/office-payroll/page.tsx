@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import * as XLSX from "xlsx";
 
 import { useNotification } from "../components/notification";
 import { filterInputClassName, filterSelectCompactClassName } from "../components/filter-config";
-import { buildOfficeExportName, buildOfficePayslipName } from "../../lib/payrollExport";
-import { appendDateToExportName } from "../../lib/fileName";
+import { buildOfficeExportName } from "../../lib/payrollExport";
 import { getPayrollStatusTone, normalizePayrollStatus } from "../../lib/payrollStatus";
 import { computeOfficePayroll } from "../../lib/payrollRules";
 
@@ -36,6 +35,12 @@ type Employee = {
   philHealthAmount?: number | null;
   taxAmount?: number | null;
   additionalDeductionAmount?: number | null;
+  sssNo?: string;
+  philHealthNo?: string;
+  pagIbigNo?: string;
+  tinNo?: string;
+  silUsed?: number;
+  silBalance?: number;
 };
 
 const API_BASE = "/api";
@@ -121,7 +126,9 @@ function round2(value: number) {
 
 
 
-function computeRow(row: OfficePayrollRow) {
+type OfficePayrollComputation = ReturnType<typeof computeOfficePayroll>;
+
+function computeRow(row: OfficePayrollRow): OfficePayrollComputation {
   return computeOfficePayroll({
     monthlySalary: row.monthlySalary,
     days: row.days,
@@ -145,6 +152,7 @@ function computeRow(row: OfficePayrollRow) {
 }
 
 export default function OfficePayrollPage() {
+  const router = useRouter();
   const { notify } = useNotification();
   const searchParams = useSearchParams();
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -162,6 +170,8 @@ export default function OfficePayrollPage() {
   });
   const [payPeriod, setPayPeriod] = useState("Monthly");
   const [payoutDate, setPayoutDate] = useState(searchParams.get("payoutDate") || "");
+  const [preparedBy, setPreparedBy] = useState("");
+  const [accountingBy, setAccountingBy] = useState("");
   const [rows, setRows] = useState<OfficePayrollRow[]>([]);
   const [activeRunId, setActiveRunId] = useState<string>("");
   const [activeRunType, setActiveRunType] = useState<string>("");
@@ -191,7 +201,10 @@ export default function OfficePayrollPage() {
     }
 
     try {
-      setUser(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      setUser(parsed);
+      setPreparedBy((current) => current || String(parsed?.name || ""));
+      setAccountingBy((current) => current || "ACCOUNTING");
     } catch {
       setUser(null);
     } finally {
@@ -226,6 +239,10 @@ export default function OfficePayrollPage() {
             hasSss: Boolean(employee.hasSss ?? employee.has_sss ?? true),
             hasPagIbig: Boolean(employee.hasPagIbig ?? employee.has_pagibig ?? true),
             hasPhilHealth: Boolean(employee.hasPhilHealth ?? employee.has_philhealth ?? true),
+            sssNo: String(employee.sssNo ?? employee.sss_no ?? ""),
+            philHealthNo: String(employee.philHealthNo ?? employee.philhealth_no ?? ""),
+            pagIbigNo: String(employee.pagIbigNo ?? employee.pagibig_no ?? ""),
+            tinNo: String(employee.tinNo ?? employee.tin_no ?? ""),
             sssAmount: Number(employee.sssAmount ?? employee.sss_amount ?? 0) || 0,
             pagIbigAmount: Number(employee.pagIbigAmount ?? employee.pagibig_amount ?? 0) || 0,
             philHealthAmount: Number(employee.philHealthAmount ?? employee.philhealth_amount ?? 0) || 0,
@@ -335,7 +352,7 @@ export default function OfficePayrollPage() {
 
   const totals = useMemo(() => sortedOfficeEmployees.reduce((accumulator, employee) => {
     const row = rows.find((item) => item.employeeId === employee.employeeId || item.id === employee.id);
-    const computed = row ? computeRow(row) : { dailyRate: 0, proratedAmount: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, totalDeduction: 0, netSalary: 0 };
+    const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, holidayPay: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
     accumulator.amount += computed.proratedAmount;
     accumulator.otPay += computed.otPay;
     accumulator.gross += computed.gross;
@@ -487,7 +504,7 @@ export default function OfficePayrollPage() {
 
     const rawRows = sortedOfficeEmployees.map((employee) => {
       const row = rows.find((item) => item.employeeId === employee.employeeId || item.id === employee.id);
-      const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
+      const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, holidayPay: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
       return {
         "Employee Name": employee.fullName,
         "Employee ID": employee.employeeId || "",
@@ -524,179 +541,97 @@ export default function OfficePayrollPage() {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rawRows), "Office Payroll");
-    XLSX.writeFile(wb, appendDateToExportName(buildOfficeExportName(payPeriod), new Date(), "xlsx"));
+    XLSX.writeFile(wb, `${buildOfficeExportName(payPeriod)}.xlsx`);
     notify("Payroll Excel exported");
   }
 
-  function exportPayslipExcel() {
-    if (sortedOfficeEmployees.length === 0) {
-      notify("No Main Office employees to export");
+
+  function buildPayslipPayload() {
+    const targetEmployees = departmentSort === "All"
+      ? sortedOfficeEmployees
+      : sortedOfficeEmployees.filter((employee) => employee.department === departmentSort);
+
+    if (targetEmployees.length === 0) return null;
+
+    const payslips = targetEmployees.map((employee) => {
+      const row = rows.find((item) => item.employeeId === employee.employeeId || item.id === employee.id);
+      if (!row) return null;
+      const computed = computeRow(row);
+      return {
+        employee: {
+          id: employee.id,
+          employeeId: employee.employeeId,
+          fullName: employee.fullName,
+          position: employee.position,
+          department: employee.department,
+          sssNo: employee.sssNo,
+          philHealthNo: employee.philHealthNo,
+          pagIbigNo: employee.pagIbigNo,
+          tinNo: employee.tinNo,
+          silUsed: employee.silUsed,
+          silBalance: employee.silBalance,
+        },
+        row: {
+          id: row?.id,
+          employeeId: row?.employeeId,
+          name: row?.name,
+          department: row?.department,
+          position: row?.position,
+          monthlySalary: row?.monthlySalary,
+          days: row?.days,
+          holiday: row?.holiday,
+          sil: row?.sil,
+          lateMinutes: row?.lateMinutes,
+          otHours: row?.otHours,
+          bonus: row?.bonus,
+          allowances: row?.allowances,
+          cashAdvance: row?.cashAdvance,
+          cashAdvanceDeduction: row?.cashAdvanceDeduction,
+          tax: row?.tax,
+          amicaCredits: row?.amicaCredits,
+          sssLoan: row?.sssLoan,
+          pagIbigLoan: row?.pagIbigLoan,
+          sssAmount: row?.sssAmount,
+          pagIbigAmount: row?.pagIbigAmount,
+          philHealthAmount: row?.philHealthAmount,
+          additionalDeduction: row?.additionalDeduction,
+        },
+        computed,
+        payPeriod,
+        payoutDate,
+        preparedBy: preparedBy || user?.name || "HR",
+        accountingBy: accountingBy || "ACCOUNTING",
+      };
+    }).filter(Boolean);
+
+    if (payslips.length === 0) return null;
+
+    return {
+      department: departmentSort,
+      payPeriod,
+      payoutDate,
+      preparedBy: preparedBy || user?.name || "HR",
+      accountingBy: accountingBy || "ACCOUNTING",
+      payslips,
+    };
+  }
+
+  function openPayslipView() {
+    const payload = buildPayslipPayload();
+    if (!payload) {
+      notify("Payslip data not found");
       return;
     }
 
-    const moneyValue = (value: number) =>
-      new Intl.NumberFormat("en-PH", {
-        style: "currency",
-        currency: "PHP",
-        maximumFractionDigits: 2,
-      }).format(Number.isFinite(value) ? value : 0);
-
-    const payslipPages = sortedOfficeEmployees
-      .map((selectedEmployee) => {
-        const row = rows.find((item) => item.employeeId === selectedEmployee.employeeId || item.id === selectedEmployee.id);
-        const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
-        const employee = {
-          ...selectedEmployee,
-          sssNo: "0",
-          philHealthNo: "0",
-          pagIbigNo: "0",
-          tinNo: "0",
-          silUsed: 0,
-          silBalance: 0,
-        };
-
-        return `
-          <table class="sheet">
-            <colgroup>
-              <col style="width: 15%" />
-              <col style="width: 25%" />
-              <col style="width: 23%" />
-              <col style="width: 15%" />
-              <col style="width: 22%" />
-            </colgroup>
-            <tbody>
-              <tr class="top-row">
-                <td rowspan="4" class="center"><img class="logo" src="/rabino-logo.svg" alt="Rabino Home Builders Corporation" /></td>
-                <td colspan="4" class="title">RABINO HOME BUILDERS CORPORATION</td>
-              </tr>
-              <tr class="top-row"><td colspan="4" class="subtitle">PAYSLIP FOR THE PERIOD</td></tr>
-              <tr class="top-row"><td colspan="4" class="subtitle">${String(payPeriod || "Monthly").toUpperCase()}</td></tr>
-              <tr class="top-row"><td colspan="4" class="subtitle">${String(payoutDate || "0")}</td></tr>
-              ${(activeRunType || calculationVersion !== null) ? `<tr class="top-row"><td colspan="4" class="subtitle">${activeRunType ? `TYPE: ${String(activeRunType).toUpperCase()}` : ""}${activeRunType && calculationVersion !== null ? " • " : ""}${calculationVersion !== null ? `CALCULATION V${calculationVersion}` : ""}</td></tr>` : ""}
-
-              <tr class="info-row">
-                <td class="label">EMPLOYEE NAME:</td><td colspan="2" class="value">${employee.fullName}</td>
-                <td class="label">ID NO. :</td><td class="value">${employee.employeeId || "0"}</td>
-              </tr>
-              <tr class="info-row">
-                <td class="label">DESIGNATION :</td><td colspan="2" class="value">${employee.position || employee.department || "Employee"}</td>
-                <td class="label">BASIC RATE :</td><td class="value right">${moneyValue(row?.monthlySalary || 0)}</td>
-              </tr>
-
-              <tr class="body-row">
-                <td colspan="2" class="section">SALARY</td>
-                <td colspan="2" class="section">DEDUCTIONS</td>
-                <td class="section">OTHER PERSONAL DETAILS</td>
-              </tr>
-
-              <tr class="body-row">
-                <td class="label">NO. OF DAYS</td><td class="right">${row?.days || 0}</td>
-                <td class="label">SSS</td><td class="right">${moneyValue(row?.sssAmount || 0)}</td>
-                <td class="label">SSS NO.</td>
-              </tr>
-              <tr class="body-row">
-                <td class="label">NO. OF OT HOURS</td><td class="right">${row?.otHours || 0}</td>
-                <td class="label">SSS LOAN</td><td class="right">${moneyValue(row?.sssLoan || 0)}</td>
-                <td class="value">${employee.sssNo || "0"}</td>
-              </tr>
-              <tr class="body-row">
-                <td class="label">BASIC SALARY</td><td class="right">${moneyValue(computed.proratedAmount)}</td>
-                <td class="label">PHILHEALTH</td><td class="right">${moneyValue(row?.philHealthAmount || 0)}</td>
-                <td class="label">PHILHEALTH NO.</td>
-              </tr>
-              <tr class="body-row">
-                <td class="label">DE MINIMIS BENEFITS</td><td class="right">${moneyValue(0)}</td>
-                <td class="label">PAG-IBIG</td><td class="right">${moneyValue(row?.pagIbigAmount || 0)}</td>
-                <td class="value">${employee.philHealthNo || "0"}</td>
-              </tr>
-              <tr class="body-row">
-                <td class="label">HOLIDAY</td><td class="right">${row?.holiday || 0}</td>
-                <td class="label">PAGIBIG LOAN</td><td class="right">${moneyValue(row?.pagIbigLoan || 0)}</td>
-                <td class="label">PAG-IBIG NO.</td>
-              </tr>
-              <tr class="body-row">
-                <td class="label">LATE MINUTES</td><td class="right">${row?.lateMinutes || 0}</td>
-                <td class="label">AMICA CREDITS</td><td class="right">${moneyValue(row?.amicaCredits || 0)}</td>
-                <td class="value">${employee.pagIbigNo || "0"}</td>
-              </tr>
-              <tr class="body-row">
-                <td class="label">OT PAY</td><td class="right">${moneyValue(computed.otPay)}</td>
-                <td class="label">TIN NO.</td><td class="right">${employee.tinNo || "0"}</td>
-                <td class="label">&nbsp;</td>
-              </tr>
-              <tr class="body-row">
-                  <td class="label">CASH ADVANCE</td><td class="right">${moneyValue(row?.cashAdvance || 0)}</td>
-                  <td class="label">CASH ADVANCE DEDUCTION</td><td class="right">${moneyValue(row?.cashAdvanceDeduction || 0)}</td>
-                  <td class="label">CASH BALANCE</td><td class="right">${moneyValue(computed.cashBalance || 0)}</td>
-                </tr>
-              <tr class="body-row">
-                <td class="label right">TOTAL EARNINGS:</td><td class="right">${moneyValue(computed.gross)}</td>
-                <td class="label">TOTAL DEDUCTIONS</td><td class="right">${moneyValue(computed.totalDeduction)}</td><td class="label">SIL USED</td>
-              </tr>
-              <tr class="body-row">
-                <td colspan="4" class="label">TOTAL NET PAY: ${moneyValue(computed.netSalary)}</td>
-                <td class="value">${employee.silUsed || 0} / BAL ${employee.silBalance || 0}</td>
-              </tr>
-              <tr class="signature">
-                <td class="label">Prepared by:</td>
-                <td class="center"><span class="footer-line">${String(user?.name || "HR")}</span></td>
-                <td class="center"><span class="footer-line">ACCOUNTING</span></td>
-                <td class="label">Signature</td>
-                <td class="value"><span class="footer-name">${employee.fullName}</span></td>
-              </tr>
-            </tbody>
-          </table>
-        `;
-      })
-      .join('<div style="page-break-after: always;"></div>');
-
-    const payslipHtml = `
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Office Payroll Payslip</title>
-          <style>
-            @page { size: legal landscape; margin: 5mm; }
-            body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #0f172a; }
-            .sheet { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            .sheet td { border: 0.7px solid #1d4ed8; padding: 0.7px 2px; font-size: 7.2px; line-height: 1; vertical-align: middle; }
-            .logo { width: 58px; height: 58px; object-fit: contain; display: block; margin: 0 auto; }
-            .title { color: #1d4ed8; font-weight: 800; text-align: center; font-size: 10.8px; letter-spacing: 0.02em; }
-            .subtitle { text-align: center; font-weight: 700; font-size: 7.7px; }
-            .label { font-weight: 700; white-space: nowrap; }
-            .value { font-weight: 700; }
-            .section { text-align: center; font-weight: 800; color: #1d4ed8; font-size: 7.8px; border-top: 1px solid #1d4ed8; border-bottom: 1px solid #1d4ed8; }
-            .right { text-align: right; }
-            .center { text-align: center; }
-            .top-row td { height: 12px; }
-            .info-row td { height: 11px; }
-            .body-row td { height: 11px; }
-            .signature { height: 28px; vertical-align: bottom; }
-            .footer-line { display: block; border-top: 1px solid #1d4ed8; margin-top: 5px; padding-top: 1px; }
-            .footer-name { display: block; font-weight: 700; text-align: center; border-top: 1px solid #1d4ed8; padding-top: 1px; }
-          </style>
-        </head>
-        <body>
-          ${payslipPages}
-        </body>
-      </html>
-    `;
-
-    const blob = new Blob([payslipHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = appendDateToExportName(buildOfficePayslipName(payPeriod));
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    notify("Payslip downloaded");
+    const payloadText = JSON.stringify(payload);
+    sessionStorage.setItem("office-payroll-payslip-data", payloadText);
+    localStorage.setItem("office-payroll-payslip-data", payloadText);
+    router.push("/office-payroll/payslip");
   }
 
-  function handlePrint() {
-    exportPayslipExcel();
-  }
+
+
+
 
   async function updatePayrollStatus(nextStatus: "Draft" | "Reviewed" | "Released" | "Paid") {
     if (!activeRunId) {
@@ -765,7 +700,7 @@ export default function OfficePayrollPage() {
         calculationVersion: 1,
         rows: sortedOfficeEmployees.map((employee) => {
           const row = rows.find((item) => item.employeeId === employee.employeeId || item.id === employee.id);
-          const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
+          const computed = row ? computeRow(row) : { dailyRate: 0, effectiveDays: 0, proratedAmount: 0, holidayPay: 0, otPay: 0, gross: 0, sss: 0, pagIbig: 0, philHealth: 0, cashAdvance: 0, cashAdvanceDeduction: 0, cashBalance: 0, totalDeduction: 0, netSalary: 0 };
           return {
             ...row,
             employeeId: employee.id,
@@ -893,8 +828,14 @@ export default function OfficePayrollPage() {
             Mark Paid
           </button>
           <button type="button" onClick={exportExcel} className="secondary-button">Export Excel (Raw Data)</button>
-          <button type="button" onClick={exportPayslipExcel} className="secondary-button">Generate Payslip (Formatted)</button>
-          <button type="button" onClick={handlePrint} className="secondary-button">Print</button>
+          <button
+            type="button"
+            onClick={openPayslipView}
+            className="secondary-button"
+            disabled={sortedOfficeEmployees.length === 0}
+          >
+            View Payslip
+          </button>
         </div>
       </div>
 
@@ -964,44 +905,38 @@ export default function OfficePayrollPage() {
           </div>
         </div>
 
-        <div className={`mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr] ${isLockedRun ? "pointer-events-none select-none" : ""}`}>
+        <div className={`mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.15fr_0.85fr] ${isLockedRun ? "pointer-events-none select-none" : ""}`}>
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Search Main Office employees</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Search employees</span>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              className={`${filterInputClassName} mt-2`}
+              className={`${filterInputClassName} mt-1.5`}
               placeholder="Search by name, department, position, or ID"
             />
           </label>
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Payout date</span>
-            <input value={payoutDate} onChange={(event) => setPayoutDate(event.target.value)} type="date" className={`${filterInputClassName} mt-2`} />
+            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Payout date</span>
+            <input value={payoutDate} onChange={(event) => setPayoutDate(event.target.value)} type="date" className={`${filterInputClassName} mt-1.5`} />
           </label>
         </div>
 
-        <div className="mt-4 rounded-[1.1rem] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 text-sm text-slate-700 shadow-[0_12px_30px_rgba(14,165,233,0.08)] ring-1 ring-white/70">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-black text-slate-900">How this payroll is calculated</p>
-            <span className="rounded-full bg-sky-100 px-3 py-1 text-[11px] font-bold text-sky-700">Live preview</span>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">1. Salary</p>
+            <p className="mt-1 text-xs font-semibold leading-snug text-slate-700">Use the employee monthly rate.</p>
           </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">1. Monthly salary</p>
-              <p className="mt-1 text-sm font-semibold text-slate-700">Enter the employee’s monthly rate.</p>
-            </div>
-            <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">2. Working days</p>
-              <p className="mt-1 text-sm font-semibold text-slate-700">Pay is prorated using Mon-Sat working days.</p>
-            </div>
-            <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">3. Late calculation</p>
-              <p className="mt-1 text-sm font-semibold text-slate-700">Late minutes are converted to days using <span className="font-black">lateMinutes ÷ 480</span> and subtracted from working days.</p>
-            </div>
+          <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">2. Days</p>
+            <p className="mt-1 text-xs font-semibold leading-snug text-slate-700">Working days are Mon-Sat.</p>
           </div>
-          <div className="mt-3 rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm">
-            <span className="font-black text-slate-900">Formula: </span>
-            <span>Effective days = Working days + Holiday + SIL - (Late minutes ÷ 480)</span>
+          <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">3. Late</p>
+            <p className="mt-1 text-xs font-semibold leading-snug text-slate-700">Late minutes are converted to day deductions.</p>
+          </div>
+          <div className="rounded-2xl border border-white/80 bg-white/95 px-3 py-2 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Formula</p>
+            <p className="mt-1 text-xs font-semibold leading-snug text-slate-700">Effective days = days + holiday + SIL - late/480.</p>
           </div>
         </div>
 
@@ -1028,90 +963,97 @@ export default function OfficePayrollPage() {
                     const computed = computeRow(row);
                     return (
                       <tr key={employee.id} className="border-t border-slate-100 align-top">
-                        <td colSpan={6} className="px-3 py-3 sm:px-4">
-                          <div className="rounded-[1.15rem] border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] ring-1 ring-white/70">
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr] lg:items-start">
-                              <div className="space-y-4">
-                                <div>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="text-base font-black text-slate-950">{employee.fullName}</h3>
-                                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">{employee.employeeId || "—"}</span>
-                                  </div>
-                                  <p className="mt-1 text-sm text-slate-500">
-                                    {employee.department || "Unassigned"} · {employee.position || "Employee"}
-                                  </p>
-                                </div>
-
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                  <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 px-3 py-2 shadow-[0_8px_20px_rgba(15,23,42,0.05)]">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Monthly Salary</span>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{moneyWhole(row.monthlySalary)}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Daily equivalent: {moneyWhole(computed.dailyRate)}</p>
-                                  </div>
-                                  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Working days</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{row.days}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Mon-Sat basis</p>
-                                  </div>
-                                  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">SIL</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{row.sil}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Added to working days</p>
-                                  </div>
-                                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Late deduction</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{row.lateMinutes} minutes</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Converted to {moneyWhole(row.lateMinutes / 480)} day(s)</p>
-                                  </div>
-                                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Effective days</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{(row.days + row.holiday + row.sil - row.lateMinutes / 480).toFixed(3)}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Days + holiday + SIL - lateMinutes/480</p>
-                                  </div>
-                                  <div className="rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Prorated pay</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{moneyWhole(computed.proratedAmount)}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Before deductions</p>
+                        <td colSpan={6} className="px-2.5 py-2.5 sm:px-3">
+                          <div className="rounded-[1.05rem] border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100/60 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] ring-1 ring-white/70">
+                            <div className="grid gap-2.5 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between gap-2.5">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <h3 className="text-sm font-black text-slate-950">{employee.fullName}</h3>
+                                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">{employee.employeeId || "—"}</span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs text-slate-500">
+                                      {employee.department || "Unassigned"} · {employee.position || "Employee"}
+                                    </p>
                                   </div>
                                 </div>
 
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                  <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-3 py-2 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{money(computed.gross)}</p>
+                                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                  <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 px-2.5 py-2 shadow-[0_8px_20px_rgba(15,23,42,0.05)] sm:col-span-2 xl:col-span-1">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Monthly Salary</span>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{moneyWhole(row.monthlySalary)}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Daily equivalent: {moneyWhole(computed.dailyRate)}</p>
                                   </div>
-                                  <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 px-3 py-2 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Cash Advance</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{money(computed.cashAdvance)}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Shown beside total salary</p>
+                                  <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm ring-1 ring-slate-200">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Working days</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{row.days}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Mon-Sat basis</p>
                                   </div>
-                                  <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 px-3 py-2 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Cash Balance</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{money(computed.cashBalance)}</p>
-                                    <p className="mt-1 text-[11px] text-slate-500">Cash advance - deduction</p>
+                                  <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm ring-1 ring-slate-200">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">SIL</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{row.sil}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Added to working days</p>
                                   </div>
-                                  <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">Total deductions</p>
-                                    <p className="mt-1 text-sm font-black text-slate-950">{money(computed.totalDeduction)}</p>
+                                  <div className="rounded-xl bg-white px-2.5 py-2 shadow-sm ring-1 ring-slate-200">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Late deduction</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{row.lateMinutes} minutes</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Converted to {moneyWhole(row.lateMinutes / 480)} day(s)</p>
                                   </div>
-                                  <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50 px-3 py-2 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Net pay</p>
-                                    <p className="mt-1 text-sm font-black text-sky-700">{moneyWhole(computed.netSalary)}</p>
+                                  <div className="rounded-xl bg-white px-2.5 py-2 shadow-sm ring-1 ring-slate-200">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Effective days</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{(row.days + row.holiday + row.sil - row.lateMinutes / 480).toFixed(3)}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Days + holiday + SIL - lateMinutes/480</p>
+                                  </div>
+                                  <div className="rounded-xl bg-white px-2.5 py-2 shadow-sm ring-1 ring-slate-200">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Prorated pay</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{moneyWhole(computed.proratedAmount)}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Before deductions</p>
+                                  </div>
+                                  <div className="rounded-xl bg-white px-2.5 py-2 shadow-sm ring-1 ring-slate-200 sm:col-span-2 xl:col-span-1">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Holiday pay</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{moneyWhole(computed.holidayPay)}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Added to total salary</p>
                                   </div>
                                 </div>
 
-                                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm ring-1 ring-slate-100">
+                                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4">
+                                  <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-2.5 py-2 shadow-sm 2xl:col-span-1">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Total salary</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{money(computed.gross)}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 px-2.5 py-2 shadow-sm">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-700">Cash Advance</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{money(computed.cashAdvance)}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Shown beside total salary</p>
+                                  </div>
+                                  <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 px-2.5 py-2 shadow-sm">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-700">Cash Balance</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{money(computed.cashBalance)}</p>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">Cash advance - deduction</p>
+                                  </div>
+                                  <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-2.5 py-2 shadow-sm 2xl:col-span-2">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">Total deductions</p>
+                                    <p className="mt-0.5 text-sm font-black text-slate-950">{money(computed.totalDeduction)}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 to-cyan-50 px-2.5 py-2 shadow-sm 2xl:col-span-2">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Net pay</p>
+                                    <p className="mt-0.5 text-sm font-black text-sky-700">{moneyWhole(computed.netSalary)}</p>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm ring-1 ring-slate-100">
                                   <div className="flex items-center justify-between gap-3">
                                     <div>
                                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Deduction breakdown</p>
                                       <p className="mt-1 text-sm text-slate-500">What gets subtracted from the employee’s pay</p>
                                     </div>
-                                    <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500">
+                                    <div className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
                                       Total: {money(computed.totalDeduction)}
                                     </div>
                                   </div>
 
-                                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                  <div className="mt-3 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
                                       <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-gradient-to-r from-slate-50 to-white px-3 py-2 shadow-sm">
                                         <span className="text-xs font-semibold text-slate-600">SSS</span>
                                         <span className="text-sm font-black text-slate-950">{money(row.sssAmount)}</span>
@@ -1259,6 +1201,24 @@ export default function OfficePayrollPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-600">Release status</p>
             <p className="mt-1 text-lg font-black text-cyan-700">{released ? "Ready" : "Pending"}</p>
           </div>
+          <label className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Prepared by</p>
+            <input
+              value={preparedBy}
+              onChange={(event) => setPreparedBy(event.target.value)}
+              placeholder={user?.name || "HR"}
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:bg-white"
+            />
+          </label>
+          <label className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Accounting</p>
+            <input
+              value={accountingBy}
+              onChange={(event) => setAccountingBy(event.target.value)}
+              placeholder="ACCOUNTING"
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-300 focus:bg-white"
+            />
+          </label>
         </div>
       </section>
     </div>

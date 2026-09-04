@@ -161,6 +161,7 @@ export function computeOfficePayroll(input: OfficePayrollInput) {
   const lateDays = lateMinutes / 480;
   const effectiveDays = Math.max(0, days + holidayDays + silDays - lateDays);
   const proratedAmount = roundCurrency(dailyRate * effectiveDays);
+  const holidayPay = roundCurrency(dailyRate * holidayDays);
   const overtimeRate = roundCurrency((dailyRate / STANDARD_WORK_HOURS_PER_DAY) * REGULAR_OVERTIME_MULTIPLIER);
   const otPay = roundCurrency(overtimeRate * overtimeHours);
   const gross = roundCurrency(proratedAmount + otPay + bonus + allowances);
@@ -174,6 +175,7 @@ export function computeOfficePayroll(input: OfficePayrollInput) {
     dailyRate,
     effectiveDays: roundCurrency(effectiveDays),
     proratedAmount,
+    holidayPay,
     overtimeRate,
     otPay,
     gross,

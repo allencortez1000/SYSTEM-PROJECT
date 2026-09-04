@@ -123,7 +123,7 @@ export default function AuthGate({ children }: AuthGateProps) {
               <div className="relative mb-10 flex items-start gap-5 overflow-hidden rounded-[1.5rem] border border-slate-100 bg-slate-50/90 px-5 py-4 shadow-sm ring-1 ring-slate-100">
                 <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-blue-700 via-blue-600 to-cyan-500" />
                 <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-slate-200">
-                  <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
+                  <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="max-h-[82%] max-w-[82%] object-contain object-center" />
                 </div>
                 <div className="min-w-0 flex-1 pt-1">
                   <p className="text-[15px] font-black uppercase leading-tight tracking-[0.48em] text-blue-700 sm:text-[16px]">
@@ -138,7 +138,7 @@ export default function AuthGate({ children }: AuthGateProps) {
               <div className="mb-6 lg:hidden">
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur-sm">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2.5 shadow-sm">
-                    <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain" />
+                    <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="max-h-[82%] max-w-[82%] object-contain" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[13px] font-black uppercase leading-tight tracking-[0.28em] text-blue-700">

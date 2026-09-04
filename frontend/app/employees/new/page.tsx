@@ -88,6 +88,10 @@ export default function NewEmployeePage() {
   const [hasSssLoan, setHasSssLoan] = useState(true);
   const [hasTax, setHasTax] = useState(true);
   const [hasAdditionalDeduction, setHasAdditionalDeduction] = useState(true);
+  const [sssNo, setSssNo] = useState("");
+  const [tinNo, setTinNo] = useState("");
+  const [philHealthNo, setPhilHealthNo] = useState("");
+  const [pagIbigNo, setPagIbigNo] = useState("");
   const [sssAmount, setSssAmount] = useState(0);
   const [pagIbigAmount, setPagIbigAmount] = useState(0);
   const [philHealthAmount, setPhilHealthAmount] = useState(0);
@@ -173,6 +177,10 @@ export default function NewEmployeePage() {
           hasSssLoan,
           hasTax,
           hasAdditionalDeduction,
+          sssNo: sssNo.trim() || null,
+          tinNo: tinNo.trim() || null,
+          philHealthNo: philHealthNo.trim() || null,
+          pagIbigNo: pagIbigNo.trim() || null,
           sssAmount,
           pagIbigAmount,
           philHealthAmount,
@@ -296,13 +304,12 @@ export default function NewEmployeePage() {
                   }
                 }}
                 error={fieldErrors?.email}
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                }
+                disabled={loading}
               />
-
+              <TextField id="sssNo" label="SSS number" value={sssNo} onValueChange={setSssNo} disabled={loading} />
+              <TextField id="tinNo" label="TIN number" value={tinNo} onValueChange={setTinNo} disabled={loading} />
+              <TextField id="philHealthNo" label="PhilHealth number" value={philHealthNo} onValueChange={setPhilHealthNo} disabled={loading} />
+              <TextField id="pagIbigNo" label="Pag-IBIG number" value={pagIbigNo} onValueChange={setPagIbigNo} disabled={loading} />
               <TextField
                 id="employeeId"
                 label="Employee ID"

@@ -29,6 +29,10 @@ type EmployeeFormState = {
   hasSssLoan: boolean;
   hasTax: boolean;
   hasAdditionalDeduction: boolean;
+  sssNo: string;
+  tinNo: string;
+  philHealthNo: string;
+  pagIbigNo: string;
   sssAmount: number;
   pagIbigAmount: number;
   philHealthAmount: number;
@@ -60,6 +64,10 @@ export default function EditEmployeePage() {
     hasSssLoan: true,
     hasTax: true,
     hasAdditionalDeduction: true,
+    sssNo: "",
+    tinNo: "",
+    philHealthNo: "",
+    pagIbigNo: "",
     sssAmount: 0,
     pagIbigAmount: 0,
     philHealthAmount: 0,
@@ -116,6 +124,10 @@ export default function EditEmployeePage() {
           hasSssLoan: employee?.hasSssLoan ?? true,
           hasTax: employee?.hasTax ?? true,
           hasAdditionalDeduction: employee?.hasAdditionalDeduction ?? true,
+          sssNo: employee?.sssNo || "",
+          tinNo: employee?.tinNo || "",
+          philHealthNo: employee?.philHealthNo || "",
+          pagIbigNo: employee?.pagIbigNo || "",
           sssAmount: Number(employee?.sssAmount || 0),
           pagIbigAmount: Number(employee?.pagIbigAmount || 0),
           philHealthAmount: Number(employee?.philHealthAmount || 0),
@@ -381,6 +393,10 @@ export default function EditEmployeePage() {
               setError(null);
             }
           }} options={[...EMPLOYEE_SALARY_BASIS_OPTIONS]} error={fieldErrors?.salaryBasis} />
+          <EmployeeTextField id="sssNo" label="SSS number" value={form.sssNo} onValueChange={(value) => setForm((prev) => ({ ...prev, sssNo: value }))} />
+          <EmployeeTextField id="tinNo" label="TIN number" value={form.tinNo} onValueChange={(value) => setForm((prev) => ({ ...prev, tinNo: value }))} />
+          <EmployeeTextField id="philhealthNo" label="PhilHealth number" value={form.philHealthNo} onValueChange={(value) => setForm((prev) => ({ ...prev, philHealthNo: value }))} />
+          <EmployeeTextField id="pagibigNo" label="Pag-IBIG number" value={form.pagIbigNo} onValueChange={(value) => setForm((prev) => ({ ...prev, pagIbigNo: value }))} />
           <label className="block min-w-0">
             <span className="block text-sm font-semibold text-slate-700 mb-1.5">{form.salaryBasis === "daily" ? "Daily rate" : "Monthly salary"}</span>
             <input id="salary" type="number" min="0" step="0.01" value={form.salary} onChange={(e) => {

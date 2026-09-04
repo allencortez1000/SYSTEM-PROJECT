@@ -1,6 +1,3 @@
-"use client";
-/* eslint-disable @next/next/no-serialize */
-
 import type { ReactNode } from "react";
 
 type TextFieldProps = {
