@@ -31,9 +31,13 @@ const EMPLOYEE_SELECT = `
   has_tax,
   has_additional_deduction,
   sss_no,
+  sss_number,
   tin_no,
+  tin_number,
   philhealth_no,
+  philhealth_number,
   pagibig_no,
+  pagibig_number,
   sss_amount,
   pagibig_amount,
   philhealth_amount,
@@ -63,9 +67,13 @@ type EmployeeRow = {
   has_tax?: boolean | null;
   has_additional_deduction?: boolean | null;
   sss_no?: string | null;
+  sss_number?: string | null;
   tin_no?: string | null;
+  tin_number?: string | null;
   philhealth_no?: string | null;
+  philhealth_number?: string | null;
   pagibig_no?: string | null;
+  pagibig_number?: string | null;
   sss_amount?: number | string | null;
   pagibig_amount?: number | string | null;
   philhealth_amount?: number | string | null;
@@ -213,10 +221,10 @@ function toEmployeeApi(row: EmployeeRow, lookups: LookupMaps, projectSite = 'Una
     hasSssLoan: row.has_sss_loan ?? true,
     hasTax: row.has_tax ?? true,
     hasAdditionalDeduction: row.has_additional_deduction ?? true,
-    sssNo: row.sss_no || '',
-    tinNo: row.tin_no || '',
-    philHealthNo: row.philhealth_no || '',
-    pagIbigNo: row.pagibig_no || '',
+    sssNo: row.sss_no || row.sss_number || '',
+    tinNo: row.tin_no || row.tin_number || '',
+    philHealthNo: row.philhealth_no || row.philhealth_number || '',
+    pagIbigNo: row.pagibig_no || row.pagibig_number || '',
     sssAmount: row.sss_amount == null ? 0 : Number(row.sss_amount),
     pagIbigAmount: row.pagibig_amount == null ? 0 : Number(row.pagibig_amount),
     philHealthAmount: row.philhealth_amount == null ? 0 : Number(row.philhealth_amount),

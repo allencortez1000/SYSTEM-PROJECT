@@ -176,44 +176,63 @@ export default function PayslipPage() {
          <style jsx global>{`
           @page { size: letter portrait; margin: 4mm; }
           @media print {
-            @page { size: letter portrait; margin: 4mm; }
+            @page { size: letter portrait; margin: 1mm; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; margin: 0; }
             body * { visibility: hidden !important; }
             .print-hidden, .payslip-summary { display: none !important; }
             .payslip-print-area, .payslip-print-area * { visibility: visible !important; }
-            .payslip-print-area { position: static; width: 100%; margin: 0; padding: 0; display: block; }
+            .payslip-print-area { position: static; width: 8.15in; margin: 0 auto; padding: 0; display: block; zoom: 0.95; }
             .payslip-page {
               break-before: auto;
               break-after: page;
               break-inside: avoid;
-              width: 100%;
-              margin: 0;
-              display: block;
+              width: 7.9in;
+              min-height: calc(11in - 2mm);
+              margin: 0 auto;
+              padding: 0;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
             }
             .payslip-page:first-child { break-before: auto; page-break-before: auto; }
             .payslip-page:last-child { break-after: auto; page-break-after: auto; }
-            .payslip-slip { break-inside: avoid; page-break-inside: avoid; margin-bottom: 2mm; display: block; }
-            .payslip-slip:last-child { margin-bottom: 0; }
+            .payslip-slip { break-inside: avoid; page-break-inside: avoid; margin: 0 auto 4px; padding-bottom: 5px; position: relative; display: block; width: 100%; max-width: 8.15in; }
+                        .payslip-slip::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; border-bottom: 1px dashed rgba(37, 99, 235, 0.18); }
+                        .payslip-slip::before { content: ""; position: absolute; left: 50%; bottom: -4px; width: 6px; height: 6px; margin-left: -3px; border: 1px solid rgba(37, 99, 235, 0.18); border-radius: 0; background: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.85); }
+                        .payslip-slip:last-child { margin-bottom: 0; padding-bottom: 0; }
+                        .payslip-slip:last-child::after,
+                        .payslip-slip:last-child::before { display: none; }
           }
-          .payslip-summary { margin-bottom: 12px; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff, #ffffff); border-radius: 16px; padding: 14px 16px; }
-          .payslip-summary h1 { margin: 0; font-size: 25px; font-weight: 900; color: #0f172a; }
-          .payslip-summary p { margin: 4px 0 0; font-size: 13px; color: #475569; }
-          .pay-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: Arial, Helvetica, sans-serif; }
-          .pay-table td { border: 1px solid #2457c5; padding: 1.5px 2.5px; font-size: 7px; line-height: 1; vertical-align: middle; }
-          .title { font-size: 12px; font-weight: 900; letter-spacing: 0.02em; text-align: center; color: #2457c5; }
-          .subtitle { text-align: center; font-weight: 700; font-size: 7px; letter-spacing: 0.02em; }
-          .label { font-weight: 700; white-space: nowrap; font-size: 7px; }
-          .section { color: #2457c5; font-weight: 900; text-align: center; font-size: 7px; letter-spacing: 0.04em; }
+          .payslip-summary { margin-bottom: 4px; border: 1px solid #dbeafe; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border-radius: 0; padding: 6px 8px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); position: relative; max-width: 8.15in; margin-left: auto; margin-right: auto; }
+                    .payslip-summary::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, #2563eb, #60a5fa); }
+          .payslip-summary h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 0.14em; color: #0f172a; text-transform: uppercase; }
+          .payslip-summary p { margin: 2px 0 0; font-size: 10px; color: #64748b; letter-spacing: 0.02em; }
+          .pay-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: Inter, Arial, Helvetica, sans-serif; background: #ffffff; border: 1px solid #dbeafe; border-radius: 0; overflow: visible; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
+          .pay-table td { border: 1px solid #d7e3fb; padding: 0 2px; font-size: 7px; line-height: 1; vertical-align: middle; background: #ffffff; }
+                    .pay-table tr:nth-child(odd) td { background: #fbfdff; }
+                    .pay-table tr:nth-child(3) td,
+                    .pay-table tr:nth-child(4) td,
+                    .pay-table tr:nth-child(5) td { background: #f3f7ff; }
+                    .pay-table tr:nth-child(n+6):nth-child(-n+15) td:nth-child(1),
+                    .pay-table tr:nth-child(n+6):nth-child(-n+15) td:nth-child(3),
+                    .pay-table tr:nth-child(n+6):nth-child(-n+15) td:nth-child(5) { background: #f8fbff; }
+                    .pay-table tr:last-child td { background: #eef4ff; }
+          .title { font-size: 16px; font-weight: 900; letter-spacing: 0.16em; text-align: center; color: #1d4ed8; text-transform: uppercase; background: #ffffff; }
+          .subtitle { text-align: center; font-weight: 700; font-size: 8px; letter-spacing: 0.14em; color: #64748b; text-transform: uppercase; background: #ffffff; }
+          .label { font-weight: 700; white-space: nowrap; font-size: 9px; color: #0f172a; background: #ffffff; }
+          .section { color: #1d4ed8; font-weight: 900; text-align: center; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; background: #eef4ff; }
           .right { text-align: right; }
           .center { text-align: center; }
-          .logo { width: 80px; height: 80px; object-fit: contain; }
-          .detail-cell { font-size: 7px; line-height: 1.02; }
-          .detail-label { display: block; margin-bottom: 1px; font-size: 6px; font-weight: 900; letter-spacing: 0.08em; color: #2457c5; text-transform: uppercase; }
-          .detail-value { display: block; min-height: 9px; font-weight: 700; color: #0f172a; }
+          .logo { width: 52px; height: 52px; object-fit: contain; filter: none; }
+          .detail-cell { font-size: 9px; line-height: 1.02; background: #ffffff; }
+                    .detail-cell:not(.detail-empty) { border-left-color: #d7e3fb; border-right-color: #d7e3fb; }
+          .detail-label { display: block; margin-bottom: 1px; font-size: 7px; font-weight: 900; letter-spacing: 0.16em; color: #2563eb; text-transform: uppercase; }
+          .detail-value { display: block; min-height: 9px; font-size: 9px; font-weight: 700; color: #0f172a; }
           .detail-empty { background: #fff; }
-          .sig-row td { height: 34px; vertical-align: bottom; padding-top: 6px; }
-          .sig-name { display: block; padding-top: 8px; border-top: 1px solid #2457c5; font-size: 7px; font-weight: 700; color: #0f172a; }
-          .sig-label { display: block; margin-bottom: 3px; font-size: 6px; font-weight: 900; letter-spacing: 0.08em; color: #2457c5; text-transform: uppercase; }
+          .sig-row td { height: 28px; vertical-align: bottom; padding-top: 3px; background: #f8fbff; }
+          .sig-name { display: block; padding-top: 5px; border-top: 1px solid #d7e3fb; font-size: 9px; font-weight: 700; color: #0f172a; }
+          .sig-label { display: block; margin-bottom: 2px; font-size: 7px; font-weight: 900; letter-spacing: 0.18em; color: #2563eb; text-transform: uppercase; }
         `}</style>
 
         {payslips.length === 0 ? (

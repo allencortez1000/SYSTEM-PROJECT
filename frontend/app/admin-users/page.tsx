@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import FilterBar from "../components/filter-bar";
 import { useNotification } from "../components/notification";
+import { readApiError } from "../../lib/api";
 import { canonicalDepartmentName, triggerAppDataRefresh, uniqueCanonicalDepartments } from "../../lib/supabaseRealtime";
 
 type SessionUser = {
@@ -198,11 +199,11 @@ export default function AdminUsersPage() {
       const projectsData = await projectsRes.json().catch(() => ({}));
 
       if (!usersRes.ok) {
-        throw new Error(usersData?.error || usersData?.message || "Failed to load admin users");
+        throw new Error(await readApiError(usersRes, "Failed to load admin users"));
       }
 
       if (!departmentsRes.ok) {
-        throw new Error(departmentsData?.error || departmentsData?.message || "Failed to load departments");
+        throw new Error(await readApiError(departmentsRes, "Failed to load departments"));
       }
 
       const nextUsers = usersData.users || [];
@@ -294,9 +295,8 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ name: newDepartmentName }),
       });
 
-      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || data?.message || "Failed to save department");
+        throw new Error(await readApiError(response, "Failed to save department"));
       }
 
       setNewDepartmentName("");
@@ -333,9 +333,8 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ name: newProjectSiteName }),
       });
 
-      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || data?.message || "Failed to save project site");
+        throw new Error(await readApiError(response, "Failed to save project site"));
       }
 
       setNewProjectSiteName("");
@@ -580,9 +579,8 @@ export default function AdminUsersPage() {
         }),
       });
 
-      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || data?.message || "Failed to create sub-admin");
+        throw new Error(await readApiError(response, "Failed to create sub-admin"));
       }
 
       setFullName("");
@@ -622,9 +620,8 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ departmentIds }),
       });
 
-      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || data?.message || "Failed to update departments");
+        throw new Error(await readApiError(response, "Failed to update departments"));
       }
 
       await loadData();

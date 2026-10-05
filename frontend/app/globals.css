@@ -135,6 +135,15 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); opac
   flex-direction: column;
   gap: clamp(0.75rem, 1.5vw, 1.35rem);
 }
+.leave-page-shell {
+  padding-bottom: 1.25rem;
+}
+.leave-page-shell .section-card {
+  padding: 1rem;
+}
+.leave-page-shell .section-card > .mt-4 {
+  margin-top: 0.875rem;
+}
 .page-shell > * {
   animation: fadeUp 0.22s ease both;
 }

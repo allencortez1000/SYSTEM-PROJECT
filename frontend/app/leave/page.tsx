@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import RecordDetailsModal from "../components/record-details-modal";
+import LeaveDetailsModal from "../components/leave-details-modal";
 
 
 const API_BASE = "/api";
@@ -31,9 +31,10 @@ export default function LeavePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeRow, setActiveRow] = useState<LeaveRow | null>(null);
-  const [sessionUser, setSessionUser] = useState<{ role?: string } | null>(null);
+  const [sessionUser, setSessionUser] = useState<{ role?: string; userId?: string } | null>(null);
 
   const canManageLeave = sessionUser?.role === "super-admin";
+  const currentUserId = String(sessionUser?.userId || "").trim();
 
   const load = useCallback(async () => {
     setError(null);
@@ -348,11 +349,10 @@ export default function LeavePage() {
         )}
       </section>
 
-      <RecordDetailsModal
-        title={activeRow ? nested(activeRow, "employees", "full_name") : "Leave request"}
-        subtitle={activeRow ? `${nested(activeRow, "leave_types", "name")} · ${pick(activeRow, ["status"])} ` : undefined}
+      <LeaveDetailsModal
         row={activeRow}
         isOpen={Boolean(activeRow)}
+        currentUserId={currentUserId}
       />
     </div>
   );

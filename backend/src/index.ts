@@ -13,7 +13,7 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required');
 }
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT ?? 4000;
 const hasSupabaseConfig = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
 
@@ -308,6 +308,8 @@ if (hasSupabaseConfig) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Backend is running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Backend is running on port ${PORT}`);
+  });
+}

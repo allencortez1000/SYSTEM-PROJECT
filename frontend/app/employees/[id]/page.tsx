@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { readApiError } from "../../../lib/api";
 import { useSupabaseTableRefresh } from "../../../lib/supabaseRealtime";
 
 type SessionUser = {
@@ -85,7 +86,7 @@ export default function EmployeeDetail() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || data?.message || "Employee not found");
+      if (!res.ok) throw new Error(await readApiError(res, "Employee not found"));
       setEmployee(data.employee || null);
       setError(null);
     } catch (err) {

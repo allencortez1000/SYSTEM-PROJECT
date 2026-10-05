@@ -6,8 +6,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl shadow-blue-600/10">
           <div className="text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
-              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain" />
+            <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.4rem] bg-white p-0 shadow-sm ring-1 ring-slate-200 sm:h-28 sm:w-28">
+              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
             </div>
             <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Rabino Home Builders Corporation</p>
             <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">Sign in</h1>

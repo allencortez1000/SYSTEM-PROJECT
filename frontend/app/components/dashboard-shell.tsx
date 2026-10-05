@@ -134,8 +134,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-white p-1.5 shadow-sm ring-1 ring-white/10">
-                  <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="max-h-[82%] max-w-[82%] object-contain object-center" />
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[0.9rem] bg-white p-0 shadow-sm ring-1 ring-white/10">
+                  <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase leading-tight tracking-[0.18em] text-sky-300/90">Rabino Home Builders Corporation</p>
@@ -192,11 +192,11 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-white/10 bg-slate-950/95 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl xl:w-[292px] lg:flex">
         <div className="border-b border-white/10 px-6 py-5">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1rem] bg-white p-1.5 shadow-sm ring-1 ring-white/10">
-              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="max-h-[82%] max-w-[82%] object-contain object-center" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[0.95rem] bg-white p-0 shadow-sm ring-1 ring-white/10">
+              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
             </div>
-            <div className="min-w-0 pt-0.5">
+            <div className="min-w-0 pt-0">
               <p className="text-[10px] font-black uppercase leading-tight tracking-[0.18em] text-sky-300/90 sm:text-[11px]">
                 Rabino Home Builders Corporation
               </p>
@@ -294,8 +294,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
           </button>
 
           <div className="flex items-center gap-3 lg:hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-0.5 shadow-sm border border-slate-200">
-              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="max-h-[82%] max-w-[82%] object-contain object-center" />
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-0.5 shadow-sm border border-slate-200">
+              <img src="/rabino-logo.svg" alt="Rabino Home Builders Corporation logo" className="h-full w-full object-contain object-center" />
             </div>
             <div className="min-w-0">
               <span className="block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Rabino Home Builders Corporation</span>

@@ -35,8 +35,11 @@ declare
   e5 uuid;
   e6 uuid;
 
-  lt_vl uuid;
+  lt_sil uuid;
   lt_sl uuid;
+  lt_psl uuid;
+  lt_slw uuid;
+  lt_vl uuid;
 
   ps_daan uuid;
   ps_bagac uuid;
@@ -291,21 +294,33 @@ begin
   -- 7. Leave types and leave requests
   ------------------------------------------------------------------
   insert into leave_types (organization_id, name, code, default_days_per_year, is_paid)
-  values (v_org, 'Vacation Leave', 'VL', 15, true)
-  returning id into lt_vl;
+  values (v_org, 'Service Incentive Leave', 'SIL', 5, true)
+  returning id into lt_sil;
 
   insert into leave_types (organization_id, name, code, default_days_per_year, is_paid)
   values (v_org, 'Sick Leave', 'SL', 10, true)
   returning id into lt_sl;
 
-  insert into leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status)
-  values (e5, lt_vl, current_date, current_date + 4, 5, 'Family vacation', 'Approved');
+  insert into leave_types (organization_id, name, code, default_days_per_year, is_paid)
+  values (v_org, 'Parental leave for solo parents', 'PSL', 7, true)
+  returning id into lt_psl;
 
-  insert into leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status)
-  values (e1, lt_sl, current_date - 7, current_date - 6, 2, 'Flu recovery', 'Pending');
+  insert into leave_types (organization_id, name, code, default_days_per_year, is_paid)
+  values (v_org, 'Special leave for women', 'SLW', 2, true)
+  returning id into lt_slw;
 
-  insert into leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status)
-  values (e2, lt_vl, current_date + 8, current_date + 10, 3, 'Personal time off', 'Pending');
+  insert into leave_types (organization_id, name, code, default_days_per_year, is_paid)
+  values (v_org, 'Vacation Leave', 'VL', 15, true)
+  returning id into lt_vl;
+
+  insert into leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status, requested_by, withdrawn_at)
+  values (e5, lt_vl, current_date, current_date + 4, 5, 'Family vacation', 'approved', null, null);
+
+  insert into leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status, requested_by, withdrawn_at)
+  values (e1, lt_sl, current_date - 7, current_date - 6, 2, 'Flu recovery', 'pending', null, null);
+
+  insert into leave_requests (employee_id, leave_type_id, start_date, end_date, total_days, reason, status, requested_by, withdrawn_at)
+  values (e2, lt_vl, current_date + 8, current_date + 10, 3, 'Personal time off', 'pending', null, null);
 
   ------------------------------------------------------------------
   -- 8. Project sites and active employee deployments

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import BreakdownCard from "../components/breakdown-card";
 import StatusBadge from "../components/status-badge";
 import SummaryMetricCard from "../components/summary-metric-card";
+import { readApiError } from "../../lib/api";
 
 const API_BASE = "/api";
 
@@ -103,7 +104,7 @@ export default function DataHealthPage() {
           router.replace("/login");
           return;
         }
-        throw new Error(payload?.error || payload?.message || "Failed to load data health summary");
+        throw new Error(await readApiError(response, "Failed to load data health summary"));
       }
 
       setData(payload);

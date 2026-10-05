@@ -110,3 +110,27 @@ export function requireModuleAccess(moduleName: 'employees' | 'attendance' | 'pa
     }
   };
 }
+
+export function requireLeaveAccess(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'User not authenticated' });
+  }
+
+  if (['super-admin', 'admin', 'sub-admin'].includes(req.user.role)) {
+    return next();
+  }
+
+  return res.status(403).json({ message: 'Insufficient permissions' });
+}
+
+export function requireLeaveApprovalAccess(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ message: 'User not authenticated' });
+  }
+
+  if (req.user.role === 'super-admin') {
+    return next();
+  }
+
+  return res.status(403).json({ message: 'Only super admin can perform this action' });
+}

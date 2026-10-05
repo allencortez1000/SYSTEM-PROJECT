@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import RecordDetailsModal from "../components/record-details-modal";
-
+import { readApiError } from "../../lib/api";
 
 const API_BASE = "/api";
 
@@ -30,7 +30,7 @@ export default function CompliancePage() {
     try {
       const token = localStorage.getItem("hr_token");
       const res = await fetch(`${API_BASE}/data/compliance`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
-      if (!res.ok) throw new Error("Failed to load compliance requirements");
+      if (!res.ok) throw new Error(await readApiError(res, "Failed to load compliance requirements"));
       const data = await res.json();
       setRows(data.compliance || []);
     } catch (err) {

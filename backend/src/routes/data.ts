@@ -1,10 +1,28 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { supabase } from '../lib/supabase';
-import { requireSuperAdmin, verifyToken } from '../middleware/auth';
+import { AuthRequest, requireLeaveAccess, requireLeaveApprovalAccess, verifyToken } from '../middleware/auth';
+import { calculateLeaveDays, validateLeaveRequestInput } from '../lib/leave';
 
-const router = Router();
+type Middleware = (req: AuthRequest, res: Response, next: NextFunction) => unknown;
 
-router.use(verifyToken);
+type SupabaseLike = typeof supabase;
+
+type DataRouterDeps = {
+  supabaseClient?: SupabaseLike;
+  verify?: Middleware;
+  allowLeaveAccess?: Middleware;
+  allowLeaveApprovalAccess?: Middleware;
+};
+
+export function createDataRouter(deps: DataRouterDeps = {}) {
+  const supabaseClient = deps.supabaseClient ?? supabase;
+  const verify = deps.verify ?? verifyToken;
+  const allowLeaveAccess = deps.allowLeaveAccess ?? requireLeaveAccess;
+  const allowLeaveApprovalAccess = deps.allowLeaveApprovalAccess ?? requireLeaveApprovalAccess;
+
+  const router = Router();
+
+  router.use(verify);
 
 /*
   Generic read-only endpoints that surface raw rows from Supabase tables.
@@ -14,6 +32,8 @@ router.use(verifyToken);
 */
 
 type Row = Record<string, unknown>;
+
+
 
 function safeParseJson(value: unknown) {
   if (!value) return null;
@@ -52,38 +72,38 @@ function departmentNameFromMap(departmentId: unknown, departmentMap: Map<string,
   return departmentMap.get(String(departmentId)) || 'Unassigned';
 }
 
-async function fetchTable(table: string, orderColumn?: string, select = '*'): Promise<{ rows: Row[]; error: string | null }> {
-  let query = supabase.from(table).select(select);
+  async function fetchTable(table: string, orderColumn?: string, select = '*'): Promise<{ rows: Row[]; error: string | null }> {
+    let query = supabaseClient.from(table).select(select);
 
-  if (orderColumn) {
-    query = query.order(orderColumn, { ascending: false });
+    if (orderColumn) {
+      query = query.order(orderColumn, { ascending: false });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { rows: [], error: error.message };
+    }
+
+    return { rows: (data || []) as unknown as Row[], error: null };
   }
 
-  const { data, error } = await query;
+  async function fetchDepartmentMap() {
+    const { rows, error } = await fetchTable('departments', undefined, 'id, name');
 
-  if (error) {
-    return { rows: [], error: error.message };
+    return {
+      departmentMap: new Map(rows.map((department) => [String(department.id), String(department.name || 'Unassigned')])),
+      error,
+    };
   }
 
-  return { rows: (data || []) as unknown as Row[], error: null };
-}
-
-async function fetchDepartmentMap() {
-  const { rows, error } = await fetchTable('departments', undefined, 'id, name');
-
-  return {
-    departmentMap: new Map(rows.map((department) => [String(department.id), String(department.name || 'Unassigned')])),
-    error,
-  };
-}
-
-// Expose departments list for frontend forms (id, name)
-router.get('/departments', async (_, res) => {
+  // Expose departments list for frontend forms (id, name)
+  router.get('/departments', async (_, res) => {
   const { rows, error } = await fetchTable('departments', undefined, 'id, name');
   res.json({ departments: rows, error });
 });
 
-router.get('/leave', async (_, res) => {
+  router.get('/leave', allowLeaveAccess, async (_, res) => {
   const { rows, error } = await fetchTable(
     'leave_requests',
     'created_at',
@@ -92,21 +112,109 @@ router.get('/leave', async (_, res) => {
   res.json({ leave: rows, error });
 });
 
-router.patch('/leave/:id', requireSuperAdmin, async (req, res) => {
+  router.post('/leave', allowLeaveAccess, async (req: AuthRequest, res) => {
+  const role = String(req.user?.role || '').toLowerCase();
+  if (!['super-admin', 'admin', 'sub-admin'].includes(role)) {
+    res.status(403).json({ error: 'Only admin, sub-admin, or super admin can file leave' });
+    return;
+  }
+
+  const body = (req.body || {}) as Record<string, unknown>;
+  const employeeId = String(body.employee_id || '').trim();
+  const leaveTypeId = String(body.leave_type_id || '').trim();
+  const startDate = String(body.start_date || '').trim();
+  const endDate = String(body.end_date || '').trim();
+  const reason = String(body.reason || '').trim();
+
+  const validationError = validateLeaveRequestInput({ employeeId, leaveTypeId, startDate, endDate, reason });
+  if (validationError) {
+    res.status(400).json({ error: validationError });
+    return;
+  }
+
+  const filedBy = String(req.user?.userId || '').trim() || null;
+
+  const { data: employeeRow, error: employeeLookupError } = await supabaseClient
+    .from('employees')
+    .select('id, organization_id')
+    .eq('id', employeeId)
+    .maybeSingle();
+
+  if (employeeLookupError) {
+    res.status(500).json({ error: employeeLookupError.message });
+    return;
+  }
+
+  const { data: leaveTypeRows, error: lookupError } = await supabaseClient
+    .from('leave_types')
+    .select('id, name, code');
+
+  if (lookupError) {
+    res.status(500).json({ error: lookupError.message });
+    return;
+  }
+
+  const normalizedLeaveType = leaveTypeId.trim().toLowerCase();
+  const leaveTypeRecord = (leaveTypeRows || []).find((item: Record<string, unknown>) => {
+    const id = String(item.id || '').toLowerCase();
+    const code = String(item.code || '').toLowerCase();
+    const name = String(item.name || '').toLowerCase();
+    return id === normalizedLeaveType || code === normalizedLeaveType || name === normalizedLeaveType;
+  }) || null;
+
+  if (!leaveTypeRecord) {
+    res.status(400).json({ error: 'Invalid leave type selected' });
+    return;
+  }
+
+  const totalDays = calculateLeaveDays(startDate, endDate);
+
+  const { data, error } = await supabaseClient
+    .from('leave_requests')
+    .insert({
+      employee_id: employeeId,
+      leave_type_id: leaveTypeRecord.id,
+      start_date: startDate,
+      end_date: endDate,
+      total_days: totalDays,
+      reason,
+      status: 'pending',
+      requested_by: req.user?.userId || null,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.status(201).json({ leave: data });
+});
+
+  router.patch('/leave/:id', allowLeaveApprovalAccess, async (req: AuthRequest, res) => {
   const { id } = req.params;
-  const { status } = req.body as { status?: string };
+  const { status, remarks } = req.body as { status?: string; remarks?: string };
   if (!id || !status) {
     res.status(400).json({ error: 'Missing id or status' });
     return;
   }
+  const normalizedStatus = String(status).toLowerCase();
   const allowed = ['approved', 'rejected', 'pending'];
-  if (!allowed.includes(String(status).toLowerCase())) {
+  if (!allowed.includes(normalizedStatus)) {
     res.status(400).json({ error: `Status must be one of: ${allowed.join(', ')}` });
     return;
   }
-  const { data, error } = await supabase
+  const updates: Record<string, unknown> = {
+    status: normalizedStatus,
+    updated_at: new Date().toISOString(),
+    reviewed_by: req.user?.userId || null,
+    reviewed_at: new Date().toISOString(),
+  };
+  if (remarks !== undefined) updates.remarks = String(remarks).trim() || null;
+  const { data, error } = await supabaseClient
     .from('leave_requests')
-    .update({ status: String(status).toLowerCase(), updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', id)
     .select('*')
     .single();
@@ -117,12 +225,64 @@ router.patch('/leave/:id', requireSuperAdmin, async (req, res) => {
   res.json({ leave: data });
 });
 
-router.get('/leave-types', async (_, res) => {
+  router.post('/leave/:id/withdraw', allowLeaveAccess, async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ error: 'Missing id' });
+    return;
+  }
+
+  const { data: leaveRow, error: loadError } = await supabaseClient
+    .from('leave_requests')
+    .select('id, status, employee_id, leave_type_id, start_date, end_date, total_days, reason, requested_by')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (loadError) {
+    res.status(500).json({ error: loadError.message });
+    return;
+  }
+
+  if (!leaveRow) {
+    res.status(404).json({ error: 'Leave request not found' });
+    return;
+  }
+
+  if (String(leaveRow.status || '').toLowerCase() !== 'pending') {
+    res.status(409).json({ error: 'Only pending leave requests can be withdrawn' });
+    return;
+  }
+
+  if (String(leaveRow.requested_by || '') !== String(req.user?.userId || '')) {
+    res.status(403).json({ error: 'You can only withdraw leave requests you submitted' });
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('leave_requests')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString(),
+      withdrawn_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ leave: data });
+});
+
+  router.get('/leave-types', allowLeaveAccess, async (_, res) => {
   const { rows, error } = await fetchTable('leave_types');
   res.json({ leaveTypes: rows, error });
 });
 
-router.get('/payroll-runs', async (_, res) => {
+  router.get('/payroll-runs', async (_, res) => {
   const { rows, error } = await fetchTable('payroll_runs', 'created_at');
   const payrollRuns = rows.map((run) => {
     const notes = safeParseJson(run.notes);
@@ -518,4 +678,7 @@ router.get('/health', async (_, res) => {
   });
 });
 
-export default router;
+  return router;
+}
+
+export default createDataRouter();

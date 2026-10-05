@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="title desc">
   <title id="title">Rabino Home Builders Corporation logo</title>
   <desc id="desc">Rabino Home Builders Corporation wordmark with stylized houses and green leaf.</desc>
-  <rect width="900" height="900" fill="#ffffff"/>
+  <rect width="1200" height="1000" fill="#ffffff"/>
 
-  <g transform="translate(160,130) scale(0.82)">
+  <g transform="translate(105,95) scale(1.02)">
     <!-- Left green house -->
     <path d="M25 250 L150 150 L290 175 L215 305 L105 305 Z" fill="#8bd400"/>
     <rect x="82" y="215" width="18" height="24" fill="#e43a22"/>
